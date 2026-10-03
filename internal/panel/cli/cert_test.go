@@ -15,13 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/tlscert"
 )
 
-// `mikan cert set` pipes the chain and the key in one stream: the panel's certificate has
+// `cozy cert set` pipes the chain and the key in one stream: the panel's certificate has
 // to cover its address, a node's goes to that node, and show tells what is there.
 func TestCertCommand(t *testing.T) {
 	ctx := context.Background()

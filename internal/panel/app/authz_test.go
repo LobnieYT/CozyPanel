@@ -14,10 +14,10 @@ import (
 
 	"github.com/pquerna/otp/totp"
 
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // keyHarness is a harness logged in, with a "read" key and a "full" key made the way an

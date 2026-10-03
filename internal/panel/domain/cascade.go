@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // Cascades: an inbound of node A may leave the internet through node B. B runs a

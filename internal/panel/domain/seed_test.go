@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
 )
 
 // The installer bootstraps the panel with its language before the first start, so the

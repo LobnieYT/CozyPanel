@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // Traffic pools (GitHub issue #6): inbounds in a pool count to it, with a limit per user

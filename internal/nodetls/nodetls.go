@@ -83,7 +83,7 @@ func LoadOrCreate(dir string, now time.Time) (Pair, error) {
 	if errC == nil && errK == nil {
 		return Pair{CertPEM: string(c), KeyPEM: string(k)}, nil
 	}
-	p, err := Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	p, err := Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	if err != nil {
 		return Pair{}, err
 	}
@@ -105,7 +105,7 @@ type Key struct {
 	NodeLabel string `json:"name,omitempty"`
 }
 
-const keyPrefix = "mikan1."
+const keyPrefix = "cozy1."
 
 // Encode renders the join key as one shell-safe word.
 func (k Key) Encode() (string, error) {
@@ -121,7 +121,7 @@ func DecodeKey(s string) (Key, error) {
 	var k Key
 	body, ok := strings.CutPrefix(strings.TrimSpace(s), keyPrefix)
 	if !ok {
-		return k, errors.New("not a mikan node key")
+		return k, errors.New("not a cozy node key")
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(body)
 	if err != nil {

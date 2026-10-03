@@ -13,9 +13,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/warp"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/warp"
 )
 
 type WarpView struct {

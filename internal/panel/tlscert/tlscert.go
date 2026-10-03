@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/fsutil"
+	"cozy/internal/fsutil"
 )
 
 // Holder lets the certificate be swapped (ACME renewal, host change) without a restart.

@@ -9,13 +9,13 @@ import (
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
-	"mikan/internal/panel/secure"
+	"cozy/internal/panel/secure"
 )
 
 const totpPeriod = 30
 
 func NewTOTPKey(account string) (*otp.Key, error) {
-	return totp.Generate(totp.GenerateOpts{Issuer: "mikan", AccountName: account, Period: totpPeriod, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
+	return totp.Generate(totp.GenerateOpts{Issuer: "cozy", AccountName: account, Period: totpPeriod, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
 }
 
 // TOTPGuard validates codes and refuses to accept the same time step twice per admin.

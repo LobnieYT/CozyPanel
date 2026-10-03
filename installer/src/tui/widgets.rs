@@ -13,7 +13,7 @@ use ratatui::widgets::{Block, BorderType, Clear, Padding, Paragraph};
 
 use crate::system::Level;
 
-pub const ACCENT: Color = Color::Indexed(208);
+pub const ACCENT: Color = Color::Indexed(99);
 pub const DIM: Color = Color::Indexed(245);
 pub const FAINT: Color = Color::Indexed(239);
 pub const OK: Color = Color::Indexed(114);
@@ -113,7 +113,7 @@ impl<'a> Card<'a> {
     pub fn draw(&self, f: &mut Frame) -> Option<Rect> {
         let area = f.area();
         if area.width < 60 || area.height < 20 {
-            let msg = Paragraph::new(vec![Line::from("mikan".fg(ACCENT).bold()), Line::from(dim("Make the terminal at least 60×20."))]);
+            let msg = Paragraph::new(vec![Line::from("cozy".fg(ACCENT).bold()), Line::from(dim("Make the terminal at least 60×20."))]);
             f.render_widget(msg, area);
             return None;
         }
@@ -129,7 +129,7 @@ impl<'a> Card<'a> {
         let mut block = Block::bordered()
             .border_type(BorderType::Rounded)
             .border_style(Style::new().fg(FAINT))
-            .title(Line::from(vec![Span::raw(" "), "●".fg(ACCENT), Span::raw(" "), "mikan".bold(), Span::raw(" ")]))
+            .title(Line::from(vec![Span::raw(" "), "●".fg(ACCENT), Span::raw(" "), "cozy".bold(), Span::raw(" ")]))
             .padding(Padding::new(3, 3, 1, 0));
         match self.step {
             Some((i, n)) => block = block.title(Line::from(dim(format!(" {i} of {n} "))).right_aligned()),
@@ -350,7 +350,7 @@ mod tests {
     fn wraps_at_spaces() {
         assert_eq!(wrap("one two three four", 9), ["one two", "three", "four"]);
         assert_eq!(wrap("a\nb", 20), ["a", "b"]);
-        assert_eq!(wrap("key mikan1.abcdefghijkl end", 8), ["key", "mikan1.a", "bcdefghi", "jkl end"]);
+        assert_eq!(wrap("key cozy1.abcdefghijkl end", 8), ["key", "cozy1.ab", "cdefghij", "kl end"]);
     }
 
     #[test]

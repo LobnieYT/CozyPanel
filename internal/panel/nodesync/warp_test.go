@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // A node gets WARP only when it has it on, with its own inbounds set to WARP and the

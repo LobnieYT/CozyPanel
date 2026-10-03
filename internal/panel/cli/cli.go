@@ -18,19 +18,19 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/hostname"
-	"mikan/internal/panel/api"
-	"mikan/internal/panel/app"
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/config"
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/hostname"
+	"cozy/internal/panel/api"
+	"cozy/internal/panel/app"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/config"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
-const usage = `mikan — VPN panel on the mihomo core
+const usage = `cozy — VPN panel on the mihomo core
 
 Commands:
   serve                         run the panel
@@ -149,7 +149,7 @@ func adminCmd(ctx context.Context, args []string) error {
 		return nil
 	case "backup":
 		if len(args) < 2 {
-			return errors.New("name the file: mikan admin backup /data/backup.db")
+			return errors.New("name the file: cozy admin backup /data/backup.db")
 		}
 		if err := backup(ctx, st, args[1]); err != nil {
 			return err
@@ -233,7 +233,7 @@ func bootstrap(ctx context.Context, st *store.Store, set *settings.Settings, arg
 	if n, err := st.Q.CountAdmins(ctx); err != nil {
 		return err
 	} else if n > 0 {
-		return errors.New("the panel is already set up; for a new password run `mikan admin reset-password`")
+		return errors.New("the panel is already set up; for a new password run `cozy admin reset-password`")
 	}
 	password, generated, err := readOrGeneratePassword(*passwordStdin, stdin)
 	if err != nil {
@@ -390,8 +390,8 @@ func readOrGeneratePassword(fromStdin bool, r io.Reader) (string, bool, error) {
 	return pw, false, nil
 }
 
-// printURL: stdout carries only the link, because the host `mikan` script of every
-// installed version parses it (`mikan update` waits for the panel with it); the login goes
+// printURL: stdout carries only the link, because the host `cozy` script of every
+// installed version parses it (`cozy update` waits for the panel with it); the login goes
 // to stderr, which still shows in a terminal.
 func printURL(stdout, stderr io.Writer, url, login string) {
 	fmt.Fprintln(stdout, url)
@@ -457,7 +457,7 @@ func panelURL(ctx context.Context, set *settings.Settings) (string, error) {
 		return "", err
 	}
 	if ep.Host == "" || p.Admin == "" {
-		return "", errors.New("the panel is not set up: run `mikan admin bootstrap`")
+		return "", errors.New("the panel is not set up: run `cozy admin bootstrap`")
 	}
 	return "https://" + net.JoinHostPort(ep.Host, strconv.Itoa(ep.Port)) + "/" + p.Admin + "/", nil
 }

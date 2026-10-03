@@ -136,7 +136,7 @@ COPY = {
 
 def banner(lang, theme, display, ui, ui_bold):
     t, c = THEMES[theme], COPY[lang]
-    word, word_w = display.run("mikan", 150, tracking=-0.05)
+    word, word_w = display.run("cozy", 150, tracking=-0.05)
     tag, _ = ui.run(c["tagline"], 36)
     x0 = 380
     pills, px = [], x0
@@ -158,8 +158,8 @@ def banner(lang, theme, display, ui, ui_bold):
         f'<circle cx="20" cy="20" r="5" fill="#f07a2e"/><path transform="translate(34 28)" d="{p}" fill="{t["pillInk"]}"/></g>'
         for x, w, p in pills
     )
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="mikan — {c['tagline']}">
-<title>mikan — {c['tagline']}</title>
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="cozy — {c['tagline']}">
+<title>cozy — {c['tagline']}</title>
 <defs>
 {glows}
 <radialGradient id="fruit" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#ffc58f"/><stop offset=".45" stop-color="#f7883a"/><stop offset="1" stop-color="#d45a16"/></radialGradient>

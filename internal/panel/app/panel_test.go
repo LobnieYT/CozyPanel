@@ -17,10 +17,10 @@ import (
 
 	"github.com/pquerna/otp/totp"
 
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 const (
@@ -62,9 +62,9 @@ func newHarness(t *testing.T, with ...func(*Options)) *harness {
 	}
 	h := &harness{t: t, st: st, now: time.Now()}
 	web := fstest.MapFS{
-		"index.html":      {Data: []byte("<!doctype html><html><head><!-- mikan:base --></head><body></body></html>")},
+		"index.html":      {Data: []byte("<!doctype html><html><head><!-- cozy:base --></head><body></body></html>")},
 		"assets/app-1.js": {Data: []byte("console.log(1)")},
-		"sub.html":        {Data: []byte("<!doctype html><html><head><!-- mikan:base --></head><body>sub</body></html>")},
+		"sub.html":        {Data: []byte("<!doctype html><html><head><!-- cozy:base --></head><body>sub</body></html>")},
 	}
 	opts := Options{Version: "test", Web: web, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: func() time.Time { return h.now }, Resolve: testResolve}
 	for _, f := range with {
@@ -191,8 +191,8 @@ func TestDefaultLangReachesPages(t *testing.T) {
 		t.Helper()
 		for _, path := range pages {
 			resp, body := h.do(http.MethodGet, path, nil, nil)
-			if resp.StatusCode != http.StatusOK || strings.Contains(string(body), "mikan-lang") != (want != "") ||
-				want != "" && !strings.Contains(string(body), `<meta name="mikan-lang" content="`+want+`">`) {
+			if resp.StatusCode != http.StatusOK || strings.Contains(string(body), "cozy-lang") != (want != "") ||
+				want != "" && !strings.Contains(string(body), `<meta name="cozy-lang" content="`+want+`">`) {
 				t.Fatalf("%s with %q: %d %s", path, want, resp.StatusCode, body)
 			}
 		}

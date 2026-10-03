@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/settings"
 )
 
 // The settings of one request are written together: when one cannot be written, the

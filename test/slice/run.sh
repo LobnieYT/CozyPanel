@@ -5,8 +5,8 @@ set -eu
 cd "$(dirname "$0")"
 export MSYS_NO_PATHCONV=1
 
-docker volume create mikan-gomod >/dev/null
-docker volume create mikan-gocache >/dev/null
+docker volume create cozy-gomod >/dev/null
+docker volume create cozy-gocache >/dev/null
 docker compose down -v --remove-orphans >/dev/null 2>&1 || true
 docker compose build node target
 

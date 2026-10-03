@@ -13,7 +13,7 @@ import (
 
 // codeSources are where error codes the web shows are written: the API's own (huma's
 // top-level code and an ErrorDetail's Message), and the packages whose codes the API
-// passes on as a detail's Message (templates, presets, WARP, Clash rules, payments).
+// passes on as a detail's Message (templates, presets, WARP, Clash rules).
 var codeSources = []struct {
 	dir      string
 	patterns []*regexp.Regexp
@@ -26,9 +26,6 @@ var codeSources = []struct {
 	{"internal/panel/presets", []*regexp.Regexp{failCode, structCode}},
 	{"internal/panel/warp", []*regexp.Regexp{structCode}},
 	{"internal/panel/subs", []*regexp.Regexp{structCode}},
-	// billing.errCode keeps a provider's refusal in payments.error, for the history.
-	{"internal/panel/billing", []*regexp.Regexp{structCode}},
-	{"internal/panel/addons", []*regexp.Regexp{structCode}},
 }
 
 var (
@@ -37,10 +34,7 @@ var (
 )
 
 // codesByText reach the web as text with no literal the scan sees.
-var codesByText = []string{
-	// billing.errCode: payments.error of a paid payment the panel could not apply yet.
-	"addon_unreachable", "no_slots", "timeout", "user_gone", "package_gone",
-}
+var codesByText = []string{}
 
 // codesNotShown are sent but never shown by their text, so they need none.
 var codesNotShown = map[string]bool{

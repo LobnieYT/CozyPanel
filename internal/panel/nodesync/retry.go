@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 const (

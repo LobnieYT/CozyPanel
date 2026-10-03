@@ -2,13 +2,10 @@ package subs
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // Format and DetectApp read the same User-Agent, and must agree about an app: Hiddify says
@@ -131,25 +128,3 @@ func TestParsedTemplatesAreKeptAndCopied(t *testing.T) {
 	}
 }
 
-// What the buyer can act on is told as it is; a provider that fails or a database that is
-// busy is not "payment is off", and a cause nobody has logged yet is flagged for the log.
-func TestInvoiceFailure(t *testing.T) {
-	for _, c := range []struct {
-		err         error
-		status      int
-		code        string
-		unexplained bool
-	}{
-		{billing.ErrNotForSale, http.StatusConflict, "not_for_sale", false},
-		{fmt.Errorf("wrapped: %w", billing.ErrTooMany), http.StatusConflict, "too_many_invoices", false},
-		{billing.ErrNotYours, http.StatusConflict, "not_yours", false},
-		{billing.ErrProviderOff, http.StatusConflict, "provider_off", false},
-		{fmt.Errorf("%w: yookassa_unreachable", billing.ErrProviderOff), http.StatusBadGateway, "invoice_failed", false}, // billing logged it
-		{errors.New("database is locked"), http.StatusBadGateway, "invoice_failed", true},
-	} {
-		status, code, unexplained := invoiceFailure(c.err)
-		if status != c.status || code != c.code || unexplained != c.unexplained {
-			t.Errorf("%v: %d %s %v, want %d %s %v", c.err, status, code, unexplained, c.status, c.code, c.unexplained)
-		}
-	}
-}

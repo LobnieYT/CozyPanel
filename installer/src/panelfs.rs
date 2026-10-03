@@ -226,7 +226,7 @@ fn chown_below(dir: &OwnedFd, depth: usize) -> Result<()> {
     Ok(())
 }
 
-/// What the containers see of /opt/mikan/data: only data/panel and data/node are theirs,
+/// What the containers see of /opt/cozy/data: only data/panel and data/node are theirs,
 /// each mounted alone, made if missing and handed to the panel's user with all it holds.
 pub fn own_dirs(root: &Path, panel: bool) -> Result<()> {
     let data = root.join("data");
@@ -257,16 +257,6 @@ pub fn seal(root: &Path) -> Result<()> {
 pub fn layout(root: &Path, panel: bool) -> Result<()> {
     own_dirs(root, panel)?;
     seal(root)
-}
-
-/// A file only root reads: the panel cannot see or replace it.
-pub fn write_root(path: &Path, data: &[u8]) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))?;
-    }
-    crate::envfile::write_private(path, data)
 }
 
 #[cfg(test)]

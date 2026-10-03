@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mikan/internal/proto"
+	"cozy/internal/proto"
 )
 
 // A subscription gives every app only what it can use. A link it cannot use is noise in

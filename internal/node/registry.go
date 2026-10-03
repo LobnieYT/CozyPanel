@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 // Registry holds per-slot policy, traffic counters and live connections.

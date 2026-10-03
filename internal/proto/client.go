@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strconv"
 
-	"mikan/internal/hostname"
+	"cozy/internal/hostname"
 )
 
 // ClientInput is what a subscription knows about one user and the node.
@@ -58,7 +58,7 @@ func UsesFingerprint(t Template) bool {
 	return false
 }
 
-// SetFingerprint writes the inbound's own fingerprint into mikan.client; "" removes it,
+// SetFingerprint writes the inbound's own fingerprint into cozy.client; "" removes it,
 // so the panel's default applies again.
 func SetFingerprint(t Template, fp string) error {
 	if fp != "" && !ValidFingerprint(fp) {
@@ -94,7 +94,7 @@ func SetClientEndpoint(t Template, server string, port int, sni string) error {
 	return nil
 }
 
-// setClient writes one key of mikan.client; an empty value removes it, and with it the
+// setClient writes one key of cozy.client; an empty value removes it, and with it the
 // sections it leaves empty.
 func setClient(t Template, key string, v any) {
 	unset := v == "" || v == 0

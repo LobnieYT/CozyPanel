@@ -47,264 +47,6 @@
         ],
         "type": "object"
       },
-      "AddonCatalogEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "description": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
-          },
-          "homepage": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "installed": {
-            "type": "boolean"
-          },
-          "name": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Название по языкам",
-            "type": "object"
-          },
-          "update": {
-            "description": "Установлен, а в каталоге другая сборка",
-            "type": "boolean"
-          },
-          "version": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "version",
-          "homepage",
-          "installed",
-          "update"
-        ],
-        "type": "object"
-      },
-      "AddonField": {
-        "additionalProperties": false,
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "label": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
-          },
-          "pattern": {
-            "type": "string"
-          },
-          "required": {
-            "type": "boolean"
-          },
-          "secret": {
-            "description": "Значение API не отдаёт; пусто при сохранении — оставить прежнее",
-            "type": "boolean"
-          },
-          "set": {
-            "description": "Значение сохранено",
-            "type": "boolean"
-          },
-          "type": {
-            "enum": [
-              "string",
-              "bool"
-            ],
-            "type": "string"
-          },
-          "value": {
-            "description": "Текущее значение, кроме секретов"
-          }
-        },
-        "required": [
-          "key",
-          "label",
-          "type",
-          "secret",
-          "required",
-          "set"
-        ],
-        "type": "object"
-      },
-      "AddonRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "enum": [
-              "install",
-              "remove"
-            ],
-            "type": "string"
-          },
-          "at": {
-            "description": "RFC 3339",
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "id",
-          "at"
-        ],
-        "type": "object"
-      },
-      "AddonResult": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "enum": [
-              "install",
-              "remove"
-            ],
-            "type": "string"
-          },
-          "at": {
-            "description": "RFC 3339",
-            "type": "string"
-          },
-          "error": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "state": {
-            "enum": [
-              "done",
-              "failed"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "id",
-          "state",
-          "at"
-        ],
-        "type": "object"
-      },
-      "AddonView": {
-        "additionalProperties": false,
-        "properties": {
-          "available": {
-            "description": "Принимает оплату прямо сейчас: включён, настроен, работает",
-            "type": "boolean"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "error": {
-            "description": "Почему контейнер не работает",
-            "type": "string"
-          },
-          "help": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
-          },
-          "id": {
-            "type": "string"
-          },
-          "info_error": {
-            "description": "Адаптер не ответил о себе: настройки недоступны",
-            "type": "string"
-          },
-          "name": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
-          },
-          "settings": {
-            "items": {
-              "$ref": "#/components/schemas/AddonField"
-            },
-            "type": "array"
-          },
-          "status": {
-            "enum": [
-              "running",
-              "failed"
-            ],
-            "type": "string"
-          },
-          "version": {
-            "type": "string"
-          },
-          "webhook_url": {
-            "description": "Адрес для уведомлений в кабинете провайдера",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "version",
-          "status",
-          "name",
-          "help",
-          "enabled",
-          "available",
-          "settings",
-          "webhook_url"
-        ],
-        "type": "object"
-      },
-      "AddonsView": {
-        "additionalProperties": false,
-        "properties": {
-          "catalog": {
-            "items": {
-              "$ref": "#/components/schemas/AddonCatalogEntry"
-            },
-            "type": "array"
-          },
-          "catalog_error": {
-            "description": "catalog_unavailable — каталог не загрузился",
-            "type": "string"
-          },
-          "installed": {
-            "items": {
-              "$ref": "#/components/schemas/AddonView"
-            },
-            "type": "array"
-          },
-          "last": {
-            "$ref": "#/components/schemas/AddonResult",
-            "description": "Как сервер выполнил последнюю заявку"
-          },
-          "pending": {
-            "$ref": "#/components/schemas/AddonRequest",
-            "description": "Заявка, которую сервер ещё не взял"
-          },
-          "supported": {
-            "description": "Панель видит каталог данных сервера; иначе ставить адаптеры нельзя",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "catalog",
-          "installed",
-          "supported"
-        ],
-        "type": "object"
-      },
       "AdminView": {
         "additionalProperties": false,
         "properties": {
@@ -1268,13 +1010,6 @@
             "description": "Название пакета; пусто — начислено вручную",
             "type": "string"
           },
-          "payment_id": {
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
           "pool_id": {
             "description": "Пул трафика; null — основной трафик",
             "format": "int64",
@@ -1288,6 +1023,7 @@
             "type": "integer"
           },
           "source": {
+            "description": "purchase — старые покупки, admin — начислено вручную",
             "enum": [
               "purchase",
               "admin"
@@ -1304,7 +1040,6 @@
           "expires_at",
           "active",
           "source",
-          "payment_id",
           "package_name",
           "note",
           "created_at"
@@ -1368,7 +1103,7 @@
           },
           "client": {
             "$ref": "#/components/schemas/ClientEndpoint",
-            "description": "Куда подключаются клиенты, если не к ноде напрямую (mikan.client в шаблоне)"
+            "description": "Куда подключаются клиенты, если не к ноде напрямую (cozy.client в шаблоне)"
           },
           "client_sni": {
             "description": "Можно ли задать клиентам свой SNI: у REALITY имя задаёт сайт маскировки",
@@ -2030,26 +1765,9 @@
             "minLength": 1,
             "type": "string"
           },
-          "on_sale": {
-            "description": "Продавать в боте и Mini App; нужна хотя бы одна цена",
-            "type": "boolean"
-          },
           "pool_id": {
             "description": "Пул трафика; не передан — основной трафик",
             "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "price_rub": {
-            "description": "Цена в копейках: 7900 — 79 ₽",
-            "format": "int64",
-            "maximum": 100000000,
-            "minimum": 100,
-            "type": "integer"
-          },
-          "price_stars": {
-            "format": "int64",
-            "maximum": 10000,
             "minimum": 1,
             "type": "integer"
           },
@@ -2093,27 +1811,8 @@
           "name": {
             "type": "string"
           },
-          "on_sale": {
-            "type": "boolean"
-          },
           "pool_id": {
             "description": "Пул трафика; null — основной трафик",
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "price_rub": {
-            "description": "Цена в копейках; null — не продаётся за рубли",
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "price_stars": {
-            "description": "Цена в Telegram Stars; null — не продаётся за Stars",
             "format": "int64",
             "type": [
               "integer",
@@ -2132,9 +1831,6 @@
           "pool_id",
           "lifetime",
           "days",
-          "price_stars",
-          "price_rub",
-          "on_sale",
           "sort"
         ],
         "type": "object"
@@ -2162,20 +1858,6 @@
           "current",
           "new"
         ],
-        "type": "object"
-      },
-      "PatchAddonInputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "settings": {
-            "additionalProperties": {},
-            "description": "Только то, что меняется; секрет пустой строкой — оставить прежний",
-            "type": "object"
-          }
-        },
         "type": "object"
       },
       "PatchInboundInputBody": {
@@ -2281,24 +1963,6 @@
         },
         "type": "object"
       },
-      "PatchPaymentSettingsInputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "allow_new": {
-            "type": "boolean"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "renew_resets_traffic": {
-            "type": "boolean"
-          },
-          "stars": {
-            "type": "boolean"
-          }
-        },
-        "type": "object"
-      },
       "PatchSettingsInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2333,6 +1997,11 @@
           },
           "domain": {
             "maxLength": 253,
+            "type": "string"
+          },
+          "pay_contact": {
+            "description": "@имя, ссылка t.me или текст — бот показывает его вместо счетов",
+            "maxLength": 64,
             "type": "string"
           },
           "public_host": {
@@ -2481,220 +2150,6 @@
             "type": "boolean"
           }
         },
-        "type": "object"
-      },
-      "PaymentSettingsView": {
-        "additionalProperties": false,
-        "properties": {
-          "allow_new": {
-            "description": "Новые люди могут купить подписку в боте; иначе — только продление",
-            "type": "boolean"
-          },
-          "available": {
-            "$ref": "#/components/schemas/PaymentSettingsViewAvailableStruct",
-            "description": "Что принимает оплату прямо сейчас: включено, настроено, для Stars — бот запущен"
-          },
-          "enabled": {
-            "description": "Продажа подписок: выключено — бот и Mini App ничего не продают, новые счета не создаются, уже открытые засчитываются",
-            "type": "boolean"
-          },
-          "moving": {
-            "description": "Встроенные ЮKassa и CryptoBot переехали в маркетплейс: адаптеры, которые сервер ещё ставит",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "on_sale": {
-            "description": "Сколько тарифов бот может продать прямо сейчас: «В продаже» и с ценой для способа, который принимает оплату",
-            "format": "int64",
-            "type": "integer"
-          },
-          "renew_resets_traffic": {
-            "description": "Оплаченное продление обнуляет трафик и начинает новый период; иначе только добавляет срок",
-            "type": "boolean"
-          },
-          "stars": {
-            "description": "Telegram Stars: нужен только запущенный бот",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled",
-          "stars",
-          "allow_new",
-          "renew_resets_traffic",
-          "available",
-          "on_sale",
-          "moving"
-        ],
-        "type": "object"
-      },
-      "PaymentSettingsViewAvailableStruct": {
-        "additionalProperties": false,
-        "properties": {
-          "addons": {
-            "description": "Адаптеры маркетплейса, которые принимают оплату прямо сейчас",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "stars": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "stars",
-          "addons"
-        ],
-        "type": "object"
-      },
-      "PaymentTotal": {
-        "additionalProperties": false,
-        "properties": {
-          "count": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "currency": {
-            "enum": [
-              "XTR",
-              "RUB"
-            ],
-            "type": "string"
-          },
-          "total": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "currency",
-          "count",
-          "total"
-        ],
-        "type": "object"
-      },
-      "PaymentView": {
-        "additionalProperties": false,
-        "properties": {
-          "amount": {
-            "description": "Stars или копейки",
-            "format": "int64",
-            "type": "integer"
-          },
-          "applied_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "currency": {
-            "enum": [
-              "XTR",
-              "RUB"
-            ],
-            "type": "string"
-          },
-          "error": {
-            "description": "Почему оплаченный платёж ещё не применён",
-            "type": "string"
-          },
-          "external_id": {
-            "description": "Номер платежа у провайдера",
-            "type": "string"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "kind": {
-            "description": "package — пакет трафика: tariff_name — название пакета",
-            "enum": [
-              "new",
-              "renew",
-              "package"
-            ],
-            "type": "string"
-          },
-          "paid_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "provider": {
-            "description": "stars или addon:\u003cid\u003e — адаптер маркетплейса",
-            "type": "string"
-          },
-          "refunded_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "pending",
-              "paid",
-              "applied",
-              "expired",
-              "failed",
-              "refunded"
-            ],
-            "type": "string"
-          },
-          "tariff_name": {
-            "type": "string"
-          },
-          "tg_id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "tg_username": {
-            "type": "string"
-          },
-          "user_id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "user_name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "provider",
-          "kind",
-          "status",
-          "tg_id",
-          "tariff_name",
-          "amount",
-          "currency",
-          "created_at"
-        ],
-        "type": "object"
-      },
-      "PaymentsOutputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/PaymentView"
-            },
-            "type": "array"
-          },
-          "totals": {
-            "description": "Применённые платежи за 30 дней",
-            "items": {
-              "$ref": "#/components/schemas/PaymentTotal"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "items",
-          "totals"
-        ],
         "type": "object"
       },
       "PoolInputBody": {
@@ -3027,6 +2482,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "pay_contact": {
+            "description": "Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст",
+            "type": "string"
+          },
           "public_host": {
             "type": "string"
           },
@@ -3081,6 +2540,7 @@
         "required": [
           "brand",
           "support_url",
+          "pay_contact",
           "public_host",
           "domain",
           "panel_port",
@@ -3220,10 +2680,6 @@
             "minLength": 1,
             "type": "string"
           },
-          "on_sale": {
-            "description": "Продавать в боте и Mini App; нужна хотя бы одна цена",
-            "type": "boolean"
-          },
           "pools": {
             "description": "Лимиты пулов трафика; не передан — без изменений",
             "items": {
@@ -3235,20 +2691,6 @@
           "price_label": {
             "maxLength": 40,
             "type": "string"
-          },
-          "price_rub": {
-            "description": "Цена в копейках: 19900 — 199 ₽",
-            "format": "int64",
-            "maximum": 100000000,
-            "minimum": 100,
-            "type": "integer"
-          },
-          "price_stars": {
-            "description": "Цена в Telegram Stars",
-            "format": "int64",
-            "maximum": 10000,
-            "minimum": 1,
-            "type": "integer"
           },
           "reset_strategy": {
             "default": "none",
@@ -3306,10 +2748,6 @@
           "name": {
             "type": "string"
           },
-          "on_sale": {
-            "description": "Продаётся в боте и Mini App",
-            "type": "boolean"
-          },
           "pools": {
             "description": "Лимиты пулов трафика; пул не в списке — без лимита",
             "items": {
@@ -3319,22 +2757,6 @@
           },
           "price_label": {
             "type": "string"
-          },
-          "price_rub": {
-            "description": "Цена в копейках (ЮKassa, CryptoBot); null — не продаётся за рубли",
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "price_stars": {
-            "description": "Цена в Telegram Stars; null — не продаётся за Stars",
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
           },
           "reset_strategy": {
             "enum": [
@@ -3366,9 +2788,6 @@
           "reset_strategy",
           "billing_day",
           "price_label",
-          "price_stars",
-          "price_rub",
-          "on_sale",
           "pools",
           "sort"
         ],
@@ -4218,196 +3637,25 @@
     },
     "securitySchemes": {
       "apiKey": {
-        "description": "Ключ API: Authorization: Bearer mk_…",
+        "description": "Ключ API: Authorization: Bearer co_…",
         "scheme": "bearer",
         "type": "http"
       },
       "session": {
         "description": "Сессия админки + заголовок X-CSRF-Token на изменяющих запросах",
         "in": "cookie",
-        "name": "__Host-mikan",
+        "name": "__Host-cozy",
         "type": "apiKey"
       }
     }
   },
   "info": {
-    "description": "REST API панели mikan. Все пути — под секретным адресом админки: https://\u003cпанель\u003e/\u003cсекретный путь\u003e/api/v1/…\n\nСкрипты и интеграции авторизуются ключом API (Настройки → API): заголовок `Authorization: Bearer mk_…`. Ключ «чтение» выполняет только GET и не получает ссылок подписок и секретных адресов; «полный» меняет данные, кроме входа, сессий, самих ключей и операций, где уходят деньги, ключи и адреса клиентов (они помечены «только сессия»).\n\nАдминка в браузере ходит с cookie сессии; изменяющие запросы тогда требуют заголовок `X-CSRF-Token` из `GET /auth/me`.\n\nОшибки — RFC 9457 (application/problem+json): `detail` — код ошибки, `errors[].message` — код по полю.",
-    "title": "mikan",
+    "description": "REST API панели cozy. Все пути — под секретным адресом админки: https://\u003cпанель\u003e/\u003cсекретный путь\u003e/api/v1/…\n\nСкрипты и интеграции авторизуются ключом API (Настройки → API): заголовок `Authorization: Bearer co_…`. Ключ «чтение» выполняет только GET и не получает ссылок подписок и секретных адресов; «полный» меняет данные, кроме входа, сессий, самих ключей и операций, где меняются адреса, ключи и адреса клиентов (они помечены «только сессия»).\n\nАдминка в браузере ходит с cookie сессии; изменяющие запросы тогда требуют заголовок `X-CSRF-Token` из `GET /auth/me`.\n\nОшибки — RFC 9457 (application/problem+json): `detail` — код ошибки, `errors[].message` — код по полю.",
+    "title": "Cozy",
     "version": "dev"
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/v1/addons": {
-      "get": {
-        "operationId": "list-addons",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AddonsView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Маркетплейс способов оплаты",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      }
-    },
-    "/api/v1/addons/{id}": {
-      "patch": {
-        "operationId": "update-addon",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PatchAddonInputBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AddonsView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Настройки адаптера",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      }
-    },
-    "/api/v1/addons/{id}/install": {
-      "post": {
-        "operationId": "install-addon",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AddonsView"
-                }
-              }
-            },
-            "description": "Accepted"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Установить или обновить адаптер: заявка серверу",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      }
-    },
-    "/api/v1/addons/{id}/remove": {
-      "post": {
-        "operationId": "remove-addon",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AddonsView"
-                }
-              }
-            },
-            "description": "Accepted"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Удалить адаптер: заявка серверу",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      }
-    },
     "/api/v1/api-keys": {
       "get": {
         "operationId": "list-api-keys",
@@ -6027,215 +5275,6 @@
         "tags": [
           "tariffs"
         ]
-      }
-    },
-    "/api/v1/payments": {
-      "get": {
-        "operationId": "list-payments",
-        "parameters": [
-          {
-            "explode": false,
-            "in": "query",
-            "name": "status",
-            "schema": {
-              "enum": [
-                "pending",
-                "paid",
-                "applied",
-                "expired",
-                "failed",
-                "refunded",
-                ""
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "explode": false,
-            "in": "query",
-            "name": "provider",
-            "schema": {
-              "pattern": "^(stars|addon:[a-z0-9][a-z0-9-]{0,31})?$",
-              "type": "string"
-            }
-          },
-          {
-            "explode": false,
-            "in": "query",
-            "name": "user_id",
-            "schema": {
-              "format": "int64",
-              "minimum": 0,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "id последнего платежа предыдущей страницы",
-            "explode": false,
-            "in": "query",
-            "name": "before",
-            "schema": {
-              "description": "id последнего платежа предыдущей страницы",
-              "format": "int64",
-              "minimum": 0,
-              "type": "integer"
-            }
-          },
-          {
-            "explode": false,
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "default": 50,
-              "format": "int64",
-              "maximum": 200,
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentsOutputBody"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "История платежей",
-        "tags": [
-          "payments"
-        ]
-      }
-    },
-    "/api/v1/payments/settings": {
-      "get": {
-        "operationId": "get-payment-settings",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentSettingsView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Настройки оплаты",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      },
-      "patch": {
-        "operationId": "update-payment-settings",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PatchPaymentSettingsInputBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentSettingsView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Изменить настройки оплаты",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
-      }
-    },
-    "/api/v1/payments/{id}/refund": {
-      "post": {
-        "operationId": "refund-payment",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int64",
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorModel"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "summary": "Вернуть Stars покупателю",
-        "tags": [
-          "payments"
-        ],
-        "x-session-only": true
       }
     },
     "/api/v1/pools": {

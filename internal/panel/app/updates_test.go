@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/release"
+	"cozy/internal/release"
 )
 
 // The admin sees a new release, switches automatic updates for the host updater and asks
@@ -21,7 +21,7 @@ func TestUpdatesForTheHost(t *testing.T) {
 	h := newHarness(t, func(o *Options) {
 		o.DataDir = dir
 		o.Releases = func(context.Context) (release.Manifest, error) {
-			return release.Manifest{Version: latest, Published: time.Unix(1_800_000_000, 0), Image: "ghcr.io/miroshka000/mikan",
+			return release.Manifest{Version: latest, Published: time.Unix(1_800_000_000, 0), Image: "ghcr.io/lobnieyt/cozy",
 				Digest: "sha256:" + strings.Repeat("a", 64), Notes: map[string]string{"en": "- faster", "ru": "- быстрее"}}, nil
 		}
 	})

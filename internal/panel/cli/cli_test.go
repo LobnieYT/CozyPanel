@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // The host script opens the new inbound's port in ufw from stdout, so it must be bare.
@@ -88,7 +88,7 @@ func TestInboundSetPrintsPortOnlyForOwnNode(t *testing.T) {
 	}
 }
 
-// The host `mikan` script of every installed version waits for the panel after an update
+// The host `cozy` script of every installed version waits for the panel after an update
 // with path=$(admin url | sed -E 's#https?://[^/]+/##'); 0.1.2 broke it by printing
 // "Адрес: ..." and the login on stdout, and every update rolled back.
 func TestURLStdoutParsesInHostScript(t *testing.T) {

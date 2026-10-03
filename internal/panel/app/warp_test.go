@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/domain"
+	"cozy/internal/panel/domain"
 )
 
 const warpConf = `[Interface]

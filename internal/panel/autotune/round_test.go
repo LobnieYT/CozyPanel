@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
 )
 
 // slowNodes answers target checks slowly, and notes how many were open at once and what
@@ -50,7 +50,7 @@ func (s *slowNodes) CheckTarget(ctx context.Context, id int64, req nodeapi.Targe
 func twoNodes(t *testing.T, delay time.Duration) (*env, *slowNodes) {
 	t.Helper()
 	e := setup(t)
-	panel, err := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, err := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

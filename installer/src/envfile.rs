@@ -1,4 +1,4 @@
-//! /opt/mikan/.env: the KEY=VALUE lines compose reads. Keys the installer does not know
+//! /opt/cozy/.env: the KEY=VALUE lines compose reads. Keys the installer does not know
 //! and the order of lines stay as they are.
 
 use std::fs;
@@ -112,14 +112,14 @@ mod tests {
 
     #[test]
     fn keeps_unknown_lines_and_order() {
-        let mut e = EnvFile::parse("x".into(), "MIKAN_IMAGE=mikan:0.3.8\n# note\nPANEL_PORT=21355\nMIKAN_UFW=1\n");
-        assert_eq!(e.get("MIKAN_IMAGE"), Some("mikan:0.3.8"));
-        assert_eq!(e.get("MIKAN"), None);
-        e.set("MIKAN_IMAGE", "ghcr.io/miroshka000/mikan@sha256:abc").unwrap();
-        e.set("MIKAN_VERSION", "0.3.9").unwrap();
+        let mut e = EnvFile::parse("x".into(), "COZY_IMAGE=cozy:0.3.8\n# note\nPANEL_PORT=21355\nCOZY_UFW=1\n");
+        assert_eq!(e.get("COZY_IMAGE"), Some("cozy:0.3.8"));
+        assert_eq!(e.get("COZY"), None);
+        e.set("COZY_IMAGE", "ghcr.io/lobnieyt/cozy@sha256:abc").unwrap();
+        e.set("COZY_VERSION", "0.3.9").unwrap();
         assert_eq!(
             e.render(),
-            "MIKAN_IMAGE=ghcr.io/miroshka000/mikan@sha256:abc\n# note\nPANEL_PORT=21355\nMIKAN_UFW=1\nMIKAN_VERSION=0.3.9\n"
+            "COZY_IMAGE=ghcr.io/lobnieyt/cozy@sha256:abc\n# note\nPANEL_PORT=21355\nCOZY_UFW=1\nCOZY_VERSION=0.3.9\n"
         );
         assert!(e.set("X", "a\nb").is_err());
     }
@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn values_compose_reads_as_written() {
         let mut e = EnvFile::parse("x".into(), "");
-        for ok in ["ghcr.io/miroshka000/mikan@sha256:ab12", "0.4.4-rc.1+b2", "mikan1.AbC_-9", "21355", ""] {
+        for ok in ["ghcr.io/lobnieyt/cozy@sha256:ab12", "0.4.4-rc.1+b2", "cozy1.AbC_-9", "21355", ""] {
             e.set("K", ok).unwrap();
         }
         for bad in ["a$HOME", "${X}", "a b", "a #b", "\"q\"", "'q'", "a`b", "a\\b", "a;b", "a\nb"] {
@@ -141,13 +141,13 @@ mod tests {
     // change what compose sees.
     #[test]
     fn repeated_keys_and_quotes() {
-        let mut e = EnvFile::parse("x".into(), "MIKAN_IMAGE=old\nPANEL_PORT=\"2053\"\nMIKAN_IMAGE=newer\nQ='x'\nE=\n");
-        assert_eq!(e.get("MIKAN_IMAGE"), Some("newer"));
+        let mut e = EnvFile::parse("x".into(), "COZY_IMAGE=old\nPANEL_PORT=\"2053\"\nCOZY_IMAGE=newer\nQ='x'\nE=\n");
+        assert_eq!(e.get("COZY_IMAGE"), Some("newer"));
         assert_eq!(e.get("PANEL_PORT"), Some("2053"));
         assert_eq!(e.get("Q"), Some("x"));
         assert_eq!(e.get("E"), None);
-        e.set("MIKAN_IMAGE", "fresh").unwrap();
-        assert_eq!(e.render(), "PANEL_PORT=\"2053\"\nMIKAN_IMAGE=fresh\nQ='x'\nE=\n");
+        e.set("COZY_IMAGE", "fresh").unwrap();
+        assert_eq!(e.render(), "PANEL_PORT=\"2053\"\nCOZY_IMAGE=fresh\nQ='x'\nE=\n");
     }
 
     #[test]

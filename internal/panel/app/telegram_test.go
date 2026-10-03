@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/tgbot"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/tgbot"
 )
 
 const tgToken = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw0"

@@ -12,8 +12,8 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/hub/executor"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 const relayKey = "SN3ZEwGwUfpBNbJ6EXWCIqaUD0g8F3iKTi8NJnHaX0s"
@@ -50,7 +50,7 @@ func TestCascadeConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Join(cfg.Rules, "\n")
-	want := "DST-PORT,25,REJECT\nIN-NAME,mikan~relay,NODE-3\nIN-NAME,in-anytls,NODE-3\nDOMAIN-SUFFIX,openai.com,WARP"
+	want := "DST-PORT,25,REJECT\nIN-NAME,cozy~relay,NODE-3\nIN-NAME,in-anytls,NODE-3\nDOMAIN-SUFFIX,openai.com,WARP"
 	if !strings.Contains(got, want) || strings.Contains(got, "in-gone") || strings.Contains(got, "IN-NAME,in-anytls,WARP") {
 		t.Fatalf("rules:\n%s", got)
 	}

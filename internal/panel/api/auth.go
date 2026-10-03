@@ -12,9 +12,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/store/db"
 )
 
 type AdminView struct {

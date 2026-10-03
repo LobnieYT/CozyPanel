@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // Every slot is written into every listener, so adding slots recreates the listeners

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 // listenerNames are the listeners the state runs, the relay included: rules may name

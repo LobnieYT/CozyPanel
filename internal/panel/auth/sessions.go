@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"time"
 
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/store/db"
 )
 
 const (
-	CookieName = "__Host-mikan"
+	CookieName = "__Host-cozy"
 	IdleTTL    = 12 * time.Hour
 	MaxTTL     = 7 * 24 * time.Hour
 	// last_seen_at is written at most this often to avoid a DB write on every request.

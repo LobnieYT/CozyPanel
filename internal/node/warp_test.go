@@ -7,8 +7,8 @@ import (
 
 	"github.com/metacubex/mihomo/hub/executor"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 func warpState() nodeapi.DesiredState {

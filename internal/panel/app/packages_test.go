@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
+	"cozy/internal/panel/domain"
 )
 
 // Traffic packages over HTTP: the catalog with its checks, the admin's grant that brings
@@ -29,7 +29,7 @@ func TestTrafficPackagesOverHTTP(t *testing.T) {
 	const gb = int64(1) << 30
 
 	// Validation: the schema and the domain refuse bad input, field by field.
-	ok := map[string]any{"name": "+50 GB", "bytes": 50 * gb, "lifetime": "used", "price_stars": 75, "on_sale": true}
+	ok := map[string]any{"name": "+50 GB", "bytes": 50 * gb, "lifetime": "used"}
 	with := func(k string, v any) map[string]any {
 		m := map[string]any{}
 		for kk, vv := range ok {
@@ -51,8 +51,6 @@ func TestTrafficPackagesOverHTTP(t *testing.T) {
 		{with("lifetime", "forever"), "body.lifetime"},
 		{with("lifetime", "days"), "body.days"},
 		{with("days", 3651), "body.days"},
-		{with("price_stars", nil), "body.on_sale"},
-		{with("price_rub", 99), "body.price_rub"},
 		{with("pool_id", 999), "body.pool_id"},
 		{with("name", " "), "body.name"},
 	} {

@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/hostname"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/hostname"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 var (
@@ -117,7 +117,7 @@ func issueKey(ctx context.Context, q *db.Queries, panel nodetls.Pair, n db.Node,
 	if err != nil {
 		return "", err
 	}
-	cert, err := nodetls.Generate(fmt.Sprintf("node-%d.mikan", n.ID), x509.ExtKeyUsageServerAuth, now)
+	cert, err := nodetls.Generate(fmt.Sprintf("node-%d.cozy", n.ID), x509.ExtKeyUsageServerAuth, now)
 	if err != nil {
 		return "", err
 	}

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/settings"
 )
 
 // How the bot reaches Telegram: straight from the panel's server, through one of the

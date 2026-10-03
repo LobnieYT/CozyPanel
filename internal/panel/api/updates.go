@@ -9,8 +9,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/updates"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/updates"
 )
 
 type UpdatesView struct {

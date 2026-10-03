@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowUpCircle, Bot, LayoutDashboard, LogOut, MoreHorizontal, Network, Server, SlidersHorizontal, Tag, Users, Wallet } from "lucide-react";
+import { ArrowUpCircle, Bot, LayoutDashboard, LogOut, MoreHorizontal, Network, Server, SlidersHorizontal, Tag, Users } from "lucide-react";
 import { api, unwrap } from "../api/client";
-import { meQuery, useNode, useOverview, usePaymentSettings, useUpdates } from "../api/hooks";
+import { meQuery, useNode, useOverview, useUpdates } from "../api/hooks";
 import { Logo } from "../components/atmosphere";
 import { LangSwitch } from "../components/lang";
 import { Avatar, Bar, Pill } from "../components/ui";
@@ -16,15 +16,12 @@ const NAV = [
   { to: "/tariffs", key: "tariffs", icon: Tag },
   { to: "/inbounds", key: "inbounds", icon: Server },
   { to: "/nodes", key: "nodes", icon: Network },
-  { to: "/payments", key: "payments", icon: Wallet },
   { to: "/telegram", key: "telegram", icon: Bot },
   { to: "/settings", key: "settings", icon: SlidersHorizontal },
 ] as const;
 
-// Payments shows in the menu only while selling is on; the page stays reachable from Settings.
 function useNav() {
-  const payments = usePaymentSettings();
-  return NAV.filter((n) => n.to !== "/payments" || payments.data?.enabled === true);
+  return NAV;
 }
 
 export function Shell() {
@@ -37,7 +34,7 @@ export function Shell() {
         <aside className="sidebar glass" aria-label={t("shell.sidebar")}>
           <div className="brand">
             <Logo />
-            <span className="brand-name">mikan</span>
+            <span className="brand-name">Cozy</span>
           </div>
           <nav className="nav" aria-label={t("shell.sections")}>
             {nav.map((n) => (

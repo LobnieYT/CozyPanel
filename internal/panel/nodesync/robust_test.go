@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // flaky is a node that can be made to fail.

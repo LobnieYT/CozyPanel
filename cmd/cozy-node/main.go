@@ -1,4 +1,4 @@
-// mikan-node runs the VPN data plane: mihomo embedded as a library, controlled by the
+// cozy-node runs the VPN data plane: mihomo embedded as a library, controlled by the
 // panel over a unix socket, or over pinned TLS when the node runs on another server.
 // It links mihomo and is therefore distributed under GPL-3.0.
 package main
@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"mikan/internal/node"
-	"mikan/internal/nodetls"
+	"cozy/internal/node"
+	"cozy/internal/nodetls"
 )
 
 var version = "dev"
@@ -28,16 +28,16 @@ func main() {
 	// The installer checks a join key before it sets the node up and learns the API port
 	// from it; the key comes in the environment so it does not show in the process list.
 	if len(os.Args) > 1 && os.Args[1] == "key-port" {
-		key, err := nodetls.DecodeKey(os.Getenv("MIKAN_NODE_JOIN"))
+		key, err := nodetls.DecodeKey(os.Getenv("COZY_NODE_JOIN"))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "mikan-node:", err)
+			fmt.Fprintln(os.Stderr, "cozy-node:", err)
 			os.Exit(1)
 		}
 		fmt.Println(key.Port)
 		return
 	}
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "mikan-node:", err)
+		fmt.Fprintln(os.Stderr, "cozy-node:", err)
 		os.Exit(1)
 	}
 }
@@ -46,16 +46,16 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	dataDir := envOr("MIKAN_DATA_DIR", "/data")
-	sock := envOr("MIKAN_NODE_SOCKET", "/run/mikan/node.sock")
+	dataDir := envOr("COZY_DATA_DIR", "/data")
+	sock := envOr("COZY_NODE_SOCKET", "/run/cozy/node.sock")
 
-	release, err := time.ParseDuration(envOr("MIKAN_DEVICE_RELEASE", "60s"))
+	release, err := time.ParseDuration(envOr("COZY_DEVICE_RELEASE", "60s"))
 	if err != nil {
-		return fmt.Errorf("MIKAN_DEVICE_RELEASE: %w", err)
+		return fmt.Errorf("COZY_DEVICE_RELEASE: %w", err)
 	}
-	allowPrivate, err := strconv.ParseBool(envOr("MIKAN_ALLOW_PRIVATE", "false"))
+	allowPrivate, err := strconv.ParseBool(envOr("COZY_ALLOW_PRIVATE", "false"))
 	if err != nil {
-		return fmt.Errorf("MIKAN_ALLOW_PRIVATE: %w", err)
+		return fmt.Errorf("COZY_ALLOW_PRIVATE: %w", err)
 	}
 	eng, err := node.Start(node.Options{DataDir: dataDir, Version: version, Log: log, DeviceRelease: release, AllowPrivate: allowPrivate})
 	if err != nil {
@@ -84,16 +84,16 @@ func run() error {
 	go serve(ln)
 	log.Info("node started", "version", version, "socket", sock)
 	// A remote node also serves the Node API over TCP to its panel (see nodetls).
-	if raw := os.Getenv("MIKAN_NODE_JOIN"); raw != "" {
+	if raw := os.Getenv("COZY_NODE_JOIN"); raw != "" {
 		key, err := nodetls.DecodeKey(raw)
 		if err != nil {
-			return fmt.Errorf("MIKAN_NODE_JOIN: %w", err)
+			return fmt.Errorf("COZY_NODE_JOIN: %w", err)
 		}
 		cfg, err := key.ServerConfig()
 		if err != nil {
-			return fmt.Errorf("MIKAN_NODE_JOIN: %w", err)
+			return fmt.Errorf("COZY_NODE_JOIN: %w", err)
 		}
-		tcp, err := net.Listen("tcp", net.JoinHostPort(envOr("MIKAN_NODE_API_LISTEN", ""), strconv.Itoa(key.Port)))
+		tcp, err := net.Listen("tcp", net.JoinHostPort(envOr("COZY_NODE_API_LISTEN", ""), strconv.Itoa(key.Port)))
 		if err != nil {
 			return err
 		}

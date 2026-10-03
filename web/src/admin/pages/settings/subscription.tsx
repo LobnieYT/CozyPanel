@@ -108,12 +108,12 @@ const routingModes = [
 export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
   const inbounds = useInbounds();
-  const { draft: form, setDraft: setForm } = useDraft({ brand: s.brand, support_url: s.support_url, sub_group_main: s.sub_group_main, sub_group_auto: s.sub_group_auto, sub_routing: s.sub_routing, client_fingerprint: s.client_fingerprint });
+  const { draft: form, setDraft: setForm } = useDraft({ brand: s.brand, support_url: s.support_url, pay_contact: s.pay_contact, sub_group_main: s.sub_group_main, sub_group_auto: s.sub_group_auto, sub_routing: s.sub_routing, client_fingerprint: s.client_fingerprint });
   const [fpOk, setFpOk] = useState(true);
   const errors = fieldErrors(save.error);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    save.mutate({ brand: form.brand, support_url: form.support_url, sub_group_main: form.sub_group_main.trim(), sub_group_auto: form.sub_group_auto.trim(), sub_routing: form.sub_routing, client_fingerprint: form.client_fingerprint });
+    save.mutate({ brand: form.brand, support_url: form.support_url, pay_contact: form.pay_contact, sub_group_main: form.sub_group_main.trim(), sub_group_auto: form.sub_group_auto.trim(), sub_routing: form.sub_routing, client_fingerprint: form.client_fingerprint });
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const proxies = (inbounds.data ?? []).filter((i) => i.enabled).map((i) => i.sub_name);
@@ -170,6 +170,9 @@ export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
         </Field>
         <Field label={t("settings.support")} htmlFor="s-support" hint={t("settings.supportHint")} error={errors.support_url}>
           <input id="s-support" className="input" value={form.support_url} onChange={set("support_url")} placeholder="https://t.me/your_support" aria-invalid={!!errors.support_url} />
+        </Field>
+        <Field label={t("settings.payContact")} htmlFor="s-pay-contact" hint={t("settings.payContactHint")} error={errors.pay_contact}>
+          <input id="s-pay-contact" className="input" value={form.pay_contact} onChange={set("pay_contact")} placeholder="@your_payment_contact" maxLength={64} aria-invalid={!!errors.pay_contact} />
         </Field>
         <Button type="submit" variant="primary" loading={save.isPending} disabled={!fpOk || !form.client_fingerprint}>
           {t("common.save")}

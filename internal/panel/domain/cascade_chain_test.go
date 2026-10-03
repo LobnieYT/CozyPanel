@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // A chain longer than maxChain is refused as too long, not as a loop: the admin who sees

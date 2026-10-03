@@ -1,4 +1,4 @@
-//! REALITY camouflage sites. The panel's `mikan admin targets` finds and checks them from
+//! REALITY camouflage sites. The panel's `cozy admin targets` finds and checks them from
 //! the node itself; the installer points every REALITY inbound at one.
 
 use std::thread;
@@ -30,7 +30,7 @@ pub struct Target {
     pub sni: String,
 }
 
-/// What `mikan admin targets scan --json` prints.
+/// What `cozy admin targets scan --json` prints.
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Scan {
     pub ip: String,

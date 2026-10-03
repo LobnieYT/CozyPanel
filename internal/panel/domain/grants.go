@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // Traffic packages (GitHub issue #12): a grant is extra traffic a user got, for the main
@@ -166,14 +166,8 @@ type GrantSpec struct {
 	Lifetime  string
 	Days      int64 // LifetimeDays
 	Source    string
-	PaymentID int64 // 0: none
 	PackageID int64 // 0: none
 	Note      string
-}
-
-// GrantOf is what a package gives when it is bought with payment paymentID.
-func GrantOf(p db.TrafficPackage, paymentID int64) GrantSpec {
-	return GrantSpec{PoolID: p.PoolID.Int64, Bytes: p.Bytes, Lifetime: p.Lifetime, Days: p.Days, Source: SourcePurchase, PaymentID: paymentID, PackageID: p.ID}
 }
 
 // checkGrant validates the size and lifetime of a grant or a package.
@@ -205,7 +199,6 @@ func GrantTx(ctx context.Context, q *db.Queries, u db.User, g GrantSpec, now tim
 	return q.CreateTrafficGrant(ctx, db.CreateTrafficGrantParams{
 		UserID: u.ID, PoolID: sql.NullInt64{Int64: g.PoolID, Valid: g.PoolID != 0}, Bytes: g.Bytes, Remaining: g.Bytes,
 		Lifetime: g.Lifetime, ExpiresAt: expires, Source: g.Source,
-		PaymentID: sql.NullInt64{Int64: g.PaymentID, Valid: g.PaymentID != 0},
 		PackageID: sql.NullInt64{Int64: g.PackageID, Valid: g.PackageID != 0},
 		Note:      g.Note, CreatedAt: now.Unix(),
 	})

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
 )
 
 // Traffic pools over HTTP: make a pool, put an inbound in it, give the tariff a pool

@@ -13,17 +13,17 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/app"
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/config"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
-	"mikan/internal/scan"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/app"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/config"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
+	"cozy/internal/scan"
 )
 
 // TargetScan is what `targets scan --json` prints; the installer reads it.
@@ -57,7 +57,7 @@ func targetsCmd(ctx context.Context, st *store.Store, set *settings.Settings, cf
 	switch args[0] {
 	case "scan":
 		fs := flag.NewFlagSet("targets scan", flag.ContinueOnError)
-		node := fs.Int64("node", 1, "node to look around (1 is the panel's own, see mikan admin node list)")
+		node := fs.Int64("node", 1, "node to look around (1 is the panel's own, see cozy admin node list)")
 		asJSON := fs.Bool("json", false, "print JSON")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -87,7 +87,7 @@ func targetsCmd(ctx context.Context, st *store.Store, set *settings.Settings, cf
 			return err
 		}
 		if strings.TrimSpace(*dest) == "" {
-			return errors.New("usage: mikan admin targets check --dest HOST:PORT [--sni NAME] [--node NODE] [--json]")
+			return errors.New("usage: cozy admin targets check --dest HOST:PORT [--sni NAME] [--node NODE] [--json]")
 		}
 		n, err := st.Q.GetNode(ctx, *node)
 		if err != nil {
@@ -108,14 +108,14 @@ func targetsCmd(ctx context.Context, st *store.Store, set *settings.Settings, cf
 		dest := fs.String("dest", "", "the site as host:port: www.example.org:443, 203.0.113.20:443")
 		sni := fs.String("sni", "", "the name clients send (the host of --dest by default; required for an IP)")
 		all := fs.Bool("all", false, "every REALITY inbound of the node")
-		inbound := fs.String("inbound", "", "one inbound, by name (see mikan admin inbound list)")
+		inbound := fs.String("inbound", "", "one inbound, by name (see cozy admin inbound list)")
 		force := fs.Bool("force", false, "apply even when the site fails the check")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
 		}
 		*dest, *sni, *inbound = strings.TrimSpace(*dest), strings.TrimSpace(*sni), strings.TrimSpace(*inbound)
 		if *dest == "" || *all == (*inbound != "") {
-			return errors.New("usage: mikan admin targets apply --dest HOST:PORT [--sni NAME] (--all | --inbound NAME) [--node NODE]")
+			return errors.New("usage: cozy admin targets apply --dest HOST:PORT [--sni NAME] (--all | --inbound NAME) [--node NODE]")
 		}
 		n, err := st.Q.GetNode(ctx, *node)
 		if err != nil {
@@ -153,7 +153,7 @@ func targetsCmd(ctx context.Context, st *store.Store, set *settings.Settings, cf
 			var pe *proto.Error
 			switch {
 			case errors.Is(err, domain.ErrUnknownInbound):
-				return fmt.Errorf("node %d has no inbound %q: see mikan admin inbound list", n.ID, name)
+				return fmt.Errorf("node %d has no inbound %q: see cozy admin inbound list", n.ID, name)
 			case errors.As(err, &pe) && pe.Code == "dest_no_reality":
 				return fmt.Errorf("inbound %s has no REALITY camouflage", name)
 			case errors.As(err, &pe):
@@ -248,7 +248,7 @@ func panelPort(ctx context.Context, set *settings.Settings) int {
 // ipv4 is the address whose /24 is scanned.
 func ipv4(ctx context.Context, host string) (string, error) {
 	if host == "" {
-		return "", errors.New("the server's address is not set: run `mikan admin bootstrap`")
+		return "", errors.New("the server's address is not set: run `cozy admin bootstrap`")
 	}
 	ip, err := scan.ResolveIPv4(ctx, host)
 	switch {
@@ -332,7 +332,7 @@ func printScan(w io.Writer, r TargetScan) {
 	}
 	_ = tw.Flush()
 	if len(r.Results) == 0 {
-		fmt.Fprintln(w, "  none found: keep the current sites or pick one with `mikan admin targets apply --dest`")
+		fmt.Fprintln(w, "  none found: keep the current sites or pick one with `cozy admin targets apply --dest`")
 	}
 	if s := r.SelfSteal; s != nil {
 		state := "ready"

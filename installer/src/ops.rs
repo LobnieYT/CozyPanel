@@ -1,5 +1,5 @@
 //! The server's commands: what the menu does, for scripts and old habits (the bash
-//! `mikan` of 0.3.8 and before had the same names). Updates are in update.rs, backups in
+//! `cozy` of 0.3.8 and before had the same names). Updates are in update.rs, backups in
 //! backup.rs.
 
 use std::fs;
@@ -13,7 +13,7 @@ use anyhow::{Context, Result, anyhow, bail};
 
 use crate::envfile::EnvFile;
 use crate::setup;
-use crate::{DIR, addon, docker, host, lock, release, system};
+use crate::{DIR, docker, host, lock, release, system};
 
 pub struct Install {
     pub env: EnvFile,
@@ -25,19 +25,19 @@ impl Install {
         let env = EnvFile::load(Path::new(DIR).join(".env")).map_err(|e| {
             let missing = e.root_cause().downcast_ref::<std::io::Error>().is_some_and(|io| io.kind() == std::io::ErrorKind::NotFound);
             // Only a missing file means "not installed": a .env that cannot be read says why.
-            if missing { anyhow!("mikan is not installed here: run `mikan install`") } else { e }
+            if missing { anyhow!("cozy is not installed here: run `cozy install`") } else { e }
         })?;
-        let node = env.get("MIKAN_MODE") == Some("node");
+        let node = env.get("COZY_MODE") == Some("node");
         Ok(Self { env, node })
     }
 
     /// The version installed: .env knows it since 0.3.9, the image before that.
     pub fn version(&self) -> String {
-        if let Some(v) = self.env.get("MIKAN_VERSION") {
+        if let Some(v) = self.env.get("COZY_VERSION") {
             return v.to_owned();
         }
         let service = if self.node { "node" } else { "panel" };
-        let bin = if self.node { "/usr/local/bin/mikan-node" } else { "mikan" };
+        let bin = if self.node { "/usr/local/bin/cozy-node" } else { "cozy" };
         docker::compose(&["exec", "-T", service, bin, "version"])
             .stderr(Stdio::null())
             .output()
@@ -64,14 +64,14 @@ impl Install {
     }
 
     pub fn ufw(&self) -> bool {
-        self.env.get("MIKAN_UFW") != Some("0")
+        self.env.get("COZY_UFW") != Some("0")
     }
 }
 
-/// `mikan admin …` in the panel with the terminal attached; exits with its status.
+/// `cozy admin …` in the panel with the terminal attached; exits with its status.
 pub fn admin(args: &[&str]) -> Result<()> {
     Install::load()?.panel_only()?;
-    let mut full = vec!["exec", "-T", "panel", "mikan", "admin"];
+    let mut full = vec!["exec", "-T", "panel", "cozy", "admin"];
     full.extend_from_slice(args);
     let status = docker::compose(&full).status()?;
     if !status.success() {
@@ -106,7 +106,7 @@ pub fn cert_set(cert: &Path, key: &Path, node: Option<u32>) -> Result<()> {
     Ok(())
 }
 
-/// `mikan admin cert clear|show` for the panel or a node.
+/// `cozy admin cert clear|show` for the panel or a node.
 pub fn cert(cmd: &[&str], node: Option<u32>) -> Result<()> {
     let mut args = vec!["cert"];
     args.extend_from_slice(cmd);
@@ -127,7 +127,7 @@ pub fn inbound(args: &[String]) -> Result<()> {
     }
     let install = Install::load()?;
     install.panel_only()?;
-    let mut full = vec!["exec", "-T", "panel", "mikan", "admin", "inbound"];
+    let mut full = vec!["exec", "-T", "panel", "cozy", "admin", "inbound"];
     full.extend_from_slice(&args);
     // stdout is "port/network" when the port is on this server; messages are on stderr.
     let out = docker::compose(&full).stderr(Stdio::inherit()).output()?;
@@ -141,7 +141,7 @@ pub fn inbound(args: &[String]) -> Result<()> {
     // What the panel printed is a port to open, nothing more: it is checked before it is
     // handed to the firewall.
     if !host::valid_rule(&rule) {
-        eprintln!("mikan: the panel named {rule:?}, which is not a port to open: ufw is left alone");
+        eprintln!("cozy: the panel named {rule:?}, which is not a port to open: ufw is left alone");
         return Ok(());
     }
     if install.ufw() && system::ufw_active() {
@@ -154,7 +154,7 @@ pub fn inbound(args: &[String]) -> Result<()> {
 pub fn status() -> Result<()> {
     let install = Install::load()?;
     let version = install.version();
-    crate::out(&format!("mikan {version}, {}", if install.node { "node" } else { "panel" }));
+    crate::out(&format!("cozy {version}, {}", if install.node { "node" } else { "panel" }));
     for s in docker::services()? {
         crate::out(&format!("  {:<6} {}", s.name, s.status));
     }
@@ -164,15 +164,15 @@ pub fn status() -> Result<()> {
     if let Some(p) = install.node_port() {
         match system::port_owner(p, system::Proto::Tcp) {
             Some(_) => crate::out(&format!("The node waits for its panel on port {p}.")),
-            None => crate::out(&format!("The node does not listen on port {p}: mikan logs node")),
+            None => crate::out(&format!("The node does not listen on port {p}: cozy logs node")),
         }
     } else if docker::panel_healthy() {
         crate::out("The panel answers.");
     } else {
-        crate::out("The panel does not answer: mikan logs panel");
+        crate::out("The panel does not answer: cozy logs panel");
     }
     match release::latest() {
-        Ok(m) if release::newer(&m.version, &version) => crate::out(&format!("mikan {} is out: mikan update", m.version)),
+        Ok(m) if release::newer(&m.version, &version) => crate::out(&format!("cozy {} is out: cozy update", m.version)),
         Ok(_) => crate::out("This is the latest release."),
         Err(e) => crate::out(&format!("Cannot check for updates: {e:#}")),
     }
@@ -203,11 +203,11 @@ pub fn confirm(question: &str) -> bool {
     std::io::stdin().lock().read_line(&mut answer).is_ok() && matches!(answer.trim(), "y" | "Y" | "yes")
 }
 
-/// The join key: from the command line, or from the environment (MIKAN_JOIN_KEY), or typed
+/// The join key: from the command line, or from the environment (COZY_JOIN_KEY), or typed
 /// or piped in. The key holds the node's private key, so the last two keep it out of the
 /// process list and the shell's history.
 pub fn join_key(arg: Option<String>) -> Result<String> {
-    let key = match arg.or_else(|| std::env::var("MIKAN_JOIN_KEY").ok()) {
+    let key = match arg.or_else(|| std::env::var("COZY_JOIN_KEY").ok()) {
         Some(k) => k,
         None => {
             if std::io::stdin().is_terminal() {
@@ -221,7 +221,7 @@ pub fn join_key(arg: Option<String>) -> Result<String> {
     };
     let key = key.trim().to_owned();
     if key.is_empty() {
-        bail!("no join key: pass it, set MIKAN_JOIN_KEY, or paste it when asked");
+        bail!("no join key: pass it, set COZY_JOIN_KEY, or paste it when asked");
     }
     Ok(key)
 }
@@ -234,9 +234,9 @@ pub fn join(key: &str, panel_ip: Option<IpAddr>) -> Result<()> {
     if !install.node {
         bail!("join is for a node: this server runs a panel");
     }
-    let image = install.env.get("MIKAN_IMAGE").context("no MIKAN_IMAGE in .env")?.to_owned();
+    let image = install.env.get("COZY_IMAGE").context("no COZY_IMAGE in .env")?.to_owned();
     let port = setup::node_port(&image, key.trim())?;
-    install.env.set("MIKAN_NODE_JOIN", key.trim())?;
+    install.env.set("COZY_NODE_JOIN", key.trim())?;
     install.env.set("NODE_API_PORT", &port.to_string())?;
     install.env.save()?;
     if install.ufw() && system::ufw_active() {
@@ -251,12 +251,11 @@ pub fn join(key: &str, panel_ip: Option<IpAddr>) -> Result<()> {
     Ok(())
 }
 
-/// Stops mikan and removes what it put on the host; the data stays.
+/// Stops cozy and removes what it put on the host; the data stays.
 pub fn uninstall() -> Result<()> {
     Install::load()?;
     let _lock = lock::acquire(lock::Wait::Block, &mut crate::out)?;
     docker::compose_run(&["down"])?;
-    addon::down();
     host::remove_units();
     if fs::remove_file(host::SYSCTL).is_ok() {
         let _ = Command::new("sysctl").arg("--system").stdout(Stdio::null()).stderr(Stdio::null()).status();

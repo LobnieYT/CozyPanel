@@ -12,9 +12,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // Endpoint describes how clients reach one node.

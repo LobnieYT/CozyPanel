@@ -15,7 +15,7 @@ import (
 func TestTelegramRouteOverHTTP(t *testing.T) {
 	tg := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"ok":true,"result":{"id":1,"is_bot":true,"first_name":"Mikan","username":"mikan_bot"}}`)
+		_, _ = io.WriteString(w, `{"ok":true,"result":{"id":1,"is_bot":true,"first_name":"Cozy","username":"cozy_bot"}}`)
 	}))
 	t.Cleanup(tg.Close)
 	// A plain HTTP proxy in front of the fake Bot API.

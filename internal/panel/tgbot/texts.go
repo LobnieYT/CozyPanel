@@ -29,13 +29,9 @@ type words struct {
 	// field: a long one leaves no room to type on a phone.
 	menuApp string
 
-	// The shop.
-	buy, buyTitle, renewTitle, payHow, payStars, payCard, payCrypto, payAddon, payButton, invoice, payNew, payRenew string
-	notForSale, payUnavailable, tooManyInvoices, payStale, paidNew, paidRenew                                       string
-	poolOut                                                                                                         string // a traffic pool used up
-
-	// Traffic packages.
-	buyTraffic, trafficTitle, payPackage, packageGone, paidPackage, plusPackages string
+	// Manual payment: the admin's Telegram contact instead of invoices.
+	pay, payTitle, payText string
+	poolOut                string // a traffic pool used up
 }
 
 var ru = words{
@@ -80,25 +76,8 @@ var ru = words{
 	commands: "Главное меню",
 	menuApp:  "Подписка",
 
-	buy: "🛒 Купить подписку", buyTitle: "Выберите тариф", renewTitle: "Продление подписки «%s»: выберите тариф",
-	payHow: "Как оплатить?", payStars: "⭐ Telegram Stars — %s", payCard: "💳 Картой или СБП — %s", payCrypto: "🪙 Криптовалютой — %s", payAddon: "💳 %s — %s", payButton: "Оплатить %s",
-	invoice:         "Счёт: «%s» — %s.\n\nОплатите по кнопке ниже: %s сразу после оплаты, бот пришлёт сообщение.",
-	payNew:          "подписка будет готова",
-	payRenew:        "подписка продлится",
-	notForSale:      "Этот тариф больше не продаётся.",
-	payUnavailable:  "Оплата сейчас недоступна. Попробуйте позже или напишите в поддержку.",
-	tooManyInvoices: "Слишком много счетов подряд. Попробуйте через час.",
-	payStale:        "Счёт устарел. Откройте меню бота и оплатите заново.",
-	paidNew:         "✅ Оплата получена — подписка «%s» готова (тариф «%s»).\n\nДобавьте ссылку в приложение:\n<code>%s</code>",
-	paidRenew:       "✅ Оплата получена — подписка «%s» продлена до %s.",
-	poolOut:         "закончился до сброса",
-
-	buyTraffic:   "📦 Докупить трафик",
-	trafficTitle: "Трафик для подписки «%s»: выберите пакет",
-	payPackage:   "трафик начислится",
-	packageGone:  "Этот пакет больше не продаётся.",
-	paidPackage:  "✅ Оплата получена — пакет «%s» начислен на подписку «%s».",
-	plusPackages: "%s + пакеты %s",
+	pay: "💳 Оплата", payTitle: "Оплата", payText: "Чтобы оплатить или продлить подписку, напишите {contact} — вам подскажут, как оплатить.",
+	poolOut: "закончился до сброса",
 }
 
 var en = words{
@@ -143,25 +122,8 @@ var en = words{
 	commands: "Main menu",
 	menuApp:  "Subscription",
 
-	buy: "🛒 Buy a subscription", buyTitle: "Pick a plan", renewTitle: "Renew subscription “%s”: pick a plan",
-	payHow: "How would you like to pay?", payStars: "⭐ Telegram Stars — %s", payCard: "💳 Card or SBP — %s", payCrypto: "🪙 Crypto — %s", payAddon: "💳 %s — %s", payButton: "Pay %s",
-	invoice:         "Invoice: “%s” — %s.\n\nPay with the button below: the %s as soon as it is paid, and the bot will message you.",
-	payNew:          "subscription is ready",
-	payRenew:        "subscription is renewed",
-	notForSale:      "This plan is no longer sold.",
-	payUnavailable:  "Payment is not available right now. Try later or message support.",
-	tooManyInvoices: "Too many invoices in a row. Try again in an hour.",
-	payStale:        "The invoice is out of date. Open the bot's menu and pay again.",
-	paidNew:         "✅ Payment received — subscription “%s” is ready (plan “%s”).\n\nAdd the link to your app:\n<code>%s</code>",
-	paidRenew:       "✅ Payment received — subscription “%s” is renewed until %s.",
-	poolOut:         "used up until the reset",
-
-	buyTraffic:   "📦 Buy more traffic",
-	trafficTitle: "Traffic for subscription “%s”: pick a package",
-	payPackage:   "traffic is added",
-	packageGone:  "This package is no longer sold.",
-	paidPackage:  "✅ Payment received — package “%s” is added to subscription “%s”.",
-	plusPackages: "%s + packages %s",
+	pay: "💳 Payment", payTitle: "Payment", payText: "To pay or renew your subscription, message {contact} — they will tell you how to pay.",
+	poolOut: "used up until the reset",
 }
 
 func wordsFor(lang string) *words {

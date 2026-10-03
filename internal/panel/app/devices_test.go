@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
 )
 
 // Devices bound to a subscription, end to end over HTTP: own keys per device, a stub

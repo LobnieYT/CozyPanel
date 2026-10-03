@@ -1,10 +1,10 @@
 // Package updates keeps the panel aware of new releases and talks to the host updater
-// (the mikan command on the server) through files in the panel's data directory:
+// (the cozy command on the server) through files in the panel's data directory:
 //
 //	update/policy.json  the panel writes {"auto": true|false}; the daily timer on the host
 //	                    updates only when it is on
 //	update/request      the panel writes it for the Update button; a systemd path unit
-//	                    runs `mikan update --requested`, which removes it first
+//	                    runs `cozy update --requested`, which removes it first
 //	update/status.json  the host writes how the last update went:
 //	                    {"state": "running|ok|failed", "version", "from", "error", "at"}
 //
@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/fsutil"
-	"mikan/internal/release"
+	"cozy/internal/fsutil"
+	"cozy/internal/release"
 )
 
 // Source fetches the newest release's manifest, checked.

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 func at(s string) time.Time {

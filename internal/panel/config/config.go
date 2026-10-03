@@ -24,28 +24,28 @@ type Config struct {
 
 func FromEnv() (Config, error) {
 	c := Config{
-		DataDir:    env("MIKAN_DATA_DIR", "/data"),
-		Listen:     env("MIKAN_PANEL_LISTEN", "0.0.0.0:2053"),
-		NodeSocket: env("MIKAN_NODE_SOCKET", "/run/mikan/node.sock"),
+		DataDir:    env("COZY_DATA_DIR", "/data"),
+		Listen:     env("COZY_PANEL_LISTEN", "0.0.0.0:2053"),
+		NodeSocket: env("COZY_NODE_SOCKET", "/run/cozy/node.sock"),
 	}
-	if err := c.LogLevel.UnmarshalText([]byte(env("MIKAN_LOG_LEVEL", "info"))); err != nil {
-		return c, fmt.Errorf("MIKAN_LOG_LEVEL: %w", err)
+	if err := c.LogLevel.UnmarshalText([]byte(env("COZY_LOG_LEVEL", "info"))); err != nil {
+		return c, fmt.Errorf("COZY_LOG_LEVEL: %w", err)
 	}
 	var err error
-	if c.TrustProxy, err = boolEnv("MIKAN_TRUST_PROXY"); err != nil {
+	if c.TrustProxy, err = boolEnv("COZY_TRUST_PROXY"); err != nil {
 		return c, err
 	}
-	if c.Dev, err = boolEnv("MIKAN_DEV"); err != nil {
+	if c.Dev, err = boolEnv("COZY_DEV"); err != nil {
 		return c, err
 	}
 	if _, _, err := net.SplitHostPort(c.Listen); err != nil {
-		return c, fmt.Errorf("MIKAN_PANEL_LISTEN: %w", err)
+		return c, fmt.Errorf("COZY_PANEL_LISTEN: %w", err)
 	}
-	c.TelegramAPI = os.Getenv("MIKAN_TG_API")
+	c.TelegramAPI = os.Getenv("COZY_TG_API")
 	c.AutotuneScale = 1
-	if v := os.Getenv("MIKAN_AUTOTUNE_SCALE"); v != "" {
+	if v := os.Getenv("COZY_AUTOTUNE_SCALE"); v != "" {
 		if c.AutotuneScale, err = strconv.ParseFloat(v, 64); err != nil || c.AutotuneScale <= 0 || c.AutotuneScale > 1 {
-			return c, fmt.Errorf("MIKAN_AUTOTUNE_SCALE: want a number in (0, 1], got %q", v)
+			return c, fmt.Errorf("COZY_AUTOTUNE_SCALE: want a number in (0, 1], got %q", v)
 		}
 	}
 	// "off" runs the panel without a node (UI development on a machine without mihomo).
@@ -53,7 +53,7 @@ func FromEnv() (Config, error) {
 		c.NodeSocket = ""
 	}
 	if c.Dev && !loopback(c.Listen) {
-		return c, fmt.Errorf("MIKAN_DEV=1 allowed only with a loopback MIKAN_PANEL_LISTEN, got %q", c.Listen)
+		return c, fmt.Errorf("COZY_DEV=1 allowed only with a loopback COZY_PANEL_LISTEN, got %q", c.Listen)
 	}
 	return c, nil
 }

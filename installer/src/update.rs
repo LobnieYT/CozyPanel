@@ -1,4 +1,4 @@
-//! `mikan update`: to the latest release, or to an image the admin names, with a backup
+//! `cozy update`: to the latest release, or to an image the admin names, with a backup
 //! first and a way back when the new version does not start. The daily timer, the panel's
 //! Update button and the admin's shell all come through here, one at a time (lock.rs).
 //!
@@ -22,9 +22,9 @@ use sha2::{Digest, Sha256};
 use crate::lock::{self, Wait};
 use crate::ops::Install;
 use crate::panelfs::{self, Dir};
-use crate::{DIR, addon, backup, clock, docker, host, net, release, setup, signals};
+use crate::{DIR, backup, clock, docker, host, net, release, setup, signals};
 
-/// What `mikan update` was asked for.
+/// What `cozy update` was asked for.
 #[derive(clap::Args, Clone, Debug, Default)]
 pub struct UpdateArgs {
     /// An image (ghcr.io/…@sha256:…) or an image archive (.tar.gz) instead of the latest release
@@ -65,14 +65,14 @@ fn report(install: &Install, phase: Phase, version: &str, from: &str, error: &st
     let sent = update_dir(true)
         .and_then(|d| d.context("data/panel/update is not there")?.write("status.json", body.to_string().as_bytes(), 0o644));
     if let Err(e) = sent {
-        eprintln!("mikan: cannot tell the panel how the update went: {e:#}");
+        eprintln!("cozy: cannot tell the panel how the update went: {e:#}");
     }
 }
 
 /// Whether the daily check may update: a node asks its .env, a panel its policy file.
 fn auto_on(install: &Install) -> bool {
     if install.node {
-        return install.env.get("MIKAN_AUTO_UPDATE") == Some("1");
+        return install.env.get("COZY_AUTO_UPDATE") == Some("1");
     }
     policy_on()
 }
@@ -91,8 +91,6 @@ fn policy_says_on(data: &[u8]) -> bool {
 enum Asked {
     Nothing,
     Update,
-    /// The adapters ({"do": "addons"}), not an update.
-    Addons,
     /// Not a request: a link, a directory, a FIFO, a file of a size the panel never writes.
     Garbage(String),
 }
@@ -107,7 +105,8 @@ fn take_request(dir: &Dir) -> Result<Asked> {
     dir.discard("request")?;
     Ok(match read {
         Ok(Some(data)) => match serde_json::from_slice::<serde_json::Value>(&data) {
-            Ok(v) if v["do"] == "addons" => Asked::Addons,
+            // The panel no longer asks for payment adapters; a stale one is ignored.
+            Ok(v) if v["do"] == "addons" => Asked::Nothing,
             _ => Asked::Update,
         },
         Ok(None) => Asked::Nothing,
@@ -148,7 +147,7 @@ pub fn update(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMu
         match lock::acquire(wait, say)? {
             Some(g) => Some(g),
             None => {
-                say("Another mikan operation is running: this automatic check skips its turn.");
+                say("Another cozy operation is running: this automatic check skips its turn.");
                 return Ok(());
             }
         }
@@ -166,8 +165,6 @@ pub fn update(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMu
         let Some(dir) = dir else { return Ok(()) };
         match take_request(&dir)? {
             Asked::Nothing => return Ok(()),
-            // The panel wakes this unit for its payment adapters too.
-            Asked::Addons => return panel_addons(say),
             Asked::Garbage(why) => {
                 say(&format!("update/request is not a request, removed: {why}"));
                 return Ok(());
@@ -177,13 +174,6 @@ pub fn update(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMu
     }
     let mut at = Attempt::default();
     let r = update_to(a, say, progress, &mut at);
-    // An adapter request that came while an update was asked for waits for it.
-    if a.requested
-        && addon::pending()
-        && let Err(e) = addon::apply(&install.version(), say)
-    {
-        say(&format!("Payment adapters: {e:#}"));
-    }
     // The admin pressed Update and waits for an answer, and an update that began must end
     // in one: ok, failed, never "running" for good.
     if a.requested || at.started {
@@ -194,12 +184,6 @@ pub fn update(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMu
         }
     }
     r
-}
-
-fn panel_addons(say: &mut dyn FnMut(&str)) -> Result<()> {
-    let install = Install::load()?;
-    install.panel_only()?;
-    addon::apply(&install.version(), say)
 }
 
 fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut(f64), at: &mut Attempt) -> Result<()> {
@@ -233,20 +217,20 @@ fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut
         None => {
             let m = release::latest()?;
             if !release::newer(&m.version, &current) {
-                say(&format!("mikan {current} is the latest release."));
+                say(&format!("cozy {current} is the latest release."));
                 if !a.check && self_update(&m, say) {
                     follow_new_command(say);
                 }
                 return Ok(());
             }
             if a.check {
-                say(&format!("mikan {} is out, this server runs {current}.", m.version));
+                say(&format!("cozy {} is out, this server runs {current}.", m.version));
                 if let Some(notes) = m.notes.get("en") {
                     say(notes);
                 }
                 return Ok(());
             }
-            say(&format!("Updating mikan {current} → {}", m.version));
+            say(&format!("Updating cozy {current} → {}", m.version));
             at.version.clone_from(&m.version);
             at.started = true;
             report(&install, Phase::Running, &m.version, &current, "");
@@ -256,7 +240,7 @@ fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut
             // that was signed for.
             let v = setup::image_version(&reference)?;
             if v.trim_start_matches('v') != m.version {
-                bail!("the image is mikan {v}, the signed release says {}", m.version);
+                bail!("the image is cozy {v}, the signed release says {}", m.version);
             }
             let version = m.version.clone();
             manifest = Some(m);
@@ -264,7 +248,7 @@ fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut
         }
     };
     if a.check {
-        say(&format!("{image} is mikan {version}; this server runs {current}."));
+        say(&format!("{image} is cozy {version}; this server runs {current}."));
         return Ok(());
     }
     at.version.clone_from(&version);
@@ -280,13 +264,13 @@ fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut
         if self_update(m, say) {
             let status = Command::new(host::BIN).args(["update", &image]).env(lock::HELD_ENV, "1").status()?;
             if !status.success() {
-                bail!("the new mikan command could not finish the update; run mikan update again");
+                bail!("the new cozy command could not finish the update; run cozy update again");
             }
             return Ok(());
         }
         if !m.min_installer.is_empty() && release::newer(&m.min_installer, crate::version()) {
             bail!(
-                "this release needs the mikan command {} or newer and it could not be downloaded; run mikan update again",
+                "this release needs the cozy command {} or newer and it could not be downloaded; run cozy update again",
                 m.min_installer
             );
         }
@@ -299,18 +283,18 @@ fn update_to(a: &UpdateArgs, say: &mut dyn FnMut(&str), progress: &mut dyn FnMut
     // From here until the new version is up or the old one is back, nothing may cut it short.
     let _critical = signals::critical();
     let root = Path::new(DIR);
-    let old_image = install.env.get("MIKAN_IMAGE").unwrap_or_default().to_owned();
-    let old_version = install.env.get("MIKAN_VERSION").map(str::to_owned);
-    install.env.set("MIKAN_IMAGE", &image)?;
-    install.env.set("MIKAN_VERSION", &version)?;
+    let old_image = install.env.get("COZY_IMAGE").unwrap_or_default().to_owned();
+    let old_version = install.env.get("COZY_VERSION").map(str::to_owned);
+    install.env.set("COZY_IMAGE", &image)?;
+    install.env.set("COZY_VERSION", &version)?;
     install.env.save()?;
     if let Err(e) = start(&install, root) {
-        say(&format!("mikan {version} did not start: going back to {current}"));
+        say(&format!("cozy {version} did not start: going back to {current}"));
         let before = Before { image: &old_image, version: old_version.as_deref(), saved: &saved, new: &version, current: &current };
         return Err(roll_back(&mut install, &before, say, &format!("{e:#}")));
     }
     seal_when_current(root, install.node, say);
-    say(&format!("mikan {version} is running."));
+    say(&format!("cozy {version} is running."));
     if let Some(m) = manifest
         && self_update(&m, say)
     {
@@ -336,8 +320,8 @@ fn roll_back(install: &mut Install, before: &Before, say: &mut dyn FnMut(&str), 
     let root = Path::new(DIR);
     let (new, current, saved) = (before.new, before.current, before.saved.display());
     let mut back = (|| -> Result<()> {
-        install.env.set("MIKAN_IMAGE", before.image)?;
-        install.env.set("MIKAN_VERSION", before.version.unwrap_or(""))?;
+        install.env.set("COZY_IMAGE", before.image)?;
+        install.env.set("COZY_VERSION", before.version.unwrap_or(""))?;
         install.env.save()?;
         start(install, root)
     })();
@@ -346,9 +330,9 @@ fn roll_back(install: &mut Install, before: &Before, say: &mut dyn FnMut(&str), 
         back = backup::restore_database(before.saved).and_then(|()| start(install, root));
     }
     match back {
-        Ok(()) => anyhow::anyhow!("mikan {new} did not start, {current} runs again (backup: {saved}): {why}"),
+        Ok(()) => anyhow::anyhow!("cozy {new} did not start, {current} runs again (backup: {saved}): {why}"),
         Err(e) => anyhow::anyhow!(
-            "mikan {new} did not start, and {current} does not start either ({e:#}). The data from before the update are in {saved}: mikan restore {saved}. {why}"
+            "cozy {new} did not start, and {current} does not start either ({e:#}). The data from before the update are in {saved}: cozy restore {saved}. {why}"
         ),
     }
 }
@@ -414,7 +398,7 @@ pub fn converge(say: &mut dyn FnMut(&str)) -> Result<()> {
 fn follow_new_command(say: &mut dyn FnMut(&str)) {
     let done = Command::new(host::BIN).arg("post-update").env(lock::HELD_ENV, "1").status();
     if !done.is_ok_and(|s| s.success()) {
-        say("The new mikan command could not finish setting up: run `mikan update` once more.");
+        say("The new cozy command could not finish setting up: run `cozy update` once more.");
     }
 }
 
@@ -438,11 +422,11 @@ fn self_update(m: &release::Manifest, say: &mut dyn FnMut(&str)) -> bool {
     });
     match result {
         Ok(()) => {
-            say(&format!("The mikan command is {} now too.", m.version));
+            say(&format!("The cozy command is {} now too.", m.version));
             true
         }
         Err(e) => {
-            say(&format!("The mikan command stays as it is: {e:#}"));
+            say(&format!("The cozy command stays as it is: {e:#}"));
             false
         }
     }
@@ -464,14 +448,15 @@ mod tests {
         Dir::open(d, ".", false).unwrap().unwrap()
     }
 
-    // The panel's Update button writes {"at": …}; its adapters write {"do": "addons"}.
+    // The panel's Update button writes {"at": …}; a stale {"do": "addons"} from payment
+    // adapters is consumed and ignored.
     #[test]
     fn the_panels_requests() {
         let d = tmpdir("requests");
         let dir = open(&d);
         assert_eq!(take_request(&dir).unwrap(), Asked::Nothing);
         for (body, want) in
-            [(r#"{"at":"2026-10-01T00:00:00Z"}"#, Asked::Update), (r#"{"do":"addons"}"#, Asked::Addons), ("not json", Asked::Update)]
+            [(r#"{"at":"2026-10-01T00:00:00Z"}"#, Asked::Update), (r#"{"do":"addons"}"#, Asked::Nothing), ("not json", Asked::Update)]
         {
             fs::write(d.join("request"), body).unwrap();
             assert_eq!(take_request(&dir).unwrap(), want, "{body}");

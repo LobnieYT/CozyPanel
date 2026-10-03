@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // meddler is a node that, while it checks a template, lets someone else change the inbound

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // Devices binds a subscription to the devices that use it, against resale: a device

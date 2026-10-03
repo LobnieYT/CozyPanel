@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // Callback data: m main, s subscription, d devices, dc:<id> confirm unbind, du:<id>
@@ -23,19 +23,10 @@ func (b *Bot) screen(ctx context.Context, cfg Config, chat int64, data, notice s
 	w := wordsFor(cfg.Lang)
 	list, u, ok := b.subs(ctx, chat)
 	cmd, arg, _ := strings.Cut(data, ":")
-	// Buying a new subscription works with or without one.
-	if b.canBuyNew(ctx) {
-		home := []Button{{Text: w.back, CallbackData: "m"}}
-		switch cmd {
-		case "b":
-			return b.shopList(ctx, w, w.buyTitle, "tn", notice, home)
-		case "tn":
-			id, _ := strconv.ParseInt(arg, 10, 64)
-			return b.shopTariff(ctx, w, id, "pn", []Button{{Text: w.back, CallbackData: "b"}})
-		case "pn":
-			id, _, _ := strings.Cut(arg, ":")
-			return b.shopInvoice(ctx, w, chat, 0, arg, []Button{{Text: w.back, CallbackData: "tn:" + id}})
-		}
+	// Manual payment: the admin's Telegram contact instead of invoices.
+	switch cmd {
+	case "b", "t", "py", "x", "xk", "xp":
+		return b.payScreen(ctx, cfg, w, notice)
 	}
 	if !ok {
 		return b.welcome(ctx, cfg, w, notice)
@@ -50,12 +41,6 @@ func (b *Bot) screen(ctx context.Context, cfg Config, chat int64, data, notice s
 		return s
 	}
 	switch cmd {
-	case "t":
-		id, _ := strconv.ParseInt(arg, 10, 64)
-		return b.shopTariff(ctx, w, id, "py", []Button{{Text: w.back, CallbackData: "r"}})
-	case "py":
-		id, _, _ := strings.Cut(arg, ":")
-		return b.shopInvoice(ctx, w, chat, u.ID, arg, []Button{{Text: w.back, CallbackData: "t:" + id}})
 	case "s":
 		lines := []string{"<b>" + html.EscapeString(fmt.Sprintf(w.subTitle, u.Name)) + "</b>", html.EscapeString(vars["state"]), "",
 			"📅 " + html.EscapeString(vars["term"]), "📦 " + html.EscapeString(vars["traffic"])}
@@ -67,12 +52,7 @@ func (b *Bot) screen(ctx context.Context, cfg Config, chat int64, data, notice s
 		}
 		lines = append(lines, "📱 "+html.EscapeString(vars["devices"]))
 		rows := [][]Button{}
-		if offers := b.packageOffers(ctx, u.ID); len(offers) > 0 {
-			rows = append(rows, []Button{{Text: w.buyTraffic, CallbackData: "x"}})
-		}
 		return withNotice(strings.Join(lines, "\n")), &Keyboard{append(rows, back)}
-	case "x", "xk", "xp":
-		return b.trafficShop(ctx, w, chat, u, cmd, arg, notice)
 	case "d", "dc":
 		id, _ := strconv.ParseInt(arg, 10, 64)
 		return b.devices(ctx, w, u, cmd, id, notice, now)
@@ -84,19 +64,7 @@ func (b *Bot) screen(ctx context.Context, cfg Config, chat int64, data, notice s
 		}
 		return withNotice(text), &Keyboard{append(rows, back)}
 	case "r":
-		if offers, _ := b.offers(ctx); len(offers) > 0 {
-			text, kb := b.shopList(ctx, w, fmt.Sprintf(w.renewTitle, u.Name), "t", notice, nil)
-			if sup := b.supportURL(ctx); sup != "" {
-				kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{Text: labelOf(cfg, "support", w.support), URL: sup}})
-			}
-			kb.InlineKeyboard = append(kb.InlineKeyboard, back)
-			return text, kb
-		}
-		rows := [][]Button{}
-		if sup := b.supportURL(ctx); sup != "" {
-			rows = append(rows, []Button{{Text: labelOf(cfg, "support", w.support), URL: sup}})
-		}
-		return withNotice(render(pick(cfg.Texts.Renew, w.renew), vars)), &Keyboard{append(rows, back)}
+		return b.payScreen(ctx, cfg, w, notice)
 	case "p":
 		for _, btn := range cfg.Buttons {
 			if btn.Action == "page" && btn.ID == arg {
@@ -124,9 +92,7 @@ func (b *Bot) welcome(ctx context.Context, cfg Config, w *words, notice string) 
 		text = html.EscapeString(notice) + "\n\n" + text
 	}
 	var rows [][]Button
-	if b.canBuyNew(ctx) {
-		rows = append(rows, []Button{{Text: w.buy, CallbackData: "b"}})
-	}
+	rows = append(rows, []Button{{Text: w.pay, CallbackData: "b"}})
 	if sup := b.supportURL(ctx); sup != "" {
 		rows = append(rows, []Button{{Text: labelOf(cfg, "support", w.support), URL: sup}})
 	}
@@ -334,7 +300,7 @@ func (b *Bot) vars(ctx context.Context, w *words, u db.User, now time.Time) map[
 	if u.TrafficLimit.Valid {
 		v["limit"] = w.bytes(u.TrafficLimit.Int64)
 		v["left"] = w.bytes(domain.TrafficLeft(u.TrafficLimit, used, extra))
-		v["traffic"] = fmt.Sprintf(w.trafficOf, v["used"], w.withPackages(u.TrafficLimit.Int64, extra))
+		v["traffic"] = fmt.Sprintf(w.trafficOf, v["used"], withPackages(w, u.TrafficLimit.Int64, extra))
 	} else {
 		v["limit"], v["left"] = w.noLimit, w.noLimit
 		v["traffic"] = fmt.Sprintf(w.trafficNoLimit, v["used"])
@@ -354,7 +320,7 @@ func (b *Bot) brand(ctx context.Context) string {
 	if s, _ := b.d.Settings.String(ctx, settings.KeyBrand); s != "" {
 		return s
 	}
-	return "VPN"
+	return "Cozy"
 }
 
 // supportURL is the panel's support link when Telegram can open it.
@@ -366,6 +332,49 @@ func (b *Bot) supportURL(ctx context.Context) string {
 	return ""
 }
 
+// payContact is the admin's Telegram contact for manual payment, as typed in the
+// panel: "@name", a t.me link, or any text.
+func (b *Bot) payContact(ctx context.Context) string {
+	s, _ := b.d.Settings.String(ctx, settings.KeyPayContact)
+	return strings.TrimSpace(s)
+}
+
+// payContactURL turns the contact into a button link; plain text stays text.
+func payContactURL(contact string) string {
+	c := strings.TrimSpace(contact)
+	if c == "" {
+		return ""
+	}
+	if strings.HasPrefix(c, "https://") || strings.HasPrefix(c, "http://") || strings.HasPrefix(c, "tg://") {
+		return c
+	}
+	if rest, ok := strings.CutPrefix(c, "@"); ok {
+		c = rest
+	}
+	if c == "" || strings.ContainsAny(c, " \t\n") {
+		return ""
+	}
+	return "https://t.me/" + c
+}
+
+// payScreen shows the manual payment screen: the admin's contact instead of invoices.
+func (b *Bot) payScreen(ctx context.Context, cfg Config, w *words, notice string) (string, *Keyboard) {
+	contact := b.payContact(ctx)
+	text := render(w.payText, map[string]string{"contact": contact})
+	if notice != "" {
+		text = html.EscapeString(notice) + "\n\n" + text
+	}
+	rows := [][]Button{}
+	if url := payContactURL(contact); url != "" {
+		rows = append(rows, []Button{{Text: contact, URL: url}})
+	}
+	if sup := b.supportURL(ctx); sup != "" {
+		rows = append(rows, []Button{{Text: labelOf(cfg, "support", w.support), URL: sup}})
+	}
+	rows = append(rows, []Button{{Text: w.back, CallbackData: "m"}})
+	return text, &Keyboard{rows}
+}
+
 func (b *Bot) subURL(ctx context.Context, u db.User) string {
 	if base := b.d.SubBase(ctx); base != "" {
 		return base + "/" + u.SubToken
@@ -374,6 +383,15 @@ func (b *Bot) subURL(ctx context.Context, u db.User) string {
 }
 
 // poolLines: one line per traffic pool with a limit — "WL: 30 GB of 100 GB + packages 50 GB".
+// withPackages formats a traffic limit together with the extra traffic from the
+// admin's grants; without extra it is just the limit.
+func withPackages(w *words, limit, extra int64) string {
+	if extra <= 0 {
+		return w.bytes(limit)
+	}
+	return w.bytes(limit) + " + " + w.bytes(extra)
+}
+
 func (b *Bot) poolLines(ctx context.Context, w *words, userID int64) []string {
 	rows, err := b.d.Store.Q.ListUserPools(ctx, userID)
 	if err != nil || len(rows) == 0 {
@@ -397,7 +415,7 @@ func (b *Bot) poolLines(ctx context.Context, w *words, userID int64) []string {
 			continue
 		}
 		extra := grants.Pool(userID, r.PoolID)
-		line := names[r.PoolID] + ": " + fmt.Sprintf(w.trafficOf, w.bytes(r.UsedUp+r.UsedDown), w.withPackages(r.TrafficLimit.Int64, extra))
+		line := names[r.PoolID] + ": " + fmt.Sprintf(w.trafficOf, w.bytes(r.UsedUp+r.UsedDown), withPackages(w, r.TrafficLimit.Int64, extra))
 		if domain.PoolExhausted(r, extra) {
 			line += " — " + w.poolOut
 		}

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // Seed creates the default inbounds, tariffs and slot pool on a fresh install.
@@ -35,7 +35,7 @@ func Seed(ctx context.Context, st *store.Store, now time.Time) error {
 			}
 		}
 	}
-	// Inbounds created by mikan ≤ 0.1.2 carry per-preset settings; give them a template.
+	// Inbounds created by cozy ≤ 0.1.2 carry per-preset settings; give them a template.
 	for _, in := range inbounds {
 		if in.Config != "" {
 			continue

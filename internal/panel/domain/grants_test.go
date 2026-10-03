@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // grantsEnv is a user with a small base quota (bytes) and a helper to give it grants.

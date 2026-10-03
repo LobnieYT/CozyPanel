@@ -2,7 +2,7 @@
 // a month of traffic, the main pages in English and Russian, on a desktop and a phone.
 //
 //   cd scripts/screens && npm install
-//   MIKAN_IMAGE=mikan:0.3.8 CHROME=/path/to/chrome node shoot.mjs
+//   COZY_IMAGE=cozy:0.3.8 CHROME=/path/to/chrome node shoot.mjs
 //
 // Writes .github/assets/screens/{en,ru}/*.webp and deletes the demo stack afterwards.
 import puppeteer from "puppeteer-core";
@@ -21,7 +21,7 @@ const SUB = "demosubs0000";
 const BASE = `https://127.0.0.1:2090/${ADMIN}/`;
 // The demo stack lives for a minute on 127.0.0.1; its admin password is thrown away.
 const PASS = crypto.randomBytes(18).toString("base64url");
-const env = { ...process.env, MIKAN_IMAGE: process.env.MIKAN_IMAGE || "mikan:dev" };
+const env = { ...process.env, COZY_IMAGE: process.env.COZY_IMAGE || "cozy:dev" };
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // the demo panel's certificate is self-signed
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const compose = (args, input) =>
@@ -30,7 +30,7 @@ const compose = (args, input) =>
 // Writes straight into the panel's database while the panel is stopped.
 function sql(text) {
   compose(["stop", "panel"]);
-  execFileSync("docker", ["run", "--rm", "-i", "-v", "mikan-screens_data:/data", "alpine:3", "sh", "-c", "apk add -q sqlite >/dev/null && sqlite3 /data/panel/mikan.db && chown 65532:65532 /data/panel/mikan.db*"], {
+  execFileSync("docker", ["run", "--rm", "-i", "-v", "cozy-screens_data:/data", "alpine:3", "sh", "-c", "apk add -q sqlite >/dev/null && sqlite3 /data/panel/cozy.db && chown 65532:65532 /data/panel/cozy.db*"], {
     input: text,
     stdio: ["pipe", "ignore", "inherit"],
   });
@@ -105,7 +105,7 @@ function seed(ids, now) {
   });
   lines.push(`UPDATE users SET status = 'disabled' WHERE id = ${ids[12]};`);
   lines.push(`UPDATE users SET used_down = traffic_limit WHERE id = ${ids[4]} AND traffic_limit IS NOT NULL;`);
-  lines.push(`INSERT OR REPLACE INTO settings (key, value) VALUES ('brand', '"mikan"');`);
+  lines.push(`INSERT OR REPLACE INTO settings (key, value) VALUES ('brand', '"cozy"');`);
   lines.push("COMMIT;");
   return lines.join("\n");
 }
@@ -126,7 +126,7 @@ async function shoot(browser, lang, subURL) {
   const desktop = await browser.newPage();
   await desktop.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1.5 });
   await desktop.goto(BASE, { waitUntil: "networkidle0" });
-  await desktop.evaluate((l) => localStorage.setItem("mikan.lang", l), lang);
+  await desktop.evaluate((l) => localStorage.setItem("cozy.lang", l), lang);
   for (const [name, route] of [["dashboard", ""], ["users", "users"], ["inbounds", "inbounds"], ["telegram", "telegram"], ["settings", "settings"]]) {
     await desktop.goto(BASE + route, { waitUntil: "networkidle0" });
     await sleep(1800); // the cards rise and the chart draws
@@ -136,7 +136,7 @@ async function shoot(browser, lang, subURL) {
   await phone.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   for (const [name, url] of [["phone-dashboard", BASE], ["phone-subscription", subURL]]) {
     await phone.goto(url, { waitUntil: "networkidle0" });
-    await phone.evaluate((l) => localStorage.setItem("mikan.lang", l), lang);
+    await phone.evaluate((l) => localStorage.setItem("cozy.lang", l), lang);
     await phone.goto(url, { waitUntil: "networkidle0" });
     await sleep(1800);
     await phone.screenshot({ path: path.join(dest, `${name}.webp`), type: "webp", quality: 82 });

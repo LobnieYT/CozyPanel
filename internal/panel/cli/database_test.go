@@ -12,7 +12,7 @@ import (
 func TestDatabaseCommandsOfTheNextInstaller(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	t.Setenv("MIKAN_DATA_DIR", dir)
+	t.Setenv("COZY_DATA_DIR", dir)
 	if err := databaseCmd(ctx, []string{"migrate"}); err != nil {
 		t.Fatal(err)
 	}

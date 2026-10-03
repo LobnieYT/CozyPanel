@@ -22,7 +22,7 @@ type Params = Record<string, string | number>;
 /** How an entry fetches a language's dictionary; the module's default export is the dictionary. */
 export type Loaders<D extends Partial<Dict> = Dict> = Record<Locale, () => Promise<{ default: D }>>;
 
-const STORAGE = "mikan.lang";
+const STORAGE = "cozy.lang";
 let locale: Locale = detect();
 let loaders: Loaders<Partial<Dict>> | undefined;
 const loaded: Partial<Record<Locale, unknown>> = {};
@@ -37,7 +37,7 @@ function detect(): Locale {
   } catch {
     // storage may be blocked; fall back to the panel's language
   }
-  const panel = document.querySelector<HTMLMetaElement>('meta[name="mikan-lang"]')?.content;
+  const panel = document.querySelector<HTMLMetaElement>('meta[name="cozy-lang"]')?.content;
   if (panel === "ru" || panel === "en") return panel;
   return navigator.languages.some((l) => l.toLowerCase().startsWith("ru")) ? "ru" : "en";
 }

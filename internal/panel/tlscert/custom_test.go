@@ -66,7 +66,7 @@ func TestParseCustom(t *testing.T) {
 	if info := Describe(c, "vpn.example.com", now); info.Trusted || info.Issuer != "*.example.com" || len(info.Names) != 2 {
 		t.Fatalf("describe: %+v", info)
 	}
-	// A key and a certificate given in one stream are told apart (mikan cert set).
+	// A key and a certificate given in one stream are told apart (cozy cert set).
 	both := append(append([]byte{}, good...), goodKey...)
 	if _, err := ParseCustom(both, both, now); err != nil {
 		t.Fatalf("one stream: %v", err)

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // Who holds a port on a node's server. One map answers every "is this port free"

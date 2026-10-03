@@ -41,11 +41,11 @@ func handshake(t *testing.T, server, client *tls.Config) error {
 
 func TestPinnedHandshake(t *testing.T) {
 	now := time.Now()
-	panel, err := Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	panel, err := Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	node, err := Generate("node-2.mikan", x509.ExtKeyUsageServerAuth, now)
+	node, err := Generate("node-2.cozy", x509.ExtKeyUsageServerAuth, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestPinnedHandshake(t *testing.T) {
 	}
 
 	// Another panel (or a leaked node key used as a client) is refused by the node.
-	stranger, _ := Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	stranger, _ := Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	other, _ := ClientConfig(stranger, nodePin)
 	if handshake(t, server, other) == nil {
 		t.Fatal("a foreign client certificate must be refused")
@@ -86,7 +86,7 @@ func TestPinnedHandshake(t *testing.T) {
 		t.Fatal("the node's own certificate must not work as the panel's")
 	}
 	// The panel refuses a node whose certificate is not the pinned one (a re-issued key).
-	fresh, _ := Generate("node-2.mikan", x509.ExtKeyUsageServerAuth, now)
+	fresh, _ := Generate("node-2.cozy", x509.ExtKeyUsageServerAuth, now)
 	impostor, _ := Key{Port: 40123, PanelPin: panelPin, CertPEM: fresh.CertPEM, KeyPEM: fresh.KeyPEM}.ServerConfig()
 	if handshake(t, impostor, client) == nil {
 		t.Fatal("a node certificate that is not pinned must be refused")
@@ -94,7 +94,7 @@ func TestPinnedHandshake(t *testing.T) {
 }
 
 func TestDecodeKeyRejectsGarbage(t *testing.T) {
-	for _, s := range []string{"", "mikan1.", "mikan1.!!!", "abc", "mikan1.eyJwb3J0IjowfQ"} {
+	for _, s := range []string{"", "cozy1.", "cozy1.!!!", "abc", "cozy1.eyJwb3J0IjowfQ"} {
 		if _, err := DecodeKey(s); err == nil {
 			t.Errorf("%q must be refused", s)
 		}

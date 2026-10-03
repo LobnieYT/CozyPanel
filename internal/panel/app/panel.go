@@ -15,26 +15,24 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/acme"
-	"mikan/internal/panel/addons"
-	"mikan/internal/panel/api"
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/autotune"
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/dnscheck"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/nodesync"
-	"mikan/internal/panel/server"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/subs"
-	"mikan/internal/panel/tgbot"
-	"mikan/internal/panel/tlscert"
-	"mikan/internal/panel/updates"
-	"mikan/internal/panel/warp"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/acme"
+	"cozy/internal/panel/api"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/autotune"
+	"cozy/internal/panel/dnscheck"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/nodesync"
+	"cozy/internal/panel/server"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
+	"cozy/internal/panel/tgbot"
+	"cozy/internal/panel/tlscert"
+	"cozy/internal/panel/updates"
+	"cozy/internal/panel/warp"
 )
 
 // Panel is the fully wired HTTP side of the panel, without the listener.
@@ -44,9 +42,7 @@ type Panel struct {
 	Nodes     *nodesync.Manager
 	Tuner     *autotune.Tuner // nil without nodes
 	Telegram  *tgbot.Bot
-	Billing   *billing.Service
 	Updates   *updates.Checker
-	Addons    *addons.Manager
 	server    *server.Server
 	spa       *server.SPA
 	subPage   *server.SPA
@@ -90,8 +86,6 @@ type Options struct {
 	Releases updates.Source
 	// WarpAPI is Cloudflare's WARP client API; "" is the real one.
 	WarpAPI string
-	// AddonsCatalog is the marketplace's signed catalog; "" is the real one.
-	AddonsCatalog string
 	// DNS checks new domains against public DNS; nil leaves them unchecked.
 	DNS *dnscheck.Checker
 	// HSTS says whether browsers are told to keep to HTTPS: for a panel that serves TLS
@@ -173,23 +167,17 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		}
 		return "https://" + net.JoinHostPort(ep.Host, strconv.Itoa(ep.Port)) + "/" + paths.Sub
 	}
-	p.Addons = addons.New(o.DataDir, o.AddonsCatalog, o.Version, o.Log, o.Now)
-	deps.Addons = p.Addons
 	deps.DNS = o.DNS
-	p.Billing = billing.New(billing.Deps{Store: st, Settings: set, Users: deps.Users, Log: o.Log, Now: o.Now, TrustProxy: o.TrustProxy,
-		MaxLinks: tgbot.MaxLinks,
-		Addons:   deps.Addons, SubBase: subBase})
-	deps.Billing, deps.SubBase = p.Billing, subBase
+	deps.SubBase = subBase
 	// The bot may reach Telegram through a node when the panel's server cannot.
 	var tunnel func(ctx context.Context, nodeID int64, addr string) (net.Conn, error)
 	if p.Nodes != nil {
 		tunnel = p.Nodes.Tunnel
 	}
-	p.Telegram = tgbot.New(tgbot.Deps{Store: st, Settings: set, Devices: deps.Devices, SubBase: subBase, API: o.TelegramAPI, Log: o.Log, Now: o.Now, Billing: p.Billing,
+	p.Telegram = tgbot.New(tgbot.Deps{Store: st, Settings: set, Devices: deps.Devices, SubBase: subBase, API: o.TelegramAPI, Log: o.Log, Now: o.Now,
 		// Telegram apps refuse a Mini App on a self-signed certificate.
 		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" }, Tunnel: tunnel})
 	deps.Telegram = p.Telegram
-	p.Billing.SetTelegram(p.Telegram)
 	p.Updates = updates.New(o.DataDir, o.Version, o.Releases, o.Log, o.Now)
 	deps.Updates = p.Updates
 	deps.Warp = warp.Client{API: o.WarpAPI}
@@ -215,7 +203,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 			return subs.Config{}, err
 		}
 		if brand == "" {
-			brand = "VPN"
+			brand = "Cozy"
 		}
 		support, _, err := settings.Get[string](ctx, set, settings.KeySupportURL)
 		if err != nil {
@@ -281,7 +269,6 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 	subHandler := subs.NewHandler(st, subCfg, subPageHandler, o.Now, deps.Devices, o.TrustProxy)
 	subHandler.SetLogger(o.Log)
 	subHandler.SetTelegram(p.Telegram)
-	subHandler.SetShop(p.Billing)
 
 	adminMux := http.NewServeMux()
 	adminMux.Handle("/api/", apiHandler)
@@ -319,10 +306,6 @@ func (p *Panel) Apply(ctx context.Context) (settings.Paths, error) {
 // edit them), drives the node syncer and cleans up expired state. It returns once ctx is
 // done and every one of its workers has stopped: the caller closes the database after it.
 func (p *Panel) Run(ctx context.Context) {
-	// Before the reconcile loop: payments of the built-in providers take their adapters' names.
-	if err := p.Billing.MoveBuiltin(ctx); err != nil {
-		p.log.Error("billing: move the built-in providers", "err", err)
-	}
 	// The host reads the switch from a file; the setting is what the admin chose.
 	if auto, err := p.Settings.On(ctx, settings.AutoUpdate); err == nil {
 		if err := p.Updates.SetAuto(auto); err != nil && !errors.Is(err, updates.ErrUnavailable) {
@@ -336,7 +319,7 @@ func (p *Panel) Run(ctx context.Context) {
 	if p.Tuner != nil {
 		workers = append(workers, p.Tuner.Run)
 	}
-	workers = append(workers, p.Telegram.Run, p.Billing.Run, p.Updates.Run,
+	workers = append(workers, p.Telegram.Run, p.Updates.Run,
 		func(ctx context.Context) {
 			every(ctx, 5*time.Second, func() {
 				if _, err := p.Apply(ctx); err != nil {

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
 )
 
 // A client's subscription fetch is recorded (the block detector trusts only up-to-date

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // API keys: made only from a browser session, shown once, scoped, expiring and revocable;
@@ -41,7 +41,7 @@ func TestAPIKeys(t *testing.T) {
 		t.Helper()
 		resp, body := h.do(http.MethodPost, api+"/api-keys", map[string]any{"name": name, "scope": scope, "expire_days": days, "password": password}, csrf)
 		var c created
-		if resp.StatusCode != http.StatusCreated || json.Unmarshal(body, &c) != nil || !strings.HasPrefix(c.Key, "mk_") || !strings.HasPrefix(c.Key, c.Prefix) {
+		if resp.StatusCode != http.StatusCreated || json.Unmarshal(body, &c) != nil || !strings.HasPrefix(c.Key, "co_") || !strings.HasPrefix(c.Key, c.Prefix) {
 			t.Fatalf("create %s: %d %s", name, resp.StatusCode, body)
 		}
 		return c
@@ -81,7 +81,7 @@ func TestAPIKeys(t *testing.T) {
 	}
 	// Wrong, malformed and expired keys.
 	for _, hdr := range []map[string]string{
-		bearer(full.Key + "x"), bearer("mk_" + strings.Repeat("a", 40)), bearer(""), {"Authorization": "Basic " + full.Key}, bearer(strings.Repeat("z", 4096)),
+		bearer(full.Key + "x"), bearer("co_" + strings.Repeat("a", 40)), bearer(""), {"Authorization": "Basic " + full.Key}, bearer(strings.Repeat("z", 4096)),
 	} {
 		if resp, _ := h.do(http.MethodGet, api+"/users", nil, hdr); resp.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("%q: %d", hdr["Authorization"][:min(20, len(hdr["Authorization"]))], resp.StatusCode)
@@ -122,7 +122,7 @@ func TestAPIKeys(t *testing.T) {
 
 	// Guessing gets the IP blocked, valid keys included.
 	for range 12 {
-		h.do(http.MethodGet, api+"/users", nil, bearer("mk_guess"))
+		h.do(http.MethodGet, api+"/users", nil, bearer("co_guess"))
 	}
 	if resp, _ := h.do(http.MethodGet, api+"/users", nil, bearer(read.Key)); resp.StatusCode != http.StatusTooManyRequests || resp.Header.Get("Retry-After") == "" {
 		t.Fatalf("after guessing: %d", resp.StatusCode)

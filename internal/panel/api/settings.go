@@ -10,20 +10,21 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/hostname"
-	"mikan/internal/panel/acme"
-	"mikan/internal/panel/dnscheck"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/subs"
-	"mikan/internal/proto"
+	"cozy/internal/hostname"
+	"cozy/internal/panel/acme"
+	"cozy/internal/panel/dnscheck"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
+	"cozy/internal/proto"
 )
 
 type SettingsView struct {
 	Brand        string   `json:"brand"`
 	SupportURL   string   `json:"support_url"`
+	PayContact   string   `json:"pay_contact" doc:"Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст"`
 	PublicHost   string   `json:"public_host"`
 	Domain       string   `json:"domain"`
 	PanelPort    int      `json:"panel_port"`
@@ -53,6 +54,7 @@ type patchSettingsInput struct {
 	Body struct {
 		Brand         *string `json:"brand,omitempty" maxLength:"40"`
 		SupportURL    *string `json:"support_url,omitempty" maxLength:"200" doc:"https://… или tg://…"`
+		PayContact    *string `json:"pay_contact,omitempty" maxLength:"64" doc:"@имя, ссылка t.me или текст — бот показывает его вместо счетов"`
 		PublicHost    *string `json:"public_host,omitempty" maxLength:"253"`
 		Domain        *string `json:"domain,omitempty" maxLength:"253"`
 		QuietHourUTC  *int    `json:"quiet_hour_utc,omitempty" minimum:"0" maximum:"23"`
@@ -102,6 +104,7 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 	}
 	get(settings.KeyBrand, &v.Brand)
 	get(settings.KeySupportURL, &v.SupportURL)
+	get(settings.KeyPayContact, &v.PayContact)
 	get(settings.KeyPublicHost, &v.PublicHost)
 	get(settings.KeyDomain, &v.Domain)
 	get(settings.KeyGroupMain, &v.SubGroupMain)
@@ -150,7 +153,7 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 		return v, err
 	}
 	if v.Brand == "" {
-		v.Brand = "VPN"
+		v.Brand = "Cozy"
 	}
 	paths, err := h.d.Settings.Paths(ctx)
 	if err != nil {
@@ -189,7 +192,7 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 	// Where clients are sent, and what they are told to trust: a leaked API key must not
 	// move subscriptions to another server or add rules to every client.
 	for field, touched := range map[string]bool{"public_host": b.PublicHost != nil, "domain": b.Domain != nil, "sub_port": b.SubPort != nil,
-		"sub_rules": b.SubRules != nil, "support_url": b.SupportURL != nil} {
+		"sub_rules": b.SubRules != nil, "support_url": b.SupportURL != nil, "pay_contact": b.PayContact != nil} {
 		if touched {
 			if err := requireSession(ctx, field); err != nil {
 				return nil, err
@@ -205,6 +208,9 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 	}
 	if b.SupportURL != nil && *b.SupportURL != "" && !strings.HasPrefix(*b.SupportURL, "https://") && !strings.HasPrefix(*b.SupportURL, "tg://") {
 		details = append(details, &huma.ErrorDetail{Location: "body.support_url", Message: "support_url_invalid"})
+	}
+	if b.PayContact != nil && strings.Contains(*b.PayContact, "\n") {
+		details = append(details, &huma.ErrorDetail{Location: "body.pay_contact", Message: "pay_contact_invalid"})
 	}
 	if b.SubGroupMain != nil || b.SubGroupAuto != nil || b.SubRules != nil {
 		cur, err := h.groups(ctx)
@@ -308,7 +314,7 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 				return err
 			}
 		}
-		for key, v := range map[string]*string{settings.KeyBrand: b.Brand, settings.KeySupportURL: b.SupportURL, settings.KeyPublicHost: b.PublicHost, settings.KeyDomain: b.Domain,
+		for key, v := range map[string]*string{settings.KeyBrand: b.Brand, settings.KeySupportURL: b.SupportURL, settings.KeyPayContact: b.PayContact, settings.KeyPublicHost: b.PublicHost, settings.KeyDomain: b.Domain,
 			settings.KeyGroupMain: b.SubGroupMain, settings.KeyGroupAuto: b.SubGroupAuto, settings.KeyRouting: b.SubRouting, settings.KeyFingerprint: b.Fingerprint, settings.KeyDefaultLang: b.DefaultLang} {
 			if v == nil {
 				continue

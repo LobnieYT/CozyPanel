@@ -100,7 +100,7 @@ export function CreateUserDrawer({ open, onOpenChange, onCreated }: { open: bool
                 <button key={tr.id} type="button" role="radio" aria-checked={tariffId === tr.id} className={clsx("opt")} onClick={() => setTariffId(tr.id)}>
                   <span className="font-semibold">{tr.name}</span>
                   <span className="text-xs text-[var(--ink-500)]">{tariffSummary(tr)}</span>
-                  {tr.price_label ? <span className="mt-1 text-[13px] font-medium text-[var(--mikan-700)]">{tr.price_label}</span> : null}
+                  {tr.price_label ? <span className="mt-1 text-[13px] font-medium text-[var(--cozy-700)]">{tr.price_label}</span> : null}
                 </button>
               ))}
             </div>

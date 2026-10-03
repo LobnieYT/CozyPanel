@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 var (
@@ -40,7 +40,7 @@ const updateTries = 3
 
 // EditError is a form field the inbound's template does not take. Field is the field
 // ("dest", "fingerprint", "obfs", "client"); Err is the template's reason, its Field
-// naming the part ("mikan.client.sni").
+// naming the part ("cozy.client.sni").
 type EditError struct {
 	Field string
 	Err   *proto.Error
@@ -365,7 +365,7 @@ func editTemplate(config string, p InboundPatch) (string, error) {
 	if p.Fingerprint != nil {
 		edits = append(edits, templateEdit{"fingerprint", func(t proto.Template) error {
 			if !proto.UsesFingerprint(t) {
-				return &proto.Error{Code: "fingerprint_no_tls", Field: "mikan.client.fingerprint"}
+				return &proto.Error{Code: "fingerprint_no_tls", Field: "cozy.client.fingerprint"}
 			}
 			return proto.SetFingerprint(t, strings.TrimSpace(*p.Fingerprint))
 		}})
@@ -395,7 +395,7 @@ func editTemplate(config string, p InboundPatch) (string, error) {
 	return config, nil
 }
 
-// CheckTemplate parses and checks a template for an inbound of node on port: mikan's
+// CheckTemplate parses and checks a template for an inbound of node on port: cozy's
 // rules first, then mihomo's own parser on the node, so a broken template never replaces
 // a working listener. A node that cannot be reached does not stop it: the node checks
 // again when it applies the template.
@@ -413,7 +413,7 @@ func (s *Inbounds) CheckTemplate(ctx context.Context, node db.Node, config, port
 	}
 	// Checked here, not in proto.Validate: nodes keep applying templates saved before.
 	if fp := t.Ext().Client.Fingerprint; fp != "" && !proto.ValidFingerprint(fp) {
-		return nil, &proto.Error{Code: "config_fingerprint", Field: "mikan.client.fingerprint", Detail: fp}
+		return nil, &proto.Error{Code: "config_fingerprint", Field: "cozy.client.fingerprint", Detail: fp}
 	}
 	if err := s.checkDestResolves(ctx, t); err != nil {
 		return nil, err

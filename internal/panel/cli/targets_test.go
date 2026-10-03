@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/config"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
+	"cozy/internal/panel/config"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
 )
 
 // The installer's SNI step: `targets scan --json` lists sites next to the server and the

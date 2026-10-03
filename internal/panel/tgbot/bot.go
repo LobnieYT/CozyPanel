@@ -18,11 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // Settings keys of the bot.
@@ -54,13 +53,8 @@ type Deps struct {
 	Log     *slog.Logger
 	Now     func() time.Time
 	Limits  Limits // zero: DefaultLimits
-	// Billing sells tariffs in the menu; nil: no shop.
-	Billing *billing.Service
 	// Tunnel reaches addr through node id, for RouteNode; nil: the panel has no nodes.
 	Tunnel func(ctx context.Context, nodeID int64, addr string) (net.Conn, error)
-
-	// stars takes a successful Stars payment instead of Billing; tests only.
-	stars func(ctx context.Context, tgID int64, payload, chargeID, currency string, amount int64) error
 }
 
 // Status is what the admin panel shows.
@@ -112,6 +106,9 @@ func New(d Deps) *Bot {
 	return &Bot{d: d, reload: make(chan struct{}, 1), input: map[int64][]time.Time{},
 		transfers: map[int64]transfer{}, refused: map[string]time.Time{}, notices: map[string]*noticeState{}}
 }
+
+// lang is the bot's language for a chat without subscriptions of its own.
+func (b *Bot) lang(ctx context.Context) string { return b.Config(ctx).Lang }
 
 // Status of the running bot.
 func (b *Bot) Status() Status {
@@ -385,19 +382,13 @@ func (b *Bot) flooding(chat int64) bool {
 	return len(recent) >= floodInputs
 }
 
-// handle takes one update. Only a payment can fail in a way that is worth offering the
-// update again for; the rest is answered, or dropped, as it comes.
+// handle takes one update. Updates are answered, or dropped, as they come.
 func (b *Bot) handle(ctx context.Context, c *Client, up Update) error {
 	out := b.out.Load()
 	if out == nil {
 		return nil
 	}
 	switch {
-	case up.PreCheckoutQuery != nil:
-		// Ten seconds from Telegram, whatever else the loop waits for: its own goroutine.
-		b.running.Go(func() { b.preCheckout(ctx, c, up.PreCheckoutQuery) })
-	case up.Message != nil && up.Message.SuccessfulPayment != nil && up.Message.Chat.Type == "private":
-		return b.starsPaid(ctx, up.Message)
 	case up.CallbackQuery != nil && up.CallbackQuery.Message != nil && up.CallbackQuery.Message.Chat.Type == "private":
 		if cmd, _, _ := strings.Cut(up.CallbackQuery.Data, ":"); cmd == "ta" || cmd == "tx" {
 			b.onTransfer(ctx, c, out, up.CallbackQuery)

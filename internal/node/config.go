@@ -5,8 +5,8 @@ import (
 
 	"github.com/metacubex/mihomo/listener"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 // Traffic to the node's own networks is refused: without these rules any VPN user could
@@ -127,7 +127,7 @@ func sharedListeners(st nodeapi.DesiredState) []string {
 	return out
 }
 
-// template reads the inbound's listener template; states saved by mikan ≤ 0.1.2 carry
+// template reads the inbound's listener template; states saved by cozy ≤ 0.1.2 carry
 // a preset with its settings instead.
 func template(in nodeapi.Inbound) (proto.Template, error) {
 	if len(in.Config) > 0 {

@@ -10,9 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 func (e *env) link(tg int64) {
@@ -154,23 +152,6 @@ func TestNoticeBookkeeping(t *testing.T) {
 	}
 }
 
-// The pre-checkout answer has Telegram's ten seconds. Whatever else is slow, it goes out
-// at once: the update loop does not wait for the other calls to Telegram.
-func TestPreCheckoutDoesNotWaitForOtherCalls(t *testing.T) {
-	e := setup(t)
-	e.tg.mu.Lock()
-	e.tg.stall = map[string]time.Duration{"answerCallbackQuery": 2500 * time.Millisecond}
-	e.tg.mu.Unlock()
-	n := e.tg.count()
-	start := time.Now()
-	e.press(555, 1, "m")
-	e.tg.push(Update{PreCheckoutQuery: &PreCheckoutQuery{ID: "q1", From: User{ID: 555}, Currency: "XTR", TotalAmount: 10, InvoicePayload: "p"}})
-	e.tg.until(t, n, func(cs []call) bool { _, ok := find(cs, "answerPreCheckoutQuery"); return ok })
-	if took := time.Since(start); took > 1500*time.Millisecond {
-		t.Fatalf("the pre-checkout waited %s for a callback answer", took)
-	}
-}
-
 // A Bot API that does not answer is given up on after a while: the call is not held for
 // the minute a long poll may take.
 func TestCallsHaveTheirOwnTimeout(t *testing.T) {
@@ -206,116 +187,19 @@ func TestCallsHaveTheirOwnTimeout(t *testing.T) {
 	if _, err := c.Send(ctx, 1, "hi", nil, false); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled: %v", err)
 	}
-	// The pre-checkout answer gets less than other calls: Telegram's ten seconds are short.
-	if preCheckoutTimeout >= 10*time.Second || preCheckoutDeadline >= 10*time.Second {
-		t.Fatalf("the pre-checkout answer has %s, Telegram gives ten seconds", preCheckoutTimeout)
-	}
-}
-
-// The saved offset keeps a restart from receiving the last batch again, and a payment
-// that could not be applied is offered again, in order, until it is.
-func TestOffsetIsSavedAndPaymentsAreRetried(t *testing.T) {
-	updateRetryPause = time.Millisecond
-	t.Cleanup(func() { updateRetryPause = 2 * time.Second })
-	var tries atomic.Int32
-	e := setup(t, func(e *env, d *Deps) {
-		d.stars = func(_ context.Context, tg int64, payload, charge, currency string, amount int64) error {
-			if tries.Add(1) <= 2 {
-				return errors.New("database is locked")
-			}
-			return nil
-		}
-	})
-	pay := Update{Message: &Message{MessageID: 9, From: &User{ID: 555}, Chat: Chat{ID: 555, Type: "private"},
-		SuccessfulPayment: &SuccessfulPayment{Currency: "XTR", TotalAmount: 10, InvoicePayload: "p", ChargeID: "ch1"}}}
-	e.tg.push(pay)
-	e.say(555, "привет") // comes after the payment and waits for it
-	n := e.tg.count()
-	until(t, "the payment is applied on the third try", func() bool { return tries.Load() == 3 })
-	e.tg.wait(t, n, "sendMessage") // the chat message is handled after it
-	if tries.Load() != 3 {
-		t.Fatalf("an applied payment was offered again: %d tries", tries.Load())
-	}
-	var rec offsetRecord
-	until(t, "the offset is saved", func() bool {
-		r, ok, _ := settings.Get[offsetRecord](e.ctx, e.set, KeyOffset)
-		rec = r
-		return ok && rec.Bot == 1 && rec.Offset >= 1002
-	})
-
-	// A restart goes on from there, not from the beginning.
-	e.tg.mu.Lock()
-	before := len(e.tg.offsets)
-	e.tg.mu.Unlock()
-	e.bot.Reload()
-	until(t, "the restarted bot polls", func() bool {
-		e.tg.mu.Lock()
-		defer e.tg.mu.Unlock()
-		return len(e.tg.offsets) > before+1
-	})
-	e.tg.mu.Lock()
-	first := e.tg.offsets[before:]
-	e.tg.mu.Unlock()
-	for _, o := range first {
-		if o < rec.Offset {
-			t.Fatalf("a restarted bot asked from %d, the saved offset is %d: %v", o, rec.Offset, first)
-		}
-	}
-}
-
-// An update that never works is dropped after a few tries, and does not stop the bot.
-func TestPoisonUpdateDoesNotStopTheBot(t *testing.T) {
-	updateRetryPause = time.Millisecond
-	t.Cleanup(func() { updateRetryPause = 2 * time.Second })
-	var tries atomic.Int32
-	e := setup(t, func(e *env, d *Deps) {
-		d.stars = func(context.Context, int64, string, string, string, int64) error {
-			tries.Add(1)
-			return errors.New("always")
-		}
-	})
-	e.tg.push(Update{Message: &Message{MessageID: 9, From: &User{ID: 555}, Chat: Chat{ID: 555, Type: "private"},
-		SuccessfulPayment: &SuccessfulPayment{Currency: "XTR", TotalAmount: 10, InvoicePayload: "p", ChargeID: "ch1"}}})
-	n := e.tg.count()
-	e.say(555, "привет")
-	e.tg.wait(t, n, "sendMessage")
-	if got := tries.Load(); got != maxUpdateTries {
-		t.Fatalf("tried %d times, want %d", got, maxUpdateTries)
-	}
-}
-
-// A payment that matches no invoice never will: not offered again.
-func TestPaymentWithoutInvoiceIsNotRetried(t *testing.T) {
-	updateRetryPause = time.Millisecond
-	t.Cleanup(func() { updateRetryPause = 2 * time.Second })
-	var tries atomic.Int32
-	e := setup(t, func(e *env, d *Deps) {
-		d.stars = func(context.Context, int64, string, string, string, int64) error {
-			tries.Add(1)
-			return billing.ErrBadPayment
-		}
-	})
-	e.tg.push(Update{Message: &Message{MessageID: 9, From: &User{ID: 555}, Chat: Chat{ID: 555, Type: "private"},
-		SuccessfulPayment: &SuccessfulPayment{Currency: "XTR", TotalAmount: 10, InvoicePayload: "p", ChargeID: "ch1"}}})
-	n := e.tg.count()
-	e.say(555, "привет")
-	e.tg.wait(t, n, "sendMessage")
-	if tries.Load() != 1 {
-		t.Fatalf("an unmatched payment was tried %d times", tries.Load())
-	}
 }
 
 // render is one pass: a value that itself holds {something} is not filled in again, and
 // the result does not depend on the order the map is walked in.
 func TestRenderIsOnePassAndDeterministic(t *testing.T) {
-	vars := map[string]string{"name": "{used} <b>", "used": "5 GB", "brand": "Mikan", "left": "1 GB"}
-	want := "Mikan: {used} &lt;b&gt;, 5 GB, {unknown}, {open"
+	vars := map[string]string{"name": "{used} <b>", "used": "5 GB", "brand": "Cozy", "left": "1 GB"}
+	want := "Cozy: {used} &lt;b&gt;, 5 GB, {unknown}, {open"
 	for range 200 {
 		if got := render("{brand}: {name}, {used}, {unknown}, {open", vars); got != want {
 			t.Fatalf("render: %q, want %q", got, want)
 		}
 	}
-	if got := render("a < b {brand}", vars); got != "a &lt; b Mikan" {
+	if got := render("a < b {brand}", vars); got != "a &lt; b Cozy" {
 		t.Fatalf("the text is escaped: %q", got)
 	}
 }

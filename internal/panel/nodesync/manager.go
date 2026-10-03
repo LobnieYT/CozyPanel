@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // LocalNode is the id of the panel's own node, reached over the unix socket.

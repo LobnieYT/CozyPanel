@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/server"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/server"
+	"cozy/internal/panel/settings"
 )
 
 func freePort(t *testing.T) int {

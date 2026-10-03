@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // An inbound behind a TCP proxy listens on its own address on the node (GitHub issue

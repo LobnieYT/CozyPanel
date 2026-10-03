@@ -12,13 +12,13 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/hostname"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/subs"
-	"mikan/internal/panel/tgbot"
-	"mikan/internal/release"
+	"cozy/internal/hostname"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
+	"cozy/internal/panel/tgbot"
+	"cozy/internal/release"
 )
 
 type NodeInfo struct {

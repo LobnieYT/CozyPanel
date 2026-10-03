@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // User is what the detector needs to know about one slot: a subscription's own keys,

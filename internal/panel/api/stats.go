@@ -8,9 +8,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 type TopUser struct {

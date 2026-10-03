@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
 )
 
 // The panel reaches Telegram through a node: the node opens a tunnel to a tunnel host
@@ -82,11 +82,11 @@ func TestConnectTunnel(t *testing.T) {
 func mtlsNode(t *testing.T, serve func(net.Listener)) *nodeapi.Client {
 	t.Helper()
 	now := time.Now()
-	panel, err := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	panel, err := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	node, err := nodetls.Generate("node-2.mikan", x509.ExtKeyUsageServerAuth, now)
+	node, err := nodetls.Generate("node-2.cozy", x509.ExtKeyUsageServerAuth, now)
 	if err != nil {
 		t.Fatal(err)
 	}

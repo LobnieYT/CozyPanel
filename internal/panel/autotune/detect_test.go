@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // A node like the default one plus gRPC: three TCP inbounds, two UDP.

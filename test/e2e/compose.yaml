@@ -1,4 +1,4 @@
-name: mikan-e2e
+name: cozy-e2e
 
 x-client: &client
   image: metacubex/mihomo:v1.19.31
@@ -9,14 +9,14 @@ x-client: &client
 services:
   node:
     build: {context: ../.., dockerfile: test/e2e/Dockerfile}
-    command: ["mikan-node"]
+    command: ["cozy-node"]
     environment:
-      MIKAN_DATA_DIR: /data
-      MIKAN_NODE_SOCKET: /run/mikan/node.sock
-      MIKAN_DEVICE_RELEASE: 3s
+      COZY_DATA_DIR: /data
+      COZY_NODE_SOCKET: /run/cozy/node.sock
+      COZY_DEVICE_RELEASE: 3s
       # the test target lives on a private docker network
-      MIKAN_ALLOW_PRIVATE: "true"
-    volumes: ["run:/run/mikan", "nodedata:/data"]
+      COZY_ALLOW_PRIVATE: "true"
+    volumes: ["run:/run/cozy", "nodedata:/data"]
 
   target:
     build: {context: ../.., dockerfile: test/e2e/Dockerfile}
@@ -32,13 +32,13 @@ services:
     volumes:
       - "../..:/src:ro"
       - "work:/work"
-      - "run:/run/mikan"
-      - "mikan-gomod:/go/pkg/mod"
-      - "mikan-gocache:/root/.cache/go-build"
+      - "run:/run/cozy"
+      - "cozy-gomod:/go/pkg/mod"
+      - "cozy-gocache:/root/.cache/go-build"
 
 volumes:
   run: {}
   nodedata: {}
   work: {}
-  mikan-gomod: {external: true}
-  mikan-gocache: {external: true}
+  cozy-gomod: {external: true}
+  cozy-gocache: {external: true}

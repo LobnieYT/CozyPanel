@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
 )
 
 // The admin's own Clash rules over the API: a bad line is refused with its number, a

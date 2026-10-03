@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 func TestFormat(t *testing.T) {

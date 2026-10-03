@@ -271,9 +271,7 @@ const poolUsage = `-- name: PoolUsage :one
 SELECT
   (SELECT COUNT(*) FROM traffic_grants g
     WHERE g.pool_id = ?1 AND g.remaining > 0 AND (g.expires_at IS NULL OR g.expires_at > CAST(?2 AS INTEGER))) AS grants,
-  (SELECT COUNT(*) FROM traffic_packages k WHERE k.pool_id = ?1 AND k.archived = 0) AS packages,
-  (SELECT COUNT(*) FROM payments p JOIN traffic_packages k ON k.id = p.package_id
-    WHERE k.pool_id = ?1 AND p.status IN ('pending', 'paid')) AS payments
+  (SELECT COUNT(*) FROM traffic_packages k WHERE k.pool_id = ?1 AND k.archived = 0) AS packages
 `
 
 type PoolUsageParams struct {
@@ -284,16 +282,14 @@ type PoolUsageParams struct {
 type PoolUsageRow struct {
 	Grants   int64
 	Packages int64
-	Payments int64
 }
 
 // What a pool still holds that deleting it would destroy (the cascade takes grants and
-// packages with it, and a paid invoice of a package loses the package): traffic users
-// paid for and have left, packages of the catalog, invoices not closed yet.
+// packages with it): granted traffic users have left and packages of the catalog.
 func (q *Queries) PoolUsage(ctx context.Context, arg PoolUsageParams) (PoolUsageRow, error) {
 	row := q.db.QueryRowContext(ctx, poolUsage, arg.PoolID, arg.Now)
 	var i PoolUsageRow
-	err := row.Scan(&i.Grants, &i.Packages, &i.Payments)
+	err := row.Scan(&i.Grants, &i.Packages)
 	return i, err
 }
 

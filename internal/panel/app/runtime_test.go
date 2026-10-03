@@ -2,26 +2,18 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"mikan/internal/panel/addons"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/server"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/subs"
-	"mikan/internal/panel/tgbot"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/server"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/subs"
 )
 
 // Run returns only when every worker has: the database is closed after it, and a worker
@@ -197,61 +189,3 @@ func TestHSTSOnlyWhereTheTLSIsOurs(t *testing.T) {
 	}
 }
 
-// A provider that fails is not "payment is off".
-func TestInvoiceFailureIsReported(t *testing.T) {
-	yk := &ykAdapter{pays: map[string]addons.Status{}}
-	srv := httptest.NewServer(yk)
-	t.Cleanup(srv.Close)
-	dir := t.TempDir()
-	state, _ := json.Marshal(addons.State{Adapters: map[string]addons.Installed{"yookassa": {Version: "1.0.1", Digest: "sha256:1", Status: "running",
-		Listen: strings.TrimPrefix(srv.URL, "http://"), Token: "yk-token"}}})
-	if err := os.MkdirAll(filepath.Join(dir, "addons"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "addons", "state.json"), state, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	h := newHarness(t, func(o *Options) { o.DataDir = dir })
-	ctx := context.Background()
-	if err := domain.Seed(ctx, h.st, h.now); err != nil {
-		t.Fatal(err)
-	}
-	set := settings.New(h.st.Q)
-	for k, v := range map[string]any{settings.KeyPublicHost: "203.0.113.10", settings.KeyPanelPort: 21355, tgbot.KeyToken: tgToken} {
-		if err := settings.Set(ctx, set, k, v); err != nil {
-			t.Fatal(err)
-		}
-	}
-	ts, _ := h.st.Q.ListTariffs(ctx)
-	sale, err := h.st.Q.UpdateTariff(ctx, db.UpdateTariffParams{Name: "Месяц", TrafficLimit: ts[1].TrafficLimit, DurationDays: 30, DeviceLimit: ts[1].DeviceLimit,
-		ResetStrategy: ts[1].ResetStrategy, PriceRub: sql.NullInt64{Int64: 19900, Valid: true}, OnSale: 1, ID: ts[1].ID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp, _ := h.login(password, ""); resp.StatusCode != http.StatusOK {
-		t.Fatal("login")
-	}
-	api := "/" + adminPath + "/api/v1"
-	csrf := map[string]string{"X-CSRF-Token": h.csrf}
-	if resp, body := h.do(http.MethodPatch, api+"/payments/settings", map[string]any{"enabled": true}, csrf); resp.StatusCode != http.StatusOK {
-		t.Fatalf("settings: %d %s", resp.StatusCode, body)
-	}
-	if resp, body := h.do(http.MethodPatch, api+"/addons/yookassa", map[string]any{"enabled": true, "settings": map[string]any{"shop_id": ykShop, "secret_key": ykSecret}}, csrf); resp.StatusCode != http.StatusOK {
-		t.Fatalf("adapter: %d %s", resp.StatusCode, body)
-	}
-	same := map[string]string{"Sec-Fetch-Site": "same-origin"}
-	pay := func(provider string) (int, string) {
-		resp, body := h.do(http.MethodPost, "/"+subPath+"/tg/pay", map[string]any{"init_data": initData(tgToken, 555, h.now), "tariff_id": sale.ID, "provider": provider}, same)
-		return resp.StatusCode, string(body)
-	}
-	yk.mu.Lock()
-	yk.failCreate = true
-	yk.mu.Unlock()
-	if code, body := pay("addon:yookassa"); code != http.StatusBadGateway || !strings.Contains(body, "invoice_failed") || strings.Contains(body, "provider_off") {
-		t.Fatalf("the provider failed: %d %s", code, body)
-	}
-	// A provider that is simply not there is still "off".
-	if code, body := pay("addon:cryptobot"); code != http.StatusConflict || !strings.Contains(body, "provider_off") {
-		t.Fatalf("a provider that is off: %d %s", code, body)
-	}
-}

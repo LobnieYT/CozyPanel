@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/tlscert"
 )
 
 // directory is an ACME directory that answers h, over TLS as lego insists, with its
@@ -36,7 +36,7 @@ func directory(t *testing.T, h http.HandlerFunc) string {
 func manager(t *testing.T, dir string) (*Manager, *tlscert.Holder) {
 	t.Helper()
 	ctx := context.Background()
-	t.Setenv("MIKAN_ACME_DIRECTORY", dir)
+	t.Setenv("COZY_ACME_DIRECTORY", dir)
 	st, err := store.Open(ctx, t.TempDir())
 	if err != nil {
 		t.Fatal(err)

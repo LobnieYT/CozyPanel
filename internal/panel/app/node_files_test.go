@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/tlscert"
 )
 
 // A deleted node takes its certificates and private keys with it. Node ids are reused (the
@@ -22,7 +22,7 @@ func TestNodeFilesGoWithTheNode(t *testing.T) {
 	ctx := t.Context()
 	dataDir := t.TempDir()
 	nodeCerts := tlscert.NewNodeStore(filepath.Join(dataDir, "tls", "custom-nodes"), time.Now)
-	panel, err := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, err := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

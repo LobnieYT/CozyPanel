@@ -1,4 +1,4 @@
-// Package release is the manifest every mikan release publishes next to its files: the
+// Package release is the manifest every cozy release publishes next to its files: the
 // version, the image digest in GitHub Packages, the installer checksums and what changed.
 // The panel and the installer trust a manifest only with a valid signature from the
 // release key, whose public half is PublicKey.
@@ -22,9 +22,9 @@ import (
 const PublicKey = "Z3wSIPBSaJxh5CsGO8eINI0aM0kyrQ46EcJSNeH85W8="
 
 // Repo is where releases are published.
-const Repo = "Miroshka000/mikan"
+const Repo = "LobnieYT/CozyPanel"
 
-// InstallCommand installs mikan from the latest release; run on the server.
+// InstallCommand installs cozy from the latest release; run on the server.
 const InstallCommand = "curl -fsSL https://github.com/" + Repo + "/releases/latest/download/install.sh | sudo bash"
 
 // JoinCommand installs a node of an existing panel with the join key the panel issued.
@@ -37,7 +37,7 @@ type Manifest struct {
 	Version      string            `json:"version"`
 	MinInstaller string            `json:"min_installer,omitempty"`
 	Published    time.Time         `json:"published"`
-	Image        string            `json:"image" doc:"Образ в GitHub Packages, например ghcr.io/miroshka000/mikan"`
+	Image        string            `json:"image" doc:"Образ в GitHub Packages, например ghcr.io/lobnieyt/cozy"`
 	Digest       string            `json:"digest" doc:"sha256 multi-arch образа"`
 	Installer    map[string]Asset  `json:"installer" doc:"Установщик по архитектуре: x86_64, aarch64"`
 	Notes        map[string]string `json:"notes" doc:"Что изменилось, markdown по языкам: en, ru"`

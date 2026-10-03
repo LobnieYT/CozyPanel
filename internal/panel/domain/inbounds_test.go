@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // inbounds is the service over the seeded store: node 1 with vless-xhttp 443/tcp,
@@ -224,7 +224,7 @@ func TestUpdateAllOrNothing(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	st, s := inbounds(t, &now, nil)
 	ctx := context.Background()
-	panel, _ := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	panel, _ := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	b, _, err := AddNode(ctx, st, panel, NodeInput{Name: "B", Host: "198.51.100.20", APIPort: 40000}, now)
 	if err != nil {
 		t.Fatal(err)

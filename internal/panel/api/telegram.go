@@ -13,10 +13,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/tgbot"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/tgbot"
 )
 
 // TelegramView is the bot as the admin panel shows it. The token itself never leaves

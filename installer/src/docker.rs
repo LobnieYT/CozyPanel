@@ -22,13 +22,13 @@ use crate::system::output;
 ///
 /// Each sees only its own data: the node parses traffic from the whole internet, and a
 /// flaw in a protocol's parser must not hand over the panel's database, keys and the
-/// files root reads (update/, addons/). The limits are far above what a busy node uses
+/// files root reads (update/). The limits are far above what a busy node uses
 /// (memory is cgroup-accounted; pids count threads, not connections): they stop a leak or
 /// a flood from taking the host down with the containers.
-pub const PANEL_COMPOSE: &str = r#"name: mikan
+pub const PANEL_COMPOSE: &str = r#"name: cozy
 
 x-hardening: &hardening
-  image: ${MIKAN_IMAGE}
+  image: ${COZY_IMAGE}
   network_mode: host
   restart: unless-stopped
   user: "65532:65532"
@@ -44,11 +44,11 @@ x-hardening: &hardening
 services:
   node:
     <<: *hardening
-    entrypoint: ["/usr/local/bin/mikan-node"]
+    entrypoint: ["/usr/local/bin/cozy-node"]
     environment:
-      MIKAN_DATA_DIR: /data/node
-      MIKAN_NODE_SOCKET: /run/mikan/node.sock
-    volumes: ["./data/node:/data/node", "run:/run/mikan"]
+      COZY_DATA_DIR: /data/node
+      COZY_NODE_SOCKET: /run/cozy/node.sock
+    volumes: ["./data/node:/data/node", "run:/run/cozy"]
     pids_limit: 1024
 
   panel:
@@ -56,14 +56,14 @@ services:
     command: ["serve"]
     depends_on: [node]
     environment:
-      MIKAN_DATA_DIR: /data/panel
-      MIKAN_NODE_SOCKET: /run/mikan/node.sock
-      MIKAN_PANEL_LISTEN: 0.0.0.0:${PANEL_PORT}
-    volumes: ["./data/panel:/data/panel", "run:/run/mikan"]
+      COZY_DATA_DIR: /data/panel
+      COZY_NODE_SOCKET: /run/cozy/node.sock
+      COZY_PANEL_LISTEN: 0.0.0.0:${PANEL_PORT}
+    volumes: ["./data/panel:/data/panel", "run:/run/cozy"]
     mem_limit: 1g
     pids_limit: 512
     healthcheck:
-      test: ["CMD", "/usr/local/bin/mikan", "health"]
+      test: ["CMD", "/usr/local/bin/cozy", "health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -73,11 +73,11 @@ volumes:
 "#;
 
 /// A node of another panel, which drives it over its API port.
-pub const NODE_COMPOSE: &str = r#"name: mikan
+pub const NODE_COMPOSE: &str = r#"name: cozy
 
 services:
   node:
-    image: ${MIKAN_IMAGE}
+    image: ${COZY_IMAGE}
     network_mode: host
     restart: unless-stopped
     user: "65532:65532"
@@ -89,12 +89,12 @@ services:
     logging:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
-    entrypoint: ["/usr/local/bin/mikan-node"]
+    entrypoint: ["/usr/local/bin/cozy-node"]
     environment:
-      MIKAN_DATA_DIR: /data/node
-      MIKAN_NODE_SOCKET: /run/mikan/node.sock
-      MIKAN_NODE_JOIN: ${MIKAN_NODE_JOIN}
-    volumes: ["./data/node:/data/node", "run:/run/mikan"]
+      COZY_DATA_DIR: /data/node
+      COZY_NODE_SOCKET: /run/cozy/node.sock
+      COZY_NODE_JOIN: ${COZY_NODE_JOIN}
+    volumes: ["./data/node:/data/node", "run:/run/cozy"]
     pids_limit: 1024
 
 volumes:
@@ -107,7 +107,7 @@ pub fn compose_text(node: bool) -> &'static str {
 }
 
 /// Makes compose.yaml the one this installer writes: it has been written once, at install,
-/// so a server installed by an older mikan keeps that one (the whole ./data mounted in both
+/// so a server installed by an older cozy keeps that one (the whole ./data mounted in both
 /// containers, no limits) until this runs. Returns the text it replaced, for the caller to
 /// put back if the new one does not start; the old file also stays as compose.yaml.old.
 pub fn ensure_compose(root: &Path, node: bool) -> Result<Option<String>> {
@@ -226,7 +226,7 @@ fn forward(r: impl Read + Send + 'static, tx: mpsc::Sender<String>) -> thread::J
 const DISTRO_PACKAGES: [&str; 7] =
     ["docker.io", "docker-compose", "docker-compose-v2", "docker-doc", "podman-docker", "containerd", "runc"];
 
-/// Replaces a Docker that cannot run mikan (no compose v2) with Docker CE from
+/// Replaces a Docker that cannot run cozy (no compose v2) with Docker CE from
 /// get.docker.com. The packages are removed, not purged: images, volumes and containers
 /// stay in /var/lib/docker and come back with the new engine.
 pub fn replace(mut line: impl FnMut(&str)) -> Result<()> {
@@ -332,7 +332,7 @@ pub fn load(archive: &str) -> Result<String> {
         .context("the archive has no image")
 }
 
-/// `docker compose` for /opt/mikan.
+/// `docker compose` for /opt/cozy.
 pub fn compose(args: &[&str]) -> Command {
     let mut cmd = Command::new("docker");
     cmd.args(["compose", "--project-directory", DIR]).args(args).current_dir(DIR);
@@ -349,14 +349,14 @@ pub fn compose_run(args: &[&str]) -> Result<Output> {
     Ok(out)
 }
 
-/// `mikan admin …` in the running panel. stdin is fed to the command when given.
+/// `cozy admin …` in the running panel. stdin is fed to the command when given.
 pub fn admin(args: &[&str], stdin: Option<&str>) -> Result<Output> {
-    let mut full = vec!["exec", "-T", "panel", "mikan", "admin"];
+    let mut full = vec!["exec", "-T", "panel", "cozy", "admin"];
     full.extend_from_slice(args);
     with_stdin(compose(&full), stdin)
 }
 
-/// `mikan admin …` in a one-off panel container, before the panel runs (bootstrap).
+/// `cozy admin …` in a one-off panel container, before the panel runs (bootstrap).
 pub fn admin_once(args: &[&str], stdin: Option<&str>) -> Result<Output> {
     let mut full = vec!["run", "--rm", "--no-deps", "-T", "panel", "admin"];
     full.extend_from_slice(args);
@@ -378,13 +378,13 @@ pub fn check(out: Output) -> Result<Output> {
         return Ok(out);
     }
     let err = String::from_utf8_lossy(&out.stderr);
-    let msg = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("failed").trim().trim_start_matches("mikan: ");
+    let msg = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("failed").trim().trim_start_matches("cozy: ");
     bail!("{msg}")
 }
 
 /// The panel answers on its port (the container's own health check).
 pub fn panel_healthy() -> bool {
-    compose(&["exec", "-T", "panel", "mikan", "health"])
+    compose(&["exec", "-T", "panel", "cozy", "health"])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -448,7 +448,7 @@ mod tests {
     #[test]
     fn pull_progress() {
         let mut p = PullProgress::default();
-        assert_eq!(p.feed("0.3.9: Pulling from miroshka000/mikan"), None);
+        assert_eq!(p.feed("0.3.9: Pulling from lobnieyt/cozy"), None);
         assert_eq!(p.feed("4f4fb700ef54: Pulling fs layer"), Some(0.0));
         assert_eq!(p.feed("a1b2c3d4e5f6: Already exists"), Some(0.5));
         assert_eq!(p.feed("4f4fb700ef54: Download complete"), Some(0.5));
@@ -466,9 +466,9 @@ mod tests {
         }
         let node = PANEL_COMPOSE.split("\n  node:").nth(1).unwrap().split("\n  panel:").next().unwrap();
         let panel = PANEL_COMPOSE.split("\n  panel:").nth(1).unwrap().split("\nvolumes:").next().unwrap();
-        assert!(node.contains("./data/node:/data/node") && node.contains("MIKAN_DATA_DIR: /data/node"));
+        assert!(node.contains("./data/node:/data/node") && node.contains("COZY_DATA_DIR: /data/node"));
         assert!(!node.contains("data/panel"), "the node reaches the panel's data");
-        assert!(panel.contains("./data/panel:/data/panel") && panel.contains("MIKAN_DATA_DIR: /data/panel"));
+        assert!(panel.contains("./data/panel:/data/panel") && panel.contains("COZY_DATA_DIR: /data/panel"));
         assert!(!panel.contains("data/node"), "the panel reaches the node's data");
         // The panel's memory is bounded; a node's grows with its connections, and one killed
         // for it would drop every client, so it has none.
@@ -489,7 +489,7 @@ mod tests {
     fn an_old_compose_is_replaced_once() {
         use std::os::unix::fs::PermissionsExt;
         let d = tmpdir("compose");
-        let old = "name: mikan\nservices:\n  panel:\n    volumes: [\"./data:/data\"]\n";
+        let old = "name: cozy\nservices:\n  panel:\n    volumes: [\"./data:/data\"]\n";
         fs::write(d.join("compose.yaml"), old).unwrap();
         assert_eq!(ensure_compose(&d, false).unwrap().as_deref(), Some(old));
         assert_eq!(fs::read_to_string(d.join("compose.yaml")).unwrap(), PANEL_COMPOSE);

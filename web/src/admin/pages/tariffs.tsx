@@ -3,15 +3,14 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Archive, Layers, Package, Pencil, Plus, Tag } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas, type Tariff } from "../../api/client";
-import { qk, usePaymentSettings, usePools, useTariffs } from "../../api/hooks";
+import { qk, usePools, useTariffs } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { Tabs } from "../../components/tabs";
 import { useToast } from "../../components/toast";
-import { Button, EmptyState, Field, PageHeader, Pill, Segmented, Skeleton } from "../../components/ui";
-import { Switch } from "../../components/switch";
+import { Button, EmptyState, Field, PageHeader, Segmented, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
-import { bytes, days, GiB, months, rubles, termMonths } from "../../lib/format";
+import { bytes, days, GiB, months, termMonths } from "../../lib/format";
 import { TARIFF_TABS } from "../search";
 import { PackagesCard } from "./packages";
 import { PoolLimitsField, PoolsCard } from "./pools";
@@ -53,7 +52,6 @@ export function TariffsPage() {
   const pools = usePools();
   const poolNames = new Map((pools.data ?? []).map((p) => [p.id, p.name]));
   const tariffs = useTariffs();
-  const selling = usePaymentSettings().data?.enabled === true;
   const [edit, setEdit] = useState<Tariff | "new" | null>(null);
   const [archive, setArchive] = useState<Tariff | null>(null);
   const qc = useQueryClient();
@@ -62,7 +60,6 @@ export function TariffsPage() {
     mutationFn: (id: number) => unwrap(api.DELETE("/api/v1/tariffs/{id}", { params: { path: { id } } })),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.tariffs });
-      void qc.invalidateQueries({ queryKey: qk.paymentSettings });
       toast.ok(t("tariffs.archived"));
       setArchive(null);
     },
@@ -126,14 +123,7 @@ export function TariffsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <h2 className="font-display text-xl font-medium tracking-tight">{tr.name}</h2>
-                          {tr.price_label ? <div className="mt-1 text-[13px] font-medium text-[var(--mikan-700)]">{tr.price_label}</div> : null}
-                          {selling && tr.on_sale ? (
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-600)]">
-                              <Pill tone="ok">{t("tariffs.onSale")}</Pill>
-                              {tr.price_stars != null ? <span className="num">⭐ {tr.price_stars}</span> : null}
-                              {tr.price_rub != null ? <span className="num">{rubles(tr.price_rub)}</span> : null}
-                            </div>
-                          ) : null}
+                          {tr.price_label ? <div className="mt-1 text-[13px] font-medium text-[var(--cozy-200)]">{tr.price_label}</div> : null}
                         </div>
                         <div className="flex gap-1">
                           <button type="button" className="icon-btn" aria-label={t("tariffs.editLabel", { name: tr.name })} onClick={() => setEdit(tr)}>
@@ -200,13 +190,8 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
   const [devicesUnlimited, setDevicesUnlimited] = useState(false);
   const [reset, setReset] = useState<Tariff["reset_strategy"]>("period");
   const [price, setPrice] = useState("");
-  const [onSale, setOnSale] = useState(false);
   const allPools = usePools();
-  // With selling off the sale block is hidden; its values stay as they were.
-  const selling = usePaymentSettings().data?.enabled === true;
   const [poolGB, setPoolGB] = useState<Record<number, string>>({});
-  const [stars, setStars] = useState("");
-  const [rub, setRub] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -223,10 +208,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
     setDevices(String(tr?.device_limit ?? 3));
     setReset(tr?.reset_strategy ?? "period");
     setPrice(tr?.price_label ?? "");
-    setOnSale(tr?.on_sale ?? false);
     setPoolGB(Object.fromEntries((tr?.pools ?? []).map((p) => [p.pool_id, p.traffic_limit != null ? String(+(p.traffic_limit / GiB).toFixed(2)) : ""])));
-    setStars(tr?.price_stars != null ? String(tr.price_stars) : "");
-    setRub(tr?.price_rub != null ? String(tr.price_rub / 100) : "");
     setErrors({});
   }, [tariff]);
 
@@ -235,7 +217,6 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
       tariff === "new" || !tariff ? unwrap(api.POST("/api/v1/tariffs", { body })) : unwrap(api.PUT("/api/v1/tariffs/{id}", { params: { path: { id: tariff.id } }, body })),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.tariffs });
-      void qc.invalidateQueries({ queryKey: qk.paymentSettings });
       toast.ok(tariff === "new" ? t("tariffs.created") : t("tariffs.saved"));
       onClose();
     },
@@ -265,11 +246,6 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
     if (toDay && (!Number.isInteger(monN) || monN < 0 || monN > 120)) errs.duration_days = t("tariffs.errMonths");
     if (toDay && (!Number.isInteger(dayN) || dayN < 1 || dayN > 31)) errs.billing_day = t("tariffs.errBillingDay");
     if (!devicesUnlimited && (!Number.isInteger(devN) || devN < 1 || devN > 100)) errs.device_limit = t("tariffs.errDevices");
-    const starsN = Number(stars);
-    const rubN = Math.round(Number(rub.replace(",", ".")) * 100);
-    if (stars.trim() && (!Number.isInteger(starsN) || starsN < 1 || starsN > 10000)) errs.price_stars = t("tariffs.errStars");
-    if (rub.trim() && (!Number.isFinite(rubN) || rubN < 100 || rubN > 100000000)) errs.price_rub = t("tariffs.errRub");
-    if (onSale && !stars.trim() && !rub.trim()) errs.on_sale = t("errors.api.on_sale_no_price");
     setErrors(errs);
     if (Object.keys(errs).length) return;
     save.mutate({
@@ -281,9 +257,6 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
       device_limit: devicesUnlimited ? undefined : devN,
       reset_strategy: unlimited ? "none" : reset,
       price_label: price.trim() || undefined,
-      price_stars: stars.trim() ? starsN : undefined,
-      price_rub: rub.trim() ? rubN : undefined,
-      on_sale: onSale,
       pools: poolLimits,
       // PUT replaces the tariff: keep its place in the list.
       sort: tariff && tariff !== "new" ? tariff.sort : undefined,
@@ -385,37 +358,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
             <PoolLimitsField pools={allPools.data} value={poolGB} onChange={setPoolGB} />
           </Field>
         ) : null}
-        <div className="border-t border-[var(--hairline)] pt-4" role="group" aria-label={t("tariffs.sale")}>
-          {selling ? (
-            <>
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-[13px] font-semibold">{t("tariffs.sale")}</div>
-                  <div className="text-xs text-[var(--ink-500)]">{t("tariffs.saleSub")}</div>
-                </div>
-                <Switch checked={onSale} onChange={setOnSale} label={t("tariffs.onSale")} />
-              </div>
-              {errors.on_sale ? (
-                <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-                  {errors.on_sale}
-                </p>
-              ) : null}
-              <div className="grid gap-x-3 sm:grid-cols-2">
-                <Field label={t("tariffs.priceStars")} htmlFor="t-stars" hint={t("tariffs.priceStarsHint")} error={errors.price_stars}>
-                  <div className="flex items-center gap-2">
-                    <input id="t-stars" className="input max-w-[140px]" inputMode="numeric" value={stars} onChange={(e) => setStars(e.target.value)} placeholder="150" aria-invalid={!!errors.price_stars} />
-                    <span className="text-[var(--ink-500)]">⭐</span>
-                  </div>
-                </Field>
-                <Field label={t("tariffs.priceRub")} htmlFor="t-rub" hint={t("tariffs.priceRubHint")} error={errors.price_rub}>
-                  <div className="flex items-center gap-2">
-                    <input id="t-rub" className="input max-w-[140px]" inputMode="decimal" value={rub} onChange={(e) => setRub(e.target.value)} placeholder="199" aria-invalid={!!errors.price_rub} />
-                    <span className="text-[var(--ink-500)]">₽</span>
-                  </div>
-                </Field>
-              </div>
-            </>
-          ) : null}
+        <div className="border-t border-[var(--hairline)] pt-4">
           <Field label={t("tariffs.price")} htmlFor="t-price" hint={t("tariffs.priceHint")}>
             <input id="t-price" className="input" value={price} onChange={(e) => setPrice(e.target.value)} maxLength={40} placeholder={t("tariffs.pricePlaceholder")} />
           </Field>

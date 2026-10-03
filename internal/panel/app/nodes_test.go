@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/tgbot"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/tgbot"
 )
 
 // A node something still goes through is not deleted: the API names the inbounds and
@@ -32,7 +32,7 @@ func TestDeleteNodeInUse(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	panel, _ := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, _ := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	b, _, err := domain.AddNode(ctx, h.st, panel, domain.NodeInput{Name: "B", Host: "198.51.100.20", APIPort: 40000}, time.Now())
 	if err != nil {
 		t.Fatal(err)

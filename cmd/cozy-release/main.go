@@ -1,11 +1,11 @@
-// mikan-release makes the signed manifest of a release (used by .github/workflows/release.yml)
+// cozy-release makes the signed manifest of a release (used by .github/workflows/release.yml)
 // and the release signing key.
 //
-//	mikan-release keygen -out release-signing.pem
-//	RELEASE_SIGNING_KEY="$(cat key.pem)" mikan-release manifest -version 0.3.9 \
-//	    -image ghcr.io/miroshka000/mikan -digest sha256:… \
-//	    -asset x86_64=dist/mikan-x86_64 -asset aarch64=dist/mikan-aarch64 -out dist
-//	mikan-release verify dist/manifest.json
+//	cozy-release keygen -out release-signing.pem
+//	RELEASE_SIGNING_KEY="$(cat key.pem)" cozy-release manifest -version 0.3.9 \
+//	    -image ghcr.io/lobnieyt/cozy -digest sha256:… \
+//	    -asset x86_64=dist/cozy-x86_64 -asset aarch64=dist/cozy-aarch64 -out dist
+//	cozy-release verify dist/manifest.json
 package main
 
 import (
@@ -25,19 +25,19 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/release"
+	"cozy/internal/release"
 )
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "mikan-release:", err)
+		fmt.Fprintln(os.Stderr, "cozy-release:", err)
 		os.Exit(1)
 	}
 }
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: mikan-release keygen|manifest|verify …")
+		return errors.New("usage: cozy-release keygen|manifest|verify …")
 	}
 	switch args[0] {
 	case "keygen":
@@ -87,7 +87,7 @@ func (a *assets) Set(v string) error { *a = append(*a, v); return nil }
 func makeManifest(args []string) error {
 	fs := flag.NewFlagSet("manifest", flag.ContinueOnError)
 	version := fs.String("version", "", "release version, e.g. 0.3.9")
-	image := fs.String("image", "", "image repository, e.g. ghcr.io/miroshka000/mikan")
+	image := fs.String("image", "", "image repository, e.g. ghcr.io/lobnieyt/cozy")
 	digest := fs.String("digest", "", "sha256 digest of the pushed multi-arch image")
 	changelog := fs.String("changelog", "CHANGELOG.md", "where the release notes are")
 	out := fs.String("out", "dist", "output directory")
@@ -148,7 +148,7 @@ func makeManifest(args []string) error {
 
 func verify(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: mikan-release verify manifest.json")
+		return errors.New("usage: cozy-release verify manifest.json")
 	}
 	data, err := os.ReadFile(args[0])
 	if err != nil {

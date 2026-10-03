@@ -185,7 +185,7 @@ func TestVLESSEncryption(t *testing.T) {
 	if code(Validate(mustParse(t, "type: vless\ndecryption: nope\n"+src[strings.Index(src, "reality-config"):]), Options{})) != "vless_decryption" {
 		t.Fatal("a broken decryption must be refused")
 	}
-	if code(Validate(mustParse(t, "type: trojan\ndecryption: none\nmikan: {tls: node}\n"), Options{})) != "config_key" {
+	if code(Validate(mustParse(t, "type: trojan\ndecryption: none\ncozy: {tls: node}\n"), Options{})) != "config_key" {
 		t.Fatal("decryption is VLESS only")
 	}
 }
@@ -207,11 +207,11 @@ func toFloat(v any) float64 {
 func TestSelfSignedLinksCarryThePin(t *testing.T) {
 	in := ClientInput{Name: "X", Host: "203.0.113.7", Port: 2083, PinSHA256: "ab12", Slot: slots[0]}
 	for src, want := range map[string]string{
-		"type: trojan\nmikan: {tls: node}\n":             "pcs=ab12",
-		"type: anytls\n":                                 "pcs=ab12",
-		"type: vless\nws-path: /v\nmikan: {tls: node}\n": "pcs=ab12",
-		"type: hysteria2\n":                              "pinSHA256=ab12",
-		"type: vmess\nws-path: /m\nmikan: {tls: node}\n": `"pcs":"ab12"`,
+		"type: trojan\ncozy: {tls: node}\n":             "pcs=ab12",
+		"type: anytls\n":                                "pcs=ab12",
+		"type: vless\nws-path: /v\ncozy: {tls: node}\n": "pcs=ab12",
+		"type: hysteria2\n":                             "pinSHA256=ab12",
+		"type: vmess\nws-path: /m\ncozy: {tls: node}\n": `"pcs":"ab12"`,
 	} {
 		c, err := ClientConfig(mustParse(t, src), in)
 		if err != nil {
@@ -236,17 +236,17 @@ func TestValidateRefusesDangerousTemplates(t *testing.T) {
 		"cert path":             {"type: hysteria2\ncertificate: /etc/shadow\n", "config_managed"},
 		"routing bypass":        {"type: vless\n" + reality + "proxy: DIRECT\n", "config_key"},
 		"plain vless":           {"type: vless\nws-path: /ws\n", "config_insecure"},
-		"reality and tls":       {"type: vless\n" + reality + "mikan: {tls: node}\n", "config_both_tls"},
+		"reality and tls":       {"type: vless\n" + reality + "cozy: {tls: node}\n", "config_both_tls"},
 		"private dest":          {strings.Replace("type: vless\n"+reality, "www.microsoft.com:443", "169.254.169.254:80", 1), "reality_dest_private"},
 		"reality proxy":         {"type: vless\n" + reality + "  proxy: DIRECT\n", "config_key"},
 		"file masquerade":       {"type: hysteria2\nmasquerade: file:///etc\n", "config_masquerade"},
 		"private masquerade":    {"type: hysteria2\nmasquerade: https://10.0.0.1/\n", "config_masquerade"},
 		"realm":                 {"type: hysteria2\nrealm-opts: {enable: true}\n", "config_key"},
-		"vision over xhttp":     {"type: vless\n" + reality + "xhttp-config: {path: /x}\nmikan: {flow: xtls-rprx-vision}\n", "config_flow"},
+		"vision over xhttp":     {"type: vless\n" + reality + "xhttp-config: {path: /x}\ncozy: {flow: xtls-rprx-vision}\n", "config_flow"},
 		"xhttp auto":            {"type: vless\n" + reality + "xhttp-config: {path: /x, mode: auto}\n", "config_xhttp_mode"},
 		"shadowsocks pre-2022":  {"type: shadowsocks\npassword: x\n", "ss_cipher"},
 		"unencrypted socks":     {"type: socks\n", "config_type"},
-		"unknown mikan key":     {"type: tuic\nmikan: {evil: 1}\n", "config_key"},
+		"unknown cozy key":      {"type: tuic\ncozy: {evil: 1}\n", "config_key"},
 		"bad short id":          {strings.Replace("type: vless\n"+reality, "[a1b2]", "[xyz]", 1), "reality_sid"},
 		"obfs without password": {"type: hysteria2\nobfs: salamander\n", "config_obfs"},
 	}
@@ -285,7 +285,7 @@ func TestNewTypes(t *testing.T) {
 				t.Errorf("grpc: %s %v", c.URI, c.Mihomo)
 			}
 		},
-		"type: trojan\nws-path: /t\nmikan: {tls: node}\n": func(c Client, l map[string]any) {
+		"type: trojan\nws-path: /t\ncozy: {tls: node}\n": func(c Client, l map[string]any) {
 			if l["certificate"] != "/c" || !strings.HasPrefix(c.URI, "trojan://") || c.Mihomo["sni"] != "vpn.example.com" || c.Mihomo["password"] != "S3cr3t+/=" {
 				t.Errorf("trojan: %s %v %v", c.URI, c.Mihomo, l)
 			}
@@ -298,7 +298,7 @@ func TestNewTypes(t *testing.T) {
 				t.Errorf("anytls: %s %v", c.URI, c.Mihomo)
 			}
 		},
-		"type: vmess\nws-path: /v\nmikan: {tls: node, client: {server: cdn.example.com, port: 443}}\n": func(c Client, l map[string]any) {
+		"type: vmess\nws-path: /v\ncozy: {tls: node, client: {server: cdn.example.com, port: 443}}\n": func(c Client, l map[string]any) {
 			if c.Mihomo["server"] != "cdn.example.com" || c.Mihomo["port"] != 443 || !strings.HasPrefix(c.URI, "vmess://") {
 				t.Errorf("vmess override: %s %v", c.URI, c.Mihomo)
 			}
@@ -319,7 +319,7 @@ func TestNewTypes(t *testing.T) {
 }
 
 func TestMarshalKeepsTypeFirst(t *testing.T) {
-	out := Marshal(Template{"alpn": []any{"h3"}, "type": "tuic", "mikan": map[string]any{"tls": "node"}, "congestion-controller": "bbr"})
+	out := Marshal(Template{"alpn": []any{"h3"}, "type": "tuic", "cozy": map[string]any{"tls": "node"}, "congestion-controller": "bbr"})
 	if !strings.HasPrefix(out, "type: tuic\n") || !strings.HasSuffix(strings.TrimSpace(out), "tls: node") {
 		t.Fatalf("order:\n%s", out)
 	}

@@ -14,8 +14,8 @@ func manifest(t *testing.T) []byte {
 	t.Helper()
 	data, err := json.Marshal(Manifest{
 		Version: "0.3.9", Published: time.Unix(1_800_000_000, 0).UTC(),
-		Image: "ghcr.io/miroshka000/mikan", Digest: "sha256:" + strings.Repeat("ab", 32),
-		Installer: map[string]Asset{"x86_64": {URL: "https://example.com/mikan-x86_64", SHA256: strings.Repeat("cd", 32)}},
+		Image: "ghcr.io/lobnieyt/cozy", Digest: "sha256:" + strings.Repeat("ab", 32),
+		Installer: map[string]Asset{"x86_64": {URL: "https://example.com/cozy-x86_64", SHA256: strings.Repeat("cd", 32)}},
 		Notes:     map[string]string{"en": "- faster", "ru": "- быстрее"},
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Ref() != "ghcr.io/miroshka000/mikan@sha256:"+strings.Repeat("ab", 32) || m.Notes["ru"] != "- быстрее" {
+	if m.Ref() != "ghcr.io/lobnieyt/cozy@sha256:"+strings.Repeat("ab", 32) || m.Notes["ru"] != "- быстрее" {
 		t.Fatalf("manifest: %+v", m)
 	}
 

@@ -23,7 +23,7 @@ func TestFingerprintPrecedence(t *testing.T) {
 	for _, c := range cases {
 		src := base
 		if c.own != "" {
-			src += "mikan:\n  client:\n    fingerprint: " + c.own + "\n"
+			src += "cozy:\n  client:\n    fingerprint: " + c.own + "\n"
 		}
 		cl, err := ClientConfig(mustParse(t, src), ClientInput{Name: "X", Host: "203.0.113.7", Port: 443, Fingerprint: c.panel, Slot: slots[0]})
 		if err != nil {
@@ -39,7 +39,7 @@ func TestFingerprintPrecedence(t *testing.T) {
 // Node-certificate TLS gets the fingerprint too; QUIC protocols have no uTLS and no fp.
 func TestFingerprintByTransport(t *testing.T) {
 	in := ClientInput{Name: "X", Host: "vpn.example.com", Port: 2053, SNI: "vpn.example.com", Fingerprint: "edge", Slot: slots[0]}
-	trojan := mustParse(t, "type: trojan\nws-path: /ws\nmikan:\n  tls: node\n")
+	trojan := mustParse(t, "type: trojan\nws-path: /ws\ncozy:\n  tls: node\n")
 	cl, err := ClientConfig(trojan, in)
 	if err != nil {
 		t.Fatal(err)
@@ -90,9 +90,9 @@ func TestSetFingerprint(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, ok := tpl[extKey]; ok {
-		t.Fatalf("empty mikan section left: %v", tpl)
+		t.Fatalf("empty cozy section left: %v", tpl)
 	}
-	tpl = mustParse(t, "type: anytls\nmikan:\n  client:\n    sni: cdn.example.com\n    fingerprint: qq\n")
+	tpl = mustParse(t, "type: anytls\ncozy:\n  client:\n    sni: cdn.example.com\n    fingerprint: qq\n")
 	if err := SetFingerprint(tpl, ""); err != nil {
 		t.Fatal(err)
 	}

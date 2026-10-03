@@ -11,8 +11,8 @@ import (
 	"net"
 	"strings"
 
-	"mikan/internal/panel/secure"
-	"mikan/internal/proto"
+	"cozy/internal/panel/secure"
+	"cozy/internal/proto"
 )
 
 type Info struct {
@@ -101,7 +101,7 @@ func NewConfig(id, dest string) (string, error) {
 		t = proto.Template{"type": "vless", "xhttp-config": map[string]any{"path": randomPath(), "mode": "stream-one"},
 			"decryption": proto.VLESSEncMethod + ".native.600s." + key}
 	case "vless_reality_vision":
-		t = proto.Template{"type": "vless", "mikan": map[string]any{"flow": "xtls-rprx-vision"}}
+		t = proto.Template{"type": "vless", "cozy": map[string]any{"flow": "xtls-rprx-vision"}}
 	case "vless_reality_grpc":
 		t = proto.Template{"type": "vless", "grpc-service-name": strings.ToLower(secure.Token(8))}
 	case "trojan_reality":

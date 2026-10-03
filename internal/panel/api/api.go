@@ -12,26 +12,24 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/acme"
-	"mikan/internal/panel/addons"
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/autotune"
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/dnscheck"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/nodesync"
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/server"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/tgbot"
-	"mikan/internal/panel/tlscert"
-	"mikan/internal/panel/updates"
-	"mikan/internal/panel/warp"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/acme"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/autotune"
+	"cozy/internal/panel/dnscheck"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/nodesync"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/server"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/tgbot"
+	"cozy/internal/panel/tlscert"
+	"cozy/internal/panel/updates"
+	"cozy/internal/panel/warp"
 )
 
 type Deps struct {
@@ -65,10 +63,9 @@ type Deps struct {
 	}
 	// Telegram is the subscription owners' bot.
 	Telegram *tgbot.Bot
-	// Billing sells tariffs; SubBase is https://host:port/<sub path> ("" without an address).
-	Billing *billing.Service
 	// Warp registers WARP accounts with Cloudflare.
-	Warp    warp.Client
+	Warp warp.Client
+	// SubBase is https://host:port/<sub path> ("" without an address).
 	SubBase func(ctx context.Context) string
 	// SubPort opens subscriptions on a port of their own (0: closes it); SubPortError says
 	// why the saved one is not served. nil: the panel runs no server (tests).
@@ -84,8 +81,6 @@ type Deps struct {
 	ForgetNode func(id int64) error
 	// Updates knows the newest release and talks to the host updater; nil in tests.
 	Updates *updates.Checker
-	// Addons are the marketplace's payment adapters; nil in tests.
-	Addons *addons.Manager
 	// Resolve looks a name up for what the panel dials on the admin's word (a REALITY
 	// target); nil asks the system's resolver.
 	Resolve func(ctx context.Context, host string) ([]netip.Addr, error)
@@ -130,24 +125,24 @@ type handlers struct {
 	pending   map[int64]pendingTOTP
 }
 
-// Config builds the huma config shared by the server and the `mikan openapi` command.
+// Config builds the huma config shared by the server and the `cozy openapi` command.
 func Config(version string) huma.Config {
 	// Handlers always return non-nil slices; nullable arrays would force null checks in the UI.
 	huma.DefaultArrayNullable = false
-	cfg := huma.DefaultConfig("mikan", version)
+	cfg := huma.DefaultConfig("Cozy", version)
 	// No docs UI, no spec endpoint and no $schema links at runtime: the spec is
 	// exported by the CLI at build time for the TypeScript client.
 	cfg.DocsPath = ""
 	cfg.OpenAPIPath = ""
 	cfg.SchemasPath = ""
 	cfg.CreateHooks = nil
-	cfg.Info.Description = "REST API панели mikan. Все пути — под секретным адресом админки: https://<панель>/<секретный путь>/api/v1/…\n\n" +
-		"Скрипты и интеграции авторизуются ключом API (Настройки → API): заголовок `Authorization: Bearer mk_…`. " +
-		"Ключ «чтение» выполняет только GET и не получает ссылок подписок и секретных адресов; «полный» меняет данные, кроме входа, сессий, самих ключей и операций, где уходят деньги, ключи и адреса клиентов (они помечены «только сессия»).\n\n" +
+	cfg.Info.Description = "REST API панели cozy. Все пути — под секретным адресом админки: https://<панель>/<секретный путь>/api/v1/…\n\n" +
+		"Скрипты и интеграции авторизуются ключом API (Настройки → API): заголовок `Authorization: Bearer co_…`. " +
+		"Ключ «чтение» выполняет только GET и не получает ссылок подписок и секретных адресов; «полный» меняет данные, кроме входа, сессий, самих ключей и операций, где меняются адреса, ключи и адреса клиентов (они помечены «только сессия»).\n\n" +
 		"Админка в браузере ходит с cookie сессии; изменяющие запросы тогда требуют заголовок `X-CSRF-Token` из `GET /auth/me`.\n\n" +
 		"Ошибки — RFC 9457 (application/problem+json): `detail` — код ошибки, `errors[].message` — код по полю."
 	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
-		"apiKey":  {Type: "http", Scheme: "bearer", Description: "Ключ API: Authorization: Bearer mk_…"},
+		"apiKey":  {Type: "http", Scheme: "bearer", Description: "Ключ API: Authorization: Bearer co_…"},
 		"session": {Type: "apiKey", In: "cookie", Name: auth.CookieName, Description: "Сессия админки + заголовок X-CSRF-Token на изменяющих запросах"},
 	}
 	cfg.Security = []map[string][]string{{"apiKey": {}}, {"session": {}}}
@@ -195,8 +190,6 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h.registerUpdates()
 	h.registerNodes()
 	h.registerAPIKeys()
-	h.registerPayments()
-	h.registerAddons()
 	h.registerWarp()
 	h.registerCascade()
 	h.registerPools()

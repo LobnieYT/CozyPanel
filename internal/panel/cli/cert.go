@@ -12,21 +12,21 @@ import (
 	"syscall"
 	"time"
 
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/tlscert"
 )
 
 // certCmd installs the admin's own certificate from the server (GitHub issue #9): the
-// host's `mikan cert set` pipes the chain and the key in, which suits a certbot or
+// host's `cozy cert set` pipes the chain and the key in, which suits a certbot or
 // acme.sh renewal hook. The running panel is told to serve it at once.
 func certCmd(ctx context.Context, st *store.Store, set *settings.Settings, dataDir string, args []string, stdin io.Reader, stdout io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("mikan admin cert set|clear|show [--node NODE]; set reads the chain and the key (PEM) on stdin")
+		return errors.New("cozy admin cert set|clear|show [--node NODE]; set reads the chain and the key (PEM) on stdin")
 	}
 	fs := flag.NewFlagSet("cert "+args[0], flag.ContinueOnError)
-	node := fs.Int64("node", 0, "a node's own certificate instead of the panel's (see mikan admin node list)")
+	node := fs.Int64("node", 0, "a node's own certificate instead of the panel's (see cozy admin node list)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func certCmd(ctx context.Context, st *store.Store, set *settings.Settings, dataD
 	nodes := tlscert.NewNodeStore(filepath.Join(dataDir, "tls", "custom-nodes"), time.Now)
 	if *node != 0 {
 		if _, err := st.Q.GetNode(ctx, *node); err != nil {
-			return fmt.Errorf("no node %d: see mikan admin node list", *node)
+			return fmt.Errorf("no node %d: see cozy admin node list", *node)
 		}
 	}
 	target := "the panel"

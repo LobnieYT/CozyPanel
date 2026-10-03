@@ -10,13 +10,13 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
-// Traffic packages (GitHub issue #12): extra traffic for the main quota or a pool, sold in
-// the bot and the Mini App or given by the admin. The rules are in domain (grants.go,
-// packages.go); here are the catalog and a user's grants.
+// Traffic packages (GitHub issue #12): extra traffic for the main quota or a pool,
+// given by the admin. The rules are in domain (grants.go, packages.go); here are the
+// catalog and a user's grants.
 
 type PackageView struct {
 	ID         int64  `json:"id"`
@@ -25,15 +25,11 @@ type PackageView struct {
 	PoolID     *int64 `json:"pool_id" doc:"Пул трафика; null — основной трафик"`
 	Lifetime   string `json:"lifetime" enum:"used,period,days" doc:"used — пока не израсходован, period — до конца периода, days — N дней с покупки"`
 	Days       int64  `json:"days" doc:"Срок в днях для lifetime=days"`
-	PriceStars *int64 `json:"price_stars" doc:"Цена в Telegram Stars; null — не продаётся за Stars"`
-	PriceRub   *int64 `json:"price_rub" doc:"Цена в копейках; null — не продаётся за рубли"`
-	OnSale     bool   `json:"on_sale"`
 	Sort       int64  `json:"sort"`
 }
 
 func viewPackage(p db.TrafficPackage) PackageView {
-	return PackageView{ID: p.ID, Name: p.Name, Bytes: p.Bytes, PoolID: ptrInt(p.PoolID.Int64, p.PoolID.Valid), Lifetime: p.Lifetime, Days: p.Days,
-		PriceStars: ptrInt(p.PriceStars.Int64, p.PriceStars.Valid), PriceRub: ptrInt(p.PriceRub.Int64, p.PriceRub.Valid), OnSale: p.OnSale != 0, Sort: p.Sort}
+	return PackageView{ID: p.ID, Name: p.Name, Bytes: p.Bytes, PoolID: ptrInt(p.PoolID.Int64, p.PoolID.Valid), Lifetime: p.Lifetime, Days: p.Days, Sort: p.Sort}
 }
 
 type PackageBody struct {
@@ -42,15 +38,11 @@ type PackageBody struct {
 	PoolID     *int64 `json:"pool_id,omitempty" minimum:"1" doc:"Пул трафика; не передан — основной трафик"`
 	Lifetime   string `json:"lifetime" enum:"used,period,days"`
 	Days       int64  `json:"days,omitempty" minimum:"0" maximum:"3650" doc:"Для lifetime=days: 1–3650"`
-	PriceStars *int64 `json:"price_stars,omitempty" minimum:"1" maximum:"10000"`
-	PriceRub   *int64 `json:"price_rub,omitempty" minimum:"100" maximum:"100000000" doc:"Цена в копейках: 7900 — 79 ₽"`
-	OnSale     bool   `json:"on_sale,omitempty" doc:"Продавать в боте и Mini App; нужна хотя бы одна цена"`
 	Sort       int64  `json:"sort,omitempty"`
 }
 
 func (b PackageBody) input() domain.PackageInput {
-	in := domain.PackageInput{Name: b.Name, Bytes: b.Bytes, Lifetime: b.Lifetime, Days: b.Days, PriceStars: nullable(b.PriceStars),
-		PriceRub: nullable(b.PriceRub), OnSale: b.OnSale, Sort: b.Sort}
+	in := domain.PackageInput{Name: b.Name, Bytes: b.Bytes, Lifetime: b.Lifetime, Days: b.Days, Sort: b.Sort}
 	if b.PoolID != nil {
 		in.PoolID = *b.PoolID
 	}
@@ -74,8 +66,7 @@ type GrantView struct {
 	Lifetime    string     `json:"lifetime" enum:"used,period,days"`
 	ExpiresAt   *time.Time `json:"expires_at"`
 	Active      bool       `json:"active" doc:"Ещё считается: не израсходован и не истёк"`
-	Source      string     `json:"source" enum:"purchase,admin"`
-	PaymentID   *int64     `json:"payment_id"`
+	Source      string     `json:"source" enum:"purchase,admin" doc:"purchase — старые покупки, admin — начислено вручную"`
 	PackageName string     `json:"package_name" doc:"Название пакета; пусто — начислено вручную"`
 	Note        string     `json:"note"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -195,6 +186,6 @@ func (h *handlers) packageNames(ctx context.Context) (map[int64]string, error) {
 func (h *handlers) viewGrant(g db.TrafficGrant, packages map[int64]string) GrantView {
 	return GrantView{ID: g.ID, PoolID: ptrInt(g.PoolID.Int64, g.PoolID.Valid), Bytes: g.Bytes, Remaining: g.Remaining, Lifetime: g.Lifetime,
 		ExpiresAt: ptrTime(g.ExpiresAt.Int64, g.ExpiresAt.Valid), Active: domain.GrantActive(g, h.d.Now()), Source: g.Source,
-		PaymentID: ptrInt(g.PaymentID.Int64, g.PaymentID.Valid), PackageName: packages[g.PackageID.Int64], Note: g.Note,
+		PackageName: packages[g.PackageID.Int64], Note: g.Note,
 		CreatedAt: time.Unix(g.CreatedAt, 0).UTC()}
 }

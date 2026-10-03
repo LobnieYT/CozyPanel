@@ -17,12 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/panel/billing"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/server"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/server"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 // Config is resolved per request, so settings changes apply without a restart.
@@ -59,8 +58,7 @@ type Handler struct {
 	devices Binder
 	// trustProxy takes the client's IP from X-Forwarded-For (a reverse proxy in front).
 	trustProxy bool
-	tg         Telegram         // nil: no bot
-	shop       *billing.Service // nil: nothing on sale
+	tg         Telegram // nil: no bot
 	log        *slog.Logger
 	logged     sync.Map // what has been logged lately → when, so a standing fault is one line an hour
 }
@@ -92,9 +90,6 @@ func (h *Handler) warn(key, msg string, args ...any) {
 	h.log.Warn(msg, args...)
 }
 
-// SetShop takes payments: the providers' webhooks under /pay/ and the Mini App's shop.
-func (h *Handler) SetShop(s *billing.Service) { h.shop = s }
-
 func NewHandler(st *store.Store, cfg func(ctx context.Context) (Config, error), page http.Handler, now func() time.Time, devices Binder, trustProxy bool) *Handler {
 	return &Handler{st: st, cfg: cfg, page: page, now: now, devices: devices, trustProxy: trustProxy, log: slog.New(slog.DiscardHandler)}
 }
@@ -116,19 +111,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.miniApp(w, r, rest)
 		return
 	}
-	if token == "pay" && h.shop != nil {
-		r2 := r.Clone(r.Context())
-		r2.URL.Path = "/" + rest
-		h.shop.Webhook().ServeHTTP(w, r2)
-		return
-	}
 	unbind := unbindPath.FindStringSubmatch(rest)
 	switch {
 	case r.Method == http.MethodPost && unbind != nil:
 	case r.Method != http.MethodGet && r.Method != http.MethodHead:
 		server.NotFound(w)
 		return
-	case (strings.HasPrefix(p, "assets/") || p == "favicon.svg") && h.page != nil:
+	case (strings.HasPrefix(p, "assets/") || p == "logo.png") && h.page != nil:
 		h.page.ServeHTTP(w, r)
 		return
 	case rest != "" && rest != "info":
@@ -266,128 +255,9 @@ func (h *Handler) miniApp(w http.ResponseWriter, r *http.Request, rest string) {
 			out.Subs = append(out.Subs, sub{Token: u.SubToken, Name: u.Name})
 		}
 		_ = json.NewEncoder(w).Encode(out)
-	case r.Method == http.MethodPost && (rest == "shop" || rest == "pay") && sameOrigin(r) && h.shop != nil:
-		h.miniAppShop(w, r, rest)
 	default:
 		server.NotFound(w)
 	}
-}
-
-// miniAppShop: "shop" lists what the Telegram account can buy (with token: the traffic
-// packages of that subscription too), "pay" opens an invoice for a new subscription
-// (token ""), one of the account's own, or a traffic package for it (package_id).
-func (h *Handler) miniAppShop(w http.ResponseWriter, r *http.Request, rest string) {
-	var in struct {
-		InitData  string `json:"init_data"`
-		TariffID  int64  `json:"tariff_id"`
-		PackageID int64  `json:"package_id"`
-		Provider  string `json:"provider"`
-		Token     string `json:"token"`
-	}
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/json")
-	fail := func(status int, code string) {
-		w.WriteHeader(status)
-		_ = json.NewEncoder(w).Encode(map[string]string{"code": code})
-	}
-	if json.NewDecoder(io.LimitReader(r.Body, 16<<10)).Decode(&in) != nil {
-		fail(http.StatusBadRequest, "bad_request")
-		return
-	}
-	tgID, users, err := h.tg.MiniAppUser(r.Context(), in.InitData)
-	if err != nil {
-		fail(http.StatusUnauthorized, "init_data")
-		return
-	}
-	ctx := r.Context()
-	var userID int64
-	if in.Token != "" {
-		for _, u := range users {
-			if u.SubToken == in.Token {
-				userID = u.ID
-			}
-		}
-		if userID == 0 {
-			fail(http.StatusForbidden, billing.ErrNotYours.Error())
-			return
-		}
-	}
-	if rest == "shop" {
-		offers, av, err := h.shop.Offers(ctx)
-		if err != nil {
-			fail(http.StatusInternalServerError, "internal")
-			return
-		}
-		cfg, _ := h.cfg(ctx)
-		packages, err := h.shopPackages(ctx, userID, cfg.Lang)
-		if err != nil {
-			fail(http.StatusInternalServerError, "internal")
-			return
-		}
-		type offer struct {
-			ID          int64  `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Stars       int64  `json:"stars,omitempty"`
-			Rub         int64  `json:"rub,omitempty"`
-		}
-		// Marketplace adapters take rubles; the buyer sees each by its own name.
-		type addon struct {
-			Provider string `json:"provider"`
-			Name     string `json:"name"`
-		}
-		out := struct {
-			AllowNew  bool            `json:"allow_new"`
-			Providers map[string]bool `json:"providers"`
-			Addons    []addon         `json:"addons"`
-			Offers    []offer         `json:"offers"`
-			Packages  []shopPackage   `json:"packages"`
-		}{AllowNew: h.shop.Config(ctx).AllowNew, Offers: []offer{}, Packages: packages, Addons: []addon{},
-			Providers: map[string]bool{billing.Stars: av.Stars}}
-		for _, id := range av.Addons {
-			out.Addons = append(out.Addons, addon{Provider: billing.AddonPrefix + id, Name: h.shop.AddonName(ctx, id, cfg.Lang)})
-		}
-		for _, o := range offers {
-			out.Offers = append(out.Offers, offer{ID: o.Tariff.ID, Name: o.Tariff.Name, Description: billing.Describe(o.Tariff, cfg.Lang), Stars: o.Stars, Rub: o.Rub})
-		}
-		_ = json.NewEncoder(w).Encode(out)
-		return
-	}
-	var p db.Payment
-	if in.PackageID != 0 {
-		p, err = h.shop.PackageInvoice(ctx, billing.PackageRequest{TgID: tgID, UserID: userID, PackageID: in.PackageID, Provider: billing.AdapterOf(in.Provider)})
-	} else {
-		p, err = h.shop.Invoice(ctx, billing.InvoiceRequest{TgID: tgID, UserID: userID, TariffID: in.TariffID, Provider: billing.AdapterOf(in.Provider)})
-	}
-	if err != nil {
-		status, code, unexplained := invoiceFailure(err)
-		if unexplained {
-			h.log.Warn("mini app: the invoice was not made", "provider", in.Provider, "err", err)
-		}
-		fail(status, code)
-		return
-	}
-	_ = json.NewEncoder(w).Encode(map[string]string{"url": p.PayUrl, "provider": p.Provider})
-}
-
-// invoiceFailure is what the Mini App answers when no invoice could be made. What the buyer
-// can act on is told as it is. A provider that is switched off is "provider_off". Anything
-// else, a provider that failed, a database that was busy, is the panel's trouble: the buyer
-// is told it did not work, not that payment is off, and unexplained says nobody has logged
-// the cause yet (billing logs a provider's failure itself).
-func invoiceFailure(err error) (status int, code string, unexplained bool) {
-	for _, e := range []error{billing.ErrNotForSale, billing.ErrNewOff, billing.ErrTooManySubs, billing.ErrTooMany, billing.ErrNotYours} {
-		if errors.Is(err, e) {
-			return http.StatusConflict, e.Error(), false
-		}
-	}
-	switch {
-	case err == billing.ErrProviderOff:
-		return http.StatusConflict, billing.ErrProviderOff.Error(), false
-	case errors.Is(err, billing.ErrProviderOff): // the provider failed
-		return http.StatusBadGateway, "invoice_failed", false
-	}
-	return http.StatusBadGateway, "invoice_failed", true
 }
 
 // forApp keeps the inbounds the app can use. Inbounds with one key for everyone go only

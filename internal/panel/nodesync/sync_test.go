@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 type fakeNode struct {
@@ -191,7 +191,7 @@ func TestMaintainAppliesChangesMadeOutsideTheAPI(t *testing.T) {
 // addRemote registers a second node the way the panel does and attaches a fake for it.
 func addRemote(t *testing.T, s *Syncer, st *store.Store) (*Syncer, *fakeNode) {
 	t.Helper()
-	panel, err := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, err := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

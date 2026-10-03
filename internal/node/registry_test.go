@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 // Activity is what the panel's block detector reads: per device, the last time each

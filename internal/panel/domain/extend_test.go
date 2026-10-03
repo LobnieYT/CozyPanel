@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // An admin's extension and a payment that lands at the same time both count: the expiry is

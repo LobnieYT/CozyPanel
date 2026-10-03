@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
 )
 
 // testResolve is the resolver of the tests: every name leads to a public address, except

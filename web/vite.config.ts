@@ -4,8 +4,8 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Dev: run the panel with MIKAN_DEV=1 on 127.0.0.1:2053 and admin path "dev-admin-path-0000".
-const devAdminPath = process.env.MIKAN_DEV_ADMIN_PATH ?? "dev-admin-path-0000";
+// Dev: run the panel with COZY_DEV=1 on 127.0.0.1:2053 and admin path "dev-admin-path-0000".
+const devAdminPath = process.env.COZY_DEV_ADMIN_PATH ?? "dev-admin-path-0000";
 
 // The sections of the dictionaries the subscription page and the Mini App read. They are
 // 5% of the text, and the page should not download the rest: add a section here when
@@ -16,7 +16,7 @@ const SUB_SECTIONS = ["common", "states", "sub", "time", "units"];
 function subDictionaries(): Plugin {
   const prefix = "virtual:i18n-sub-";
   return {
-    name: "mikan-i18n-sub",
+    name: "cozy-i18n-sub",
     resolveId: (id) => (id.startsWith(prefix) ? `\0${id}` : undefined),
     load(id) {
       if (!id.startsWith(`\0${prefix}`)) return undefined;
@@ -37,7 +37,7 @@ function subDictionaries(): Plugin {
  */
 function preloadFonts(files: string[]): Plugin {
   return {
-    name: "mikan-preload-fonts",
+    name: "cozy-preload-fonts",
     transformIndexHtml: {
       order: "post",
       handler: (_html, ctx) =>

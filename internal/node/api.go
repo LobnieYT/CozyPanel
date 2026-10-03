@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/scan"
+	"cozy/internal/nodeapi"
+	"cozy/internal/scan"
 )
 
 var scanning sync.Mutex

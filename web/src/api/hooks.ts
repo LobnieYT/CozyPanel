@@ -20,9 +20,6 @@ export const qk = {
   telegram: ["telegram"] as const,
   updates: ["updates"] as const,
   apiKeys: ["api-keys"] as const,
-  payments: ["payments"] as const,
-  paymentSettings: ["payment-settings"] as const,
-  addons: ["addons"] as const,
   warp: (node: number) => ["warp", node] as const,
   cascade: (node: number) => ["cascade", node] as const,
   pools: ["pools"] as const,
@@ -117,11 +114,6 @@ export function useNode() {
 
 export function useNodes() {
   return useQuery({ queryKey: qk.nodes, queryFn: ({ signal }) => unwrap(api.GET("/api/v1/nodes", { signal })), refetchInterval: 10_000 });
-}
-
-/** Payment settings: also whether selling is on, which shows Payments in the menu. */
-export function usePaymentSettings() {
-  return useQuery({ queryKey: qk.paymentSettings, queryFn: ({ signal }) => unwrap(api.GET("/api/v1/payments/settings", { signal })) });
 }
 
 export function useSettings() {

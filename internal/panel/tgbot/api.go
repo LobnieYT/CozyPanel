@@ -23,18 +23,13 @@ type Client struct {
 	token string
 	hc    *http.Client
 	// How long a call may take: a long poll holds its request for pollTimeout and gets
-	// this much on top, any other call only this much, an answer to a pre-checkout query
-	// preCheckoutTimeout, which Telegram's ten seconds leave it.
+	// this much on top, any other call only this much.
 	callTimeout time.Duration
 }
 
 // callTimeout is a call's time, getUpdates apart. Telegram answers in a fraction of it;
 // past it the way there is down, and a call that hangs holds a worker of the outbox.
 const callTimeout = 15 * time.Second
-
-// preCheckoutTimeout: Telegram cancels the payment of a query not answered within ten
-// seconds, so the answer is not worth waiting for past eight.
-const preCheckoutTimeout = 8 * time.Second
 
 // NewClient: rt is the way to Telegram (see route.go); nil goes straight.
 func NewClient(base, token string, rt http.RoundTripper) *Client {
@@ -64,11 +59,8 @@ func (c *Client) call(parent context.Context, method string, in, out any) error 
 		return err
 	}
 	timeout := c.callTimeout
-	switch method {
-	case "getUpdates":
+	if method == "getUpdates" {
 		timeout += pollTimeout
-	case "answerPreCheckoutQuery":
-		timeout = min(timeout, preCheckoutTimeout)
 	}
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
@@ -126,8 +118,6 @@ type Message struct {
 	From      *User  `json:"from"`
 	Chat      Chat   `json:"chat"`
 	Text      string `json:"text"`
-	// SuccessfulPayment: a Stars invoice was paid (a service message from Telegram).
-	SuccessfulPayment *SuccessfulPayment `json:"successful_payment"`
 }
 
 type CallbackQuery struct {
@@ -138,10 +128,9 @@ type CallbackQuery struct {
 }
 
 type Update struct {
-	UpdateID         int64             `json:"update_id"`
-	Message          *Message          `json:"message"`
-	CallbackQuery    *CallbackQuery    `json:"callback_query"`
-	PreCheckoutQuery *PreCheckoutQuery `json:"pre_checkout_query"`
+	UpdateID      int64          `json:"update_id"`
+	Message       *Message       `json:"message"`
+	CallbackQuery *CallbackQuery `json:"callback_query"`
 }
 
 // Button is an inline keyboard button: one of callback data, a link or the Mini App.
@@ -173,7 +162,7 @@ const pollTimeout = 50 * time.Second
 func (c *Client) Updates(ctx context.Context, offset int64) ([]Update, error) {
 	var ups []Update
 	err := c.call(ctx, "getUpdates", map[string]any{"offset": offset, "timeout": int(pollTimeout / time.Second),
-		"allowed_updates": []string{"message", "callback_query", "pre_checkout_query"}}, &ups)
+		"allowed_updates": []string{"message", "callback_query"}}, &ups)
 	return ups, err
 }
 
@@ -237,45 +226,6 @@ func (c *Client) SetMenuButton(ctx context.Context, text, url string) error {
 		btn = map[string]any{"type": "web_app", "text": text, "web_app": map[string]string{"url": url}}
 	}
 	return c.call(ctx, "setChatMenuButton", map[string]any{"menu_button": btn}, nil)
-}
-
-// SuccessfulPayment is what Telegram reports after a Stars payment.
-type SuccessfulPayment struct {
-	Currency       string `json:"currency"`
-	TotalAmount    int64  `json:"total_amount"`
-	InvoicePayload string `json:"invoice_payload"`
-	ChargeID       string `json:"telegram_payment_charge_id"`
-}
-
-// PreCheckoutQuery asks the bot to confirm a payment within ten seconds.
-type PreCheckoutQuery struct {
-	ID             string `json:"id"`
-	From           User   `json:"from"`
-	Currency       string `json:"currency"`
-	TotalAmount    int64  `json:"total_amount"`
-	InvoicePayload string `json:"invoice_payload"`
-}
-
-// InvoiceLink makes a link to pay in Telegram Stars (XTR, no provider token).
-func (c *Client) InvoiceLink(ctx context.Context, title, description, payload string, stars int64) (string, error) {
-	var link string
-	err := c.call(ctx, "createInvoiceLink", map[string]any{"title": truncate(title, 32), "description": truncate(description, 255), "payload": payload,
-		"currency": "XTR", "prices": []map[string]any{{"label": truncate(title, 32), "amount": stars}}}, &link)
-	return link, err
-}
-
-// AnswerPreCheckout lets the payment go ahead, or refuses it with a reason the buyer sees.
-func (c *Client) AnswerPreCheckout(ctx context.Context, id string, ok bool, reason string) error {
-	in := map[string]any{"pre_checkout_query_id": id, "ok": ok}
-	if !ok {
-		in["error_message"] = reason
-	}
-	return c.call(ctx, "answerPreCheckoutQuery", in, nil)
-}
-
-// RefundStars returns a Stars payment.
-func (c *Client) RefundStars(ctx context.Context, user int64, chargeID string) error {
-	return c.call(ctx, "refundStarPayment", map[string]any{"user_id": user, "telegram_payment_charge_id": chargeID}, nil)
 }
 
 func truncate(s string, n int) string {

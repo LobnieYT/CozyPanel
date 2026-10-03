@@ -12,12 +12,8 @@ import { bytes, dateLong, dateShort, days, daysUntil } from "../lib/format";
 import { safeHref } from "../lib/url";
 import { APPS, detect, enc, type Platform } from "./apps";
 import { Devices } from "./devices";
-import { initData, json, openOutside, outside, pageURL, request, subRoot, tgEvent, tgMode, tokenOf } from "./net";
-import { loadShop, Shop, type ShopData } from "./shop";
+import { initData, json, outside, pageURL, request, subRoot, tgEvent, tgMode } from "./net";
 import type { Info, TgSub } from "./types";
-
-/** Pauses between the reloads after a payment: the panel applies a paid one within seconds. */
-const AFTER_PAYMENT_MS = [2_000, 5_000, 10_000];
 
 function SubPage() {
   // Texts are read at render time: follow a language switch without remounting the page
@@ -32,8 +28,6 @@ function SubPage() {
   const [copied, setCopied] = useState(false);
   const [subURL, setSubURL] = useState(tgMode ? "" : pageURL);
   const [tg, setTg] = useState<{ state: "loading" | "none" | "failed" | "ok"; subs: TgSub[] }>({ state: tgMode ? "loading" : "ok", subs: [] });
-  const [shop, setShop] = useState<ShopData | null>(null);
-  const [packages, setPackages] = useState<{ token: string; data: ShopData } | null>(null);
   const current = info && info.url === subURL ? info.data : null;
   const failed = !current && failedURL === subURL;
 
@@ -63,85 +57,20 @@ function SubPage() {
     [],
   );
 
-  const token = tokenOf(subURL);
-  // What a refresh reloads: the session, the subscription's info and the shop.
-  const refresh = () => {
-    void session();
-    if (subURL) void loadInfo(subURL).catch(() => undefined);
-    if (tgMode) {
-      loadShop(subRoot, initData)
-        .then(setShop)
-        .catch(() => undefined);
-      if (subURL) {
-        loadShop(subRoot, initData, token)
-          .then((data) => setPackages({ token, data }))
-          .catch(() => undefined);
-      }
-    }
-  };
-  const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
-
   useEffect(() => {
     if (!tgMode) return;
     tgEvent("web_app_ready");
     tgEvent("web_app_expand");
     void session();
-    loadShop(subRoot, initData)
-      .then(setShop)
-      .catch(() => setShop(null));
   }, [session]);
 
-  // Telegram tells the Mini App when its payment sheet closes; a paid one is applied by
-  // the panel within seconds, so the page reloads a few times, a little later each time.
-  useEffect(() => {
-    if (!tgMode) return;
-    let timers: number[] = [];
-    const onEvent = (type: string, data: unknown) => {
-      if (type === "invoice_closed" && (data as { status?: string } | null)?.status === "paid") {
-        timers.forEach((id) => window.clearTimeout(id));
-        timers = AFTER_PAYMENT_MS.map((ms) => window.setTimeout(() => refreshRef.current(), ms));
-      }
-    };
-    const w = window as Window & { Telegram?: { WebView?: { receiveEvent?: (type: string, data: unknown) => void } } };
-    w.Telegram ??= {};
-    w.Telegram.WebView ??= {};
-    const prev = w.Telegram.WebView.receiveEvent;
-    w.Telegram.WebView.receiveEvent = (type, data) => {
-      prev?.(type, data);
-      onEvent(type, data);
-    };
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin !== "https://web.telegram.org" || typeof e.data !== "string") return;
-      try {
-        const m = JSON.parse(e.data) as { eventType?: string; eventData?: unknown };
-        if (m.eventType) onEvent(m.eventType, m.eventData);
-      } catch {
-        // not Telegram's
-      }
-    };
-    window.addEventListener("message", onMessage);
-    return () => {
-      window.removeEventListener("message", onMessage);
-      timers.forEach((id) => window.clearTimeout(id));
-      if (w.Telegram?.WebView) w.Telegram.WebView.receiveEvent = prev;
-    };
-  }, []);
-
-  // One subscription's info (and, in the Mini App, its traffic packages) at a time: a
-  // switch cancels what the previous one still waits for.
+  // One subscription's info at a time: a switch cancels what the previous one waits for.
   useEffect(() => {
     if (!subURL) return;
     const ctl = new AbortController();
     loadInfo(subURL, ctl.signal).catch(() => {
       if (!ctl.signal.aborted) setFailedURL(subURL);
     });
-    if (tgMode) {
-      const tok = tokenOf(subURL);
-      loadShop(subRoot, initData, tok)
-        .then((data) => !ctl.signal.aborted && setPackages({ token: tok, data }))
-        .catch(() => !ctl.signal.aborted && setPackages(null));
-    }
     return () => ctl.abort();
   }, [subURL, loadInfo]);
 
@@ -171,50 +100,6 @@ function SubPage() {
     }
   };
 
-  const shopFor = (shopToken: string, title: string) =>
-    shop && shop.offers.length > 0 ? (
-      <Shop
-        data={shop}
-        offers={shop.offers}
-        subRoot={subRoot}
-        initData={initData}
-        token={shopToken}
-        title={title}
-        openInvoice={(slug) => tgEvent("web_app_open_invoice", { slug })}
-        openLink={openOutside}
-        onRefresh={refresh}
-      />
-    ) : null;
-  // Traffic packages are for the subscription on screen.
-  const packagesShop =
-    packages && packages.data.packages?.length && packages.token === token ? (
-      <Shop
-        key={token}
-        data={packages.data}
-        offers={packages.data.packages}
-        field="package_id"
-        pick={t("sub.packagesPick")}
-        subRoot={subRoot}
-        initData={initData}
-        token={token}
-        title={t("sub.packages")}
-        openInvoice={(slug) => tgEvent("web_app_open_invoice", { slug })}
-        openLink={openOutside}
-        onRefresh={refresh}
-      />
-    ) : null;
-
-  if (tg.state === "none" && shop?.allow_new && shop.offers.length > 0) {
-    return (
-      <Shell>
-        <section className="glass rounded-3xl p-6 text-center">
-          <h1 className="font-display text-xl font-medium">{t("sub.tgNoSubTitle")}</h1>
-          <p className="mt-2 text-[13px] text-[var(--ink-500)]">{t("sub.tgNoSubText")}</p>
-        </section>
-        {shopFor("", t("sub.shopNew"))}
-      </Shell>
-    );
-  }
   if (tg.state === "none" || tg.state === "failed") {
     return (
       <Shell>
@@ -290,7 +175,7 @@ function SubPage() {
               type="button"
               aria-pressed={subURL.endsWith("/" + s.token)}
               onClick={() => setSubURL(subRoot + "/" + s.token)}
-              className="h-8 shrink-0 rounded-[10px] px-3 text-xs font-semibold text-[var(--ink-600)] aria-pressed:bg-white aria-pressed:text-[var(--ink-900)] aria-pressed:shadow-sm"
+              className="h-8 shrink-0 rounded-[10px] px-3 text-xs font-semibold text-[var(--ink-600)] aria-pressed:bg-[rgba(148,163,255,0.16)] aria-pressed:text-white aria-pressed:shadow-sm"
             >
               {s.name}
             </button>
@@ -303,15 +188,12 @@ function SubPage() {
           <span>{current.expires_at ? t("sub.until", { date: dateLong(current.expires_at) }) : t("sub.forever")}</span>
           {d !== null && d >= 0 ? <Pill tone={tone}>{days(d)}</Pill> : null}
         </div>
-        {(current.state === "expired" || current.state === "limited" || current.state === "disabled") && support && !(tgMode && shop?.offers.length) ? (
+        {(current.state === "expired" || current.state === "limited" || current.state === "disabled") && support ? (
           <a className="btn btn-primary btn-block mt-4" href={support} target="_blank" rel="noreferrer noopener" {...outside(support)}>
             {t("sub.renew")}
           </a>
         ) : null}
       </section>
-
-      {tgMode ? shopFor(token, t("sub.shop")) : null}
-      {tgMode ? packagesShop : null}
 
       <section className="glass grid grid-cols-[104px_1fr] items-center gap-4 rounded-3xl p-4">
         <Ring size={104} pct={current.limit != null ? pct : 100} label={leftValue} sub={left != null ? t("sub.left", { unit: leftUnit ?? "" }) : t("sub.unlimited")} />
@@ -386,7 +268,7 @@ function SubPage() {
               <div className="min-w-0">
                 <div className="text-sm font-semibold">{a.name}</div>
                 <div className="text-xs text-[var(--ink-500)]">
-                  {i === 0 ? <span className="font-medium text-[var(--mikan-700)]">{t("sub.recommended")} · </span> : null}
+                  {i === 0 ? <span className="font-medium text-[var(--cozy-200)]">{t("sub.recommended")} · </span> : null}
                   {t(`sub.notes.${a.note}`)}
                 </div>
               </div>
@@ -454,7 +336,7 @@ function Shell({ brand, children }: { brand?: string; children: React.ReactNode 
   return (
     <main className="calm-glass mx-auto flex max-w-[440px] flex-col gap-3 px-4 pt-[calc(24px+env(safe-area-inset-top))] pb-[calc(40px+env(safe-area-inset-bottom))]">
       <div className="flex items-center gap-2 px-1 pb-1">
-        <span className="font-display grid h-7 w-7 place-items-center rounded-[9px] bg-[var(--ink-900)] text-[13px] font-semibold text-white">{(brand ?? "V")[0]}</span>
+        <span className="font-display grid h-7 w-7 place-items-center rounded-[9px] bg-[var(--cozy-600)] text-[13px] font-semibold text-white">{(brand ?? "V")[0]}</span>
         <span className="font-display text-[15px] font-semibold tracking-tight">{brand ?? ""}</span>
         <LangSwitch className="ml-auto" />
       </div>

@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
-	"mikan/internal/scan"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
+	"cozy/internal/scan"
 )
 
 // Nodes is what the tuner needs from the running nodes (nodesync.Manager).

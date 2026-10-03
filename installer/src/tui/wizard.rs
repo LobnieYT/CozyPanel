@@ -359,7 +359,7 @@ impl Wizard {
                 v.running = false;
                 v.state = Level::Error;
             });
-            self.failed = Some((at, "the installer stopped without saying why; `mikan install` continues from here".into()));
+            self.failed = Some((at, "the installer stopped without saying why; `cozy install` continues from here".into()));
         }
     }
 
@@ -596,7 +596,7 @@ impl Wizard {
             (false, true) => &[("enter", "next"), ("r", "check again"), ("q", "quit")],
             (false, false) => &[("enter", "next"), ("r", "check again"), ("esc", "back"), ("q", "quit")],
         };
-        let lead = if self.node() { "A node of another panel will run here." } else { "What the server needs before mikan goes on it." };
+        let lead = if self.node() { "A node of another panel will run here." } else { "What the server needs before cozy goes on it." };
         let mut lines = Vec::new();
         match self.checks.done() {
             None => lines.push(Line::from(vec![spinner(self.tick), Span::raw(" Checking the server…")])),
@@ -625,7 +625,7 @@ impl Wizard {
     /// Replacing Docker removes packages: asked, never assumed.
     fn draw_docker(&self, f: &mut Frame) {
         let keys = [("enter", "replace"), ("esc", "back"), ("q", "quit")];
-        let lead = "mikan runs with Docker compose v2, and the Docker on this server has none: it is the one from the system's packages.";
+        let lead = "cozy runs with Docker compose v2, and the Docker on this server has none: it is the one from the system's packages.";
         let w = Card::body_width(f.area());
         let found =
             self.checks.done().and_then(|c| system::docker_to_replace(c)).map(|c| c.detail.split(' ').next().unwrap_or("").to_owned());
@@ -778,7 +778,7 @@ impl Wizard {
             lines.push(field("Docker", "replace the system's one from get.docker.com"));
         }
         lines.push(Line::from(""));
-        lines.push(Line::from(dim("Docker is installed if missing; mikan goes to /opt/mikan.")));
+        lines.push(Line::from(dim("Docker is installed if missing; cozy goes to /opt/cozy.")));
         Self::page(f, self.card("Ready to install", "Nothing has changed on the server yet.", &keys), lines);
     }
 
@@ -788,7 +788,7 @@ impl Wizard {
         } else if self.outcome.is_some() {
             &[("enter", "next")]
         } else if self.quit_armed {
-            &[("ctrl+c", "again to quit: the install stops here; `mikan install` goes on later")]
+            &[("ctrl+c", "again to quit: the install stops here; `cozy install` goes on later")]
         } else {
             &[]
         };
@@ -840,7 +840,7 @@ impl Wizard {
                 lines.push(Line::from(Span::styled(l, Style::new().fg(ERR))));
             }
             lines.push(Line::from(""));
-            let hint = "Fix the cause and run the installer again. What got as far as /opt/mikan is kept: mikan status, mikan logs.";
+            let hint = "Fix the cause and run the installer again. What got as far as /opt/cozy is kept: cozy status, cozy logs.";
             lines.extend(wrap(hint, w).into_iter().map(|l| Line::from(dim(l))));
         }
         let Some(body) = Card::new(title, "", keys).fit(lines.len()).draw(f) else { return };
@@ -872,7 +872,7 @@ impl Wizard {
                 for l in wrap(&format!("The scan failed: {e:#}"), w) {
                     lines.push(Line::from(Span::styled(l, Style::new().fg(ERR))));
                 }
-                lines.push(Line::from(dim("The default site stays; pick another later: mikan → REALITY sites.")));
+                lines.push(Line::from(dim("The default site stays; pick another later: cozy → REALITY sites.")));
             }
             Some(Ok(scan)) => {
                 lines.push(Line::from(dim(format!("{} addresses around {} checked.", scan.scanned, scan.ip))));
@@ -930,12 +930,12 @@ impl Wizard {
         if o.node_port.is_some() {
             let keys = [("enter", "finish")];
             let lines = vec![
-                Line::from(vec![Span::styled("✓ ", Style::new().fg(OK)), Span::raw(format!("mikan {} node", o.version))]),
+                Line::from(vec![Span::styled("✓ ", Style::new().fg(OK)), Span::raw(format!("cozy {} node", o.version))]),
                 Line::from(""),
                 field("Waits on", format!("port {}", o.node_port.unwrap_or_default())),
                 Line::from(""),
                 Line::from(dim("Its panel connects within 30 seconds: see the panel's Nodes page.")),
-                Line::from(dim("On this server: mikan (menu), mikan status, mikan update.")),
+                Line::from(dim("On this server: cozy (menu), cozy status, cozy update.")),
             ];
             Self::page(f, Card::new("The node is running", "", &keys), lines);
             return;
@@ -945,7 +945,7 @@ impl Wizard {
         if self.show_qr {
             let code = qr(&o.url);
             let w = code.first().map_or(0, |l| l.spans.len()) as u16;
-            let Some(body) = Card::new("mikan is running", lead, &keys).fit(code.len()).draw(f) else { return };
+            let Some(body) = Card::new("cozy is running", lead, &keys).fit(code.len()).draw(f) else { return };
             if code.len() as u16 <= body.height && w <= body.width {
                 let area = Rect { x: body.x + (body.width - w) / 2, y: body.y, width: w, height: code.len() as u16 };
                 f.render_widget(Paragraph::new(code), area);
@@ -973,12 +973,12 @@ impl Wizard {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
             dim("On this server: "),
-            "mikan".bold(),
+            "cozy".bold(),
             dim(" for this menu, "),
-            "mikan update".bold(),
+            "cozy update".bold(),
             dim(", "),
-            "mikan status".bold(),
+            "cozy status".bold(),
         ]));
-        Self::page(f, Card::new("mikan is running", lead, &keys), lines);
+        Self::page(f, Card::new("cozy is running", lead, &keys), lines);
     }
 }

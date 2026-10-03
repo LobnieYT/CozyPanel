@@ -10,10 +10,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/settings"
-	"mikan/internal/proto"
-	"mikan/internal/scan"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/settings"
+	"cozy/internal/proto"
+	"cozy/internal/scan"
 )
 
 type checkTargetInput struct {

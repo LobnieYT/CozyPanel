@@ -25,7 +25,7 @@ const queryClient = new QueryClient({
 
 const router = createAppRouter(queryClient);
 
-window.addEventListener("mikan:unauthorized", () => {
+window.addEventListener("cozy:unauthorized", () => {
   if (router.state.location.pathname === "/login") return;
   queryClient.clear();
   void router.navigate({ to: "/login", search: { next: router.state.location.href } });

@@ -10,9 +10,9 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Migration 0017 on a database that has lived through 0016: the devices keep their rows
-// without the unused column, the slot counter starts at the largest slot number, and the
-// indexes are there.
+// Migration 0017 on a database that has lived through 0016 (with 0018 on top): the
+// devices keep their rows without the unused column, the slot counter starts at the
+// largest slot number, and the indexes are there.
 func TestMigration0017KeepsWhatIsThere(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "old.db"))+"?_pragma=foreign_keys(ON)")
@@ -60,7 +60,10 @@ func TestMigration0017KeepsWhatIsThere(t *testing.T) {
 	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name IN ('traffic_hourly_hour', 'traffic_daily_day', 'devices_last_seen', 'audit_log_ts')").Scan(&n); err != nil || n != 4 {
 		t.Fatalf("time indexes: %d %v", n, err)
 	}
-	// And back: the rollback leaves the data.
+	// And back: the rollbacks leave the data (0018 first, then 0017).
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := p.Down(ctx); err != nil {
 		t.Fatal(err)
 	}

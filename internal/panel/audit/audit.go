@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 type Entry struct {

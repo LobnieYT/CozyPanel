@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // Packages is the catalog of traffic packages (GitHub issue #12): extra traffic for the
-// main quota or one pool, with prices like tariffs. Archived packages stay for the
-// payments and grants that name them.
+// main quota or one pool, given by the admin. Archived packages stay for the grants
+// that name them.
 type Packages struct {
 	st  *store.Store
 	now func() time.Time
@@ -23,24 +23,16 @@ func NewPackages(st *store.Store, now func() time.Time) *Packages { return &Pack
 
 // PackageInput is a package as the admin sets it.
 type PackageInput struct {
-	Name       string
-	Bytes      int64
-	PoolID     int64 // 0: the main traffic
-	Lifetime   string
-	Days       int64 // LifetimeDays
-	PriceStars sql.NullInt64
-	PriceRub   sql.NullInt64 // kopecks
-	OnSale     bool
-	Sort       int64
+	Name     string
+	Bytes    int64
+	PoolID   int64 // 0: the main traffic
+	Lifetime string
+	Days     int64 // LifetimeDays
+	Sort     int64
 }
 
-// Prices a package may have, the same as a tariff's.
-const (
-	maxPackageName = 60
-	maxPriceStars  = 10000
-	minPriceRub    = 100
-	maxPriceRub    = 100_000_000
-)
+// A package's name length.
+const maxPackageName = 60
 
 func (in *PackageInput) check() error {
 	in.Name = strings.TrimSpace(in.Name)
@@ -52,14 +44,6 @@ func (in *PackageInput) check() error {
 	}
 	if in.Lifetime != LifetimeDays {
 		in.Days = 0
-	}
-	switch {
-	case in.PriceStars.Valid && (in.PriceStars.Int64 < 1 || in.PriceStars.Int64 > maxPriceStars):
-		return fieldErr("price_stars", "bad_price")
-	case in.PriceRub.Valid && (in.PriceRub.Int64 < minPriceRub || in.PriceRub.Int64 > maxPriceRub):
-		return fieldErr("price_rub", "bad_price")
-	case in.OnSale && !in.PriceStars.Valid && !in.PriceRub.Valid:
-		return fieldErr("on_sale", "on_sale_no_price")
 	}
 	return nil
 }
@@ -75,8 +59,7 @@ func (s *Packages) Create(ctx context.Context, in PackageInput) (db.TrafficPacka
 		}
 		var err error
 		p, err = q.CreateTrafficPackage(ctx, db.CreateTrafficPackageParams{Name: in.Name, Bytes: in.Bytes, PoolID: poolRef(in.PoolID),
-			Lifetime: in.Lifetime, Days: in.Days, PriceStars: in.PriceStars, PriceRub: in.PriceRub, OnSale: Flag(in.OnSale), Sort: in.Sort,
-			CreatedAt: s.now().Unix()})
+			Lifetime: in.Lifetime, Days: in.Days, Sort: in.Sort, CreatedAt: s.now().Unix()})
 		return err
 	})
 	return p, err
@@ -94,7 +77,7 @@ func (s *Packages) Update(ctx context.Context, id int64, in PackageInput) (db.Tr
 		}
 		var err error
 		p, err = q.UpdateTrafficPackage(ctx, db.UpdateTrafficPackageParams{Name: in.Name, Bytes: in.Bytes, PoolID: poolRef(in.PoolID),
-			Lifetime: in.Lifetime, Days: in.Days, PriceStars: in.PriceStars, PriceRub: in.PriceRub, OnSale: Flag(in.OnSale), Sort: in.Sort, ID: id})
+			Lifetime: in.Lifetime, Days: in.Days, Sort: in.Sort, ID: id})
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -103,7 +86,7 @@ func (s *Packages) Update(ctx context.Context, id int64, in PackageInput) (db.Tr
 	return p, err
 }
 
-// Archive takes a package off the catalog; invoices already paid for it still apply.
+// Archive takes a package off the catalog; given grants keep what they were given.
 func (s *Packages) Archive(ctx context.Context, id int64) error {
 	n, err := s.st.Q.ArchiveTrafficPackage(ctx, id)
 	if err == nil && n == 0 {
@@ -124,32 +107,6 @@ func PackageFits(u db.User, pools []db.UserPool, p db.TrafficPackage) bool {
 		}
 	}
 	return false
-}
-
-// PackagesFor are the packages on sale that fit the user, in the catalog's order.
-func PackagesFor(ctx context.Context, q *db.Queries, userID int64) ([]db.TrafficPackage, error) {
-	u, err := q.GetUser(ctx, userID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	pools, err := q.ListUserPools(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	all, err := q.ListTrafficPackagesOnSale(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := []db.TrafficPackage{}
-	for _, p := range all {
-		if PackageFits(u, pools, p) {
-			out = append(out, p)
-		}
-	}
-	return out, nil
 }
 
 func poolRef(id int64) sql.NullInt64 { return sql.NullInt64{Int64: id, Valid: id != 0} }

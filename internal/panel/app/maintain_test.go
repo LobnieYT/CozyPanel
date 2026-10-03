@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // The housekeeping cuts what only grew: daily traffic after 400 days, the audit journal

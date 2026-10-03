@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // What every user of an answer shares (the subscription address, who is online) is worked

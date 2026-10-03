@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"mikan/internal/proto"
+	"cozy/internal/proto"
 )
 
 type Result struct {

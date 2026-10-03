@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/fsutil"
+	"cozy/internal/fsutil"
 )
 
 // The admin's own certificate, instead of Let's Encrypt or the self-signed one (GitHub

@@ -27,10 +27,10 @@ import (
 	mlog "github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
 
-	"mikan/internal/fsutil"
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
-	"mikan/internal/scan"
+	"cozy/internal/fsutil"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
+	"cozy/internal/scan"
 )
 
 const (
@@ -274,7 +274,7 @@ func (e *Engine) Validate(req nodeapi.ValidateRequest) error {
 	cert := e.cert
 	e.mu.Unlock()
 	in := req.Inbound
-	in.Name = "mikan-validate"
+	in.Name = "cozy-validate"
 	probe := []nodeapi.Slot{{Name: "validate", UUID: "00000000-0000-4000-8000-000000000000", Secret: "validate"}}
 	l, err := listenerFor(in, probe, cert, proto.Options{SelfStealPort: req.SelfStealPort})
 	if err != nil {
@@ -410,7 +410,7 @@ func (e *Engine) pumpLogs() {
 	}
 }
 
-const markerPrefix = "mikan-sync "
+const markerPrefix = "cozy-sync "
 
 // syncLogs waits until every log event emitted before this call has been processed:
 // mihomo delivers events in order, so seeing our own marker is a barrier.

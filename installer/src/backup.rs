@@ -1,4 +1,4 @@
-//! Backups and restore. A backup is a tar.gz of what mikan keeps in /opt/mikan: .env,
+//! Backups and restore. A backup is a tar.gz of what cozy keeps in /opt/cozy: .env,
 //! compose.yaml, a consistent copy of the panel's database, its certificates and the node's
 //! data. It holds every secret of the server, so it is born private: the directory is 0700
 //! and the archive is created 0600 before tar writes a byte into it.
@@ -27,8 +27,8 @@ use crate::{DIR, docker, setup, signals};
 const KEEP_UPDATE: usize = 5;
 const KEEP_RESTORE: usize = 3;
 
-/// What a restore may put back, below /opt/mikan: the settings, and the data of the panel
-/// and the node. Anything else in an archive is not a mikan backup.
+/// What a restore may put back, below /opt/cozy: the settings, and the data of the panel
+/// and the node. Anything else in an archive is not a cozy backup.
 const TOP: [&str; 2] = [".env", "compose.yaml"];
 
 /// The backups' directory, private.
@@ -112,11 +112,11 @@ fn exists(root: &Path, rel: &str) -> bool {
 
 /// The backup the admin asks for.
 pub fn backup(say: &mut dyn FnMut(&str)) -> Result<PathBuf> {
-    backup_as("mikan", say)
+    backup_as("cozy", say)
 }
 
 /// A backup of the database (a consistent copy while the panel runs), certificates and
-/// settings, in /opt/mikan/backups. kind names the file: an update's own are rotated.
+/// settings, in /opt/cozy/backups. kind names the file: an update's own are rotated.
 pub fn backup_as(kind: &str, say: &mut dyn FnMut(&str)) -> Result<PathBuf> {
     let _lock = lock::acquire(Wait::Block, say)?;
     let install = Install::load()?;
@@ -152,7 +152,7 @@ pub fn backup_as(kind: &str, say: &mut dyn FnMut(&str)) -> Result<PathBuf> {
     Ok(file)
 }
 
-/// The archives in /opt/mikan/backups, the newest first.
+/// The archives in /opt/cozy/backups, the newest first.
 pub fn backups() -> Vec<PathBuf> {
     let mut list: Vec<(std::time::SystemTime, PathBuf)> = fs::read_dir(Path::new(DIR).join("backups"))
         .map(|d| {
@@ -192,7 +192,7 @@ fn check_listing(names: &str, verbose: &str) -> Result<()> {
         bail!("the archive has an entry that is not a plain file or directory: {}", l.trim());
     }
     if let Some(n) = names.iter().find(|n| !allowed_name(n)) {
-        bail!("the archive has a path a mikan backup does not: {n}");
+        bail!("the archive has a path a cozy backup does not: {n}");
     }
     Ok(())
 }
@@ -263,7 +263,7 @@ fn verify_tree(dir: &Path, depth: usize) -> Result<()> {
     Ok(())
 }
 
-/// What an unpacked archive puts back: (where it is, where it goes below /opt/mikan).
+/// What an unpacked archive puts back: (where it is, where it goes below /opt/cozy).
 fn plan(stage: &Path) -> Result<Vec<(PathBuf, &'static str)>> {
     let mut items = Vec::new();
     for rel in [".env", "compose.yaml", "data/panel/tls", "data/node"] {
@@ -272,13 +272,13 @@ fn plan(stage: &Path) -> Result<Vec<(PathBuf, &'static str)>> {
         }
     }
     if !items.iter().any(|(_, r)| *r == ".env") {
-        bail!("the archive has no .env: it is not a mikan backup");
+        bail!("the archive has no .env: it is not a cozy backup");
     }
     // The panel's database comes as the consistent copy a backup makes, or as the file a
     // snapshot took with the panel stopped.
-    for db in ["data/panel/backup.db", "data/panel/mikan.db"] {
+    for db in ["data/panel/backup.db", "data/panel/cozy.db"] {
         if fs::symlink_metadata(stage.join(db)).is_ok() {
-            items.push((stage.join(db), "data/panel/mikan.db"));
+            items.push((stage.join(db), "data/panel/cozy.db"));
             break;
         }
     }
@@ -305,10 +305,10 @@ fn swap(root: &Path, items: &[(PathBuf, &str)]) -> Result<()> {
         };
         for (from, rel) in items {
             away(rel)?;
-            if *rel == "data/panel/mikan.db" {
+            if *rel == "data/panel/cozy.db" {
                 // The journal of the old database does not belong to the new one.
-                away("data/panel/mikan.db-wal")?;
-                away("data/panel/mikan.db-shm")?;
+                away("data/panel/cozy.db-wal")?;
+                away("data/panel/cozy.db-shm")?;
             }
             let to = root.join(rel);
             if let Some(parent) = to.parent() {
@@ -337,9 +337,9 @@ fn snapshot(root: &Path) -> Result<PathBuf> {
     let members: Vec<String> = [
         ".env",
         "compose.yaml",
-        "data/panel/mikan.db",
-        "data/panel/mikan.db-wal",
-        "data/panel/mikan.db-shm",
+        "data/panel/cozy.db",
+        "data/panel/cozy.db-wal",
+        "data/panel/cozy.db-shm",
         "data/panel/tls",
         "data/node",
     ]
@@ -361,7 +361,7 @@ pub fn restore_database(file: &Path) -> Result<()> {
     let stage = Stage::new(root)?;
     extract(file, &stage.0)?;
     verify_tree(&stage.0, 0)?;
-    let db = plan(&stage.0)?.into_iter().find(|(_, to)| *to == "data/panel/mikan.db").context("the archive has no database")?;
+    let db = plan(&stage.0)?.into_iter().find(|(_, to)| *to == "data/panel/cozy.db").context("the archive has no database")?;
     docker::compose_run(&["down"])?;
     real_data_dirs(root)?;
     swap(root, &[db])?;
@@ -398,7 +398,7 @@ pub fn restore(file: &Path, say: &mut dyn FnMut(&str)) -> Result<()> {
     verify_tree(&stage.0, 0)?;
     let items = plan(&stage.0)?;
     let archived = EnvFile::load(stage.0.join(".env"))?;
-    if (archived.get("MIKAN_MODE") == Some("node")) != install.node {
+    if (archived.get("COZY_MODE") == Some("node")) != install.node {
         bail!(
             "the backup is a {}'s, this server is a {}",
             if install.node { "panel" } else { "node" },
@@ -407,11 +407,11 @@ pub fn restore(file: &Path, say: &mut dyn FnMut(&str)) -> Result<()> {
     }
 
     let _critical = signals::critical();
-    say("Stopping mikan");
+    say("Stopping cozy");
     docker::compose_run(&["down"])?;
     let again = |say: &mut dyn FnMut(&str)| {
         if let Err(e) = docker::compose_run(&["up", "-d"]) {
-            say(&format!("mikan did not start again: {e:#}"));
+            say(&format!("cozy did not start again: {e:#}"));
         }
     };
     // With the containers down nothing can swap a directory for a link any more: this is
@@ -433,7 +433,7 @@ pub fn restore(file: &Path, say: &mut dyn FnMut(&str)) -> Result<()> {
         return Err(e.context("the data were not replaced"));
     }
     let started = (|| -> Result<()> {
-        // The backup may carry the compose file of an older mikan: it gets the current one.
+        // The backup may carry the compose file of an older cozy: it gets the current one.
         docker::ensure_compose(root, install.node)?;
         panelfs::layout(root, !install.node)?;
         docker::compose_run(&["up", "-d"])?;
@@ -441,7 +441,7 @@ pub fn restore(file: &Path, say: &mut dyn FnMut(&str)) -> Result<()> {
     })();
     if let Err(e) = started {
         return Err(e.context(format!(
-            "the backup is in place but mikan does not start; the data before it are in {}: mikan restore {}",
+            "the backup is in place but cozy does not start; the data before it are in {}: cozy restore {}",
             snap.display(),
             snap.display()
         )));
@@ -472,8 +472,8 @@ mod tests {
     #[test]
     fn a_backup_is_private_from_its_first_byte() {
         let root = tmpdir("private");
-        file(&root, ".env", "MIKAN_IMAGE=x\n");
-        file(&root, "compose.yaml", "name: mikan\n");
+        file(&root, ".env", "COZY_IMAGE=x\n");
+        file(&root, "compose.yaml", "name: cozy\n");
         file(&root, "data/panel/backup.db", "db");
         file(&root, "data/node/state.json", "{}");
         let dir = backups_dir(&root).unwrap();
@@ -483,15 +483,15 @@ mod tests {
         backups_dir(&root).unwrap();
         assert_eq!(fs::metadata(&dir).unwrap().permissions().mode() & 0o777, 0o700);
         let a =
-            pack(&root, &dir, "mikan", &[".env".into(), "compose.yaml".into(), "data/panel/backup.db".into(), "data/node".into()]).unwrap();
-        let b = pack(&root, &dir, "mikan", &[".env".into()]).unwrap();
+            pack(&root, &dir, "cozy", &[".env".into(), "compose.yaml".into(), "data/panel/backup.db".into(), "data/node".into()]).unwrap();
+        let b = pack(&root, &dir, "cozy", &[".env".into()]).unwrap();
         assert_ne!(a, b, "two backups of one second must not share a name");
         assert_eq!(fs::metadata(&a).unwrap().permissions().mode() & 0o777, 0o600);
         // the archive is what restore accepts
         check_archive(&a).unwrap();
         // a failed tar leaves no file
         let before = fs::read_dir(&dir).unwrap().count();
-        assert!(pack(&root, &dir, "mikan", &["no-such-file".into()]).is_err());
+        assert!(pack(&root, &dir, "cozy", &["no-such-file".into()]).is_err());
         assert_eq!(fs::read_dir(&dir).unwrap().count(), before, "a broken archive stayed");
         fs::remove_dir_all(&root).unwrap();
     }
@@ -502,7 +502,7 @@ mod tests {
         for n in 1..=8 {
             fs::write(dir.join(format!("pre-update-2026100{n}-000000.tar.gz")), "x").unwrap();
         }
-        fs::write(dir.join("mikan-20260101-000000.tar.gz"), "mine").unwrap();
+        fs::write(dir.join("cozy-20260101-000000.tar.gz"), "mine").unwrap();
         fs::write(dir.join("pre-restore-20260101-000000.tar.gz"), "snap").unwrap();
         prune(&dir, "pre-update", KEEP_UPDATE);
         let mut left: Vec<String> = fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
@@ -511,13 +511,13 @@ mod tests {
         assert!(left.contains(&"pre-update-20261008-000000.tar.gz".to_string()), "the newest stays");
         assert!(!left.contains(&"pre-update-20261001-000000.tar.gz".to_string()), "the oldest goes");
         assert!(
-            left.contains(&"mikan-20260101-000000.tar.gz".to_string()) && left.contains(&"pre-restore-20260101-000000.tar.gz".to_string())
+            left.contains(&"cozy-20260101-000000.tar.gz".to_string()) && left.contains(&"pre-restore-20260101-000000.tar.gz".to_string())
         );
         fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
-    fn only_mikan_backups_pass_the_listing() {
+    fn only_cozy_backups_pass_the_listing() {
         let names = ".env\ncompose.yaml\ndata/\ndata/panel/\ndata/panel/backup.db\ndata/panel/tls/\ndata/panel/tls/panel.key\ndata/node/\ndata/node/state.json\n";
         let verbose: String = names
             .lines()
@@ -553,7 +553,7 @@ mod tests {
     fn a_hostile_archive_is_refused_before_it_is_unpacked() {
         let d = tmpdir("hostile");
         let src = d.join("src");
-        file(&src, ".env", "MIKAN_MODE=panel\n");
+        file(&src, ".env", "COZY_MODE=panel\n");
         fs::create_dir_all(src.join("data/panel")).unwrap();
         symlink("/etc", src.join("data/panel/tls")).unwrap();
         let tgz = d.join("evil.tar.gz");
@@ -584,7 +584,7 @@ mod tests {
     fn what_a_backup_puts_back() {
         let d = tmpdir("plan");
         assert!(plan(&d).is_err(), "no .env, not a backup");
-        file(&d, ".env", "MIKAN_MODE=node\n");
+        file(&d, ".env", "COZY_MODE=node\n");
         file(&d, "data/node/state.json", "{}");
         let items = plan(&d).unwrap();
         assert_eq!(items.iter().map(|(_, r)| *r).collect::<Vec<_>>(), [".env", "data/node"]);
@@ -592,15 +592,15 @@ mod tests {
         file(&d, "data/panel/tls/panel.key", "k");
         let items = plan(&d).unwrap();
         let to: Vec<&str> = items.iter().map(|(_, r)| *r).collect();
-        assert!(to.contains(&"data/panel/mikan.db") && to.contains(&"data/panel/tls"), "{to:?}");
+        assert!(to.contains(&"data/panel/cozy.db") && to.contains(&"data/panel/tls"), "{to:?}");
         fs::remove_dir_all(&d).unwrap();
     }
 
     fn server(root: &Path) {
         file(root, ".env", "OLD=1\n");
         file(root, "compose.yaml", "old compose");
-        file(root, "data/panel/mikan.db", "old db");
-        file(root, "data/panel/mikan.db-wal", "old wal");
+        file(root, "data/panel/cozy.db", "old db");
+        file(root, "data/panel/cozy.db-wal", "old wal");
         file(root, "data/panel/tls/stale.key", "stale");
         file(root, "data/panel/update/status.json", "{}");
         file(root, "data/node/old", "old node");
@@ -619,8 +619,8 @@ mod tests {
         swap(&root, &items).unwrap();
         assert_eq!(fs::read_to_string(root.join(".env")).unwrap(), "NEW=1\n");
         assert_eq!(fs::read_to_string(root.join("compose.yaml")).unwrap(), "old compose", "not in the backup: stays");
-        assert_eq!(fs::read_to_string(root.join("data/panel/mikan.db")).unwrap(), "new db");
-        assert!(!root.join("data/panel/mikan.db-wal").exists(), "the old database's journal is gone");
+        assert_eq!(fs::read_to_string(root.join("data/panel/cozy.db")).unwrap(), "new db");
+        assert!(!root.join("data/panel/cozy.db-wal").exists(), "the old database's journal is gone");
         assert!(root.join("data/panel/tls/fresh.key").exists() && !root.join("data/panel/tls/stale.key").exists(), "no stale certificate");
         assert!(root.join("data/node/new").exists() && !root.join("data/node/old").exists());
         assert!(root.join("data/panel/update/status.json").exists(), "what the backup does not hold stays");
@@ -646,7 +646,7 @@ mod tests {
         assert_eq!(fs::read_to_string(root.join("data/node/old")).unwrap(), "old node");
         assert!(!root.join("data/node/new").exists());
         assert_eq!(fs::read_to_string(root.join("data/panel/tls/stale.key")).unwrap(), "stale");
-        assert_eq!(fs::read_to_string(root.join("data/panel/mikan.db")).unwrap(), "old db");
+        assert_eq!(fs::read_to_string(root.join("data/panel/cozy.db")).unwrap(), "old db");
         fs::remove_dir_all(&root).unwrap();
     }
 
@@ -658,7 +658,7 @@ mod tests {
         assert!(snap.starts_with(root.join("backups")));
         let out = Command::new("tar").arg("-tzf").arg(&snap).output().unwrap();
         let names = String::from_utf8_lossy(&out.stdout);
-        for want in [".env", "compose.yaml", "data/panel/mikan.db", "data/panel/mikan.db-wal", "data/panel/tls/stale.key", "data/node/old"]
+        for want in [".env", "compose.yaml", "data/panel/cozy.db", "data/panel/cozy.db-wal", "data/panel/tls/stale.key", "data/node/old"]
         {
             assert!(names.lines().any(|n| n == want), "{want} is not in {names}");
         }
@@ -666,7 +666,7 @@ mod tests {
         check_archive(&snap).unwrap();
         let stage = tmpdir("snapshot-stage");
         extract(&snap, &stage).unwrap();
-        assert!(plan(&stage).unwrap().iter().any(|(_, r)| *r == "data/panel/mikan.db"));
+        assert!(plan(&stage).unwrap().iter().any(|(_, r)| *r == "data/panel/cozy.db"));
         fs::remove_dir_all(&stage).unwrap();
         fs::remove_dir_all(&root).unwrap();
     }

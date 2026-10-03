@@ -99,7 +99,7 @@ export function TrafficSection({ u }: { u: User }) {
             <>
               <div className="mt-4 flex h-10 items-end gap-1" aria-hidden>
                 {pts.slice(-14).map((p) => (
-                  <i key={p.t} className="min-h-[2px] flex-1 rounded-t-[4px] rounded-b-[2px] bg-[var(--mikan-200)] last:bg-[var(--mikan-500)]" style={{ height: `${((p.up + p.down) / max) * 100}%` }} />
+                  <i key={p.t} className="min-h-[2px] flex-1 rounded-t-[4px] rounded-b-[2px] bg-[var(--cozy-200)] last:bg-[var(--cozy-500)]" style={{ height: `${((p.up + p.down) / max) * 100}%` }} />
                 ))}
               </div>
               <div className="mt-1.5 flex justify-between text-[11px] text-[var(--ink-400)]">

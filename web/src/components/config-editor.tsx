@@ -28,7 +28,7 @@ const TOP: Record<string, string[]> = {
 const NESTED: Record<string, string[]> = {
   "reality-config": ["dest", "private-key", "short-id", "server-names", "max-time-difference", "limit-fallback-upload", "limit-fallback-download"],
   "xhttp-config": ["path", "mode", "host", "x-padding-bytes"],
-  mikan: ["flow", "tls", "client"],
+  cozy: ["flow", "tls", "client"],
   client: ["server", "port", "sni", "fingerprint"],
   "jls-upstream": ["addr", "sni"],
   httpmask: ["disable", "mode", "path-root"],
@@ -78,7 +78,7 @@ function complete(ctx: CompletionContext): CompletionResult | null {
   let keys: string[];
   if (parent === "") {
     const type = /^type:\s*([\w-]+)/m.exec(ctx.state.doc.toString())?.[1] ?? "";
-    keys = ["type", "mikan", ...(TOP[type] ?? Object.values(TOP).flat())];
+    keys = ["type", "cozy", ...(TOP[type] ?? Object.values(TOP).flat())];
   } else {
     keys = NESTED[parent] ?? [];
   }

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // A known device asking again with nothing new is not written down each time; something

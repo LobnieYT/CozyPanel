@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/dnscheck"
+	"cozy/internal/panel/dnscheck"
 )
 
 // The panel takes a domain only when public DNS leads it to this server: someone else's

@@ -25,7 +25,7 @@ type Cert struct {
 // the target's, and the server is exposed. A template may set its own value.
 const RealityMaxTimeDiff = int64(2 * 60 * 60 * 1_000_000)
 
-// Listener renders the mihomo listener: the template minus mikan's section, plus name,
+// Listener renders the mihomo listener: the template minus cozy's section, plus name,
 // port, listen address, users and, where the protocol needs it, the node certificate.
 func Listener(t Template, name, listen, port string, slots []Slot, cert Cert, o Options) (map[string]any, error) {
 	if err := Validate(t, o); err != nil {
@@ -115,7 +115,7 @@ func clone(v any) any {
 	return out
 }
 
-// FromPreset converts the settings of mikan ≤ 0.1.2 (one struct per preset) to a
+// FromPreset converts the settings of cozy ≤ 0.1.2 (one struct per preset) to a
 // template. The panel runs it once per inbound; the node uses it to restore a state
 // saved by an older version.
 func FromPreset(preset string, settings []byte) (Template, error) {

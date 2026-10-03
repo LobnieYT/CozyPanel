@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // The node cannot open ports in the host's firewall: the installer opens the pool ahead.
@@ -127,7 +127,7 @@ func TestNodePorts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	panel, _ := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, now)
+	panel, _ := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, now)
 	remote, _, err := AddNode(ctx, st, panel, NodeInput{Name: "B", Host: "198.51.100.20", APIPort: 40000}, now)
 	if err != nil {
 		t.Fatal(err)

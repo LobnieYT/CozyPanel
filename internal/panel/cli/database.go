@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"mikan/internal/panel/config"
-	"mikan/internal/panel/store"
+	"cozy/internal/panel/config"
+	"cozy/internal/panel/store"
 )
 
 // databaseCmd answers the database commands of the 0.5 installer on this SQLite release,
@@ -33,5 +33,5 @@ func databaseCmd(ctx context.Context, args []string) error {
 		fmt.Println("Database copied to", args[1])
 		return nil
 	}
-	return errors.New("usage: mikan database migrate | database backup FILE")
+	return errors.New("usage: cozy database migrate | database backup FILE")
 }

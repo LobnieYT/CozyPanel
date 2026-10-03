@@ -1,7 +1,7 @@
 #!/bin/sh
-# mikan: one-line install.
+# cozy: one-line install.
 #
-#   curl -fsSL https://github.com/Miroshka000/mikan/releases/latest/download/install.sh | sudo bash
+#   curl -fsSL https://github.com/LobnieYT/CozyPanel/releases/latest/download/install.sh | sudo bash
 #
 # Downloads the release manifest and its signature, checks the signature against the
 # release key built into this script, then downloads the installer for this server's
@@ -16,7 +16,7 @@
 # after that is checked by the installer against the key it carries.
 set -eu
 
-REPO="Miroshka000/mikan"
+REPO="LobnieYT/CozyPanel"
 BASE="https://github.com/$REPO/releases/latest/download"
 
 # The public half of the key that signs every release's manifest.json: the same key as
@@ -26,7 +26,7 @@ MCowBQYDK2VwAyEAZ3wSIPBSaJxh5CsGO8eINI0aM0kyrQ46EcJSNeH85W8=
 -----END PUBLIC KEY-----'
 
 fail() {
-  echo "mikan: $*" >&2
+  echo "cozy: $*" >&2
   exit 1
 }
 
@@ -34,7 +34,7 @@ fail() {
 case "$(uname -m)" in
   x86_64 | amd64) arch=x86_64 ;;
   aarch64 | arm64) arch=aarch64 ;;
-  *) fail "unsupported architecture $(uname -m): mikan runs on x86_64 and aarch64" ;;
+  *) fail "unsupported architecture $(uname -m): cozy runs on x86_64 and aarch64" ;;
 esac
 command -v curl >/dev/null || fail "curl is missing"
 command -v sha256sum >/dev/null || fail "sha256sum is missing"
@@ -43,7 +43,7 @@ command -v base64 >/dev/null || fail "base64 is missing"
 # The signature is Ed25519: openssl 3.0 or newer checks it (Debian 12, Ubuntu 22.04 and
 # 24.04, Alpine 3.17+ all have it). A fresh server may not have the command at all.
 if ! command -v openssl >/dev/null 2>&1; then
-  echo "mikan: openssl is needed to check the release's signature: installing it" >&2
+  echo "cozy: openssl is needed to check the release's signature: installing it" >&2
   if command -v apt-get >/dev/null 2>&1; then
     DEBIAN_FRONTEND=noninteractive apt-get install -y openssl >&2 || true
   elif command -v apk >/dev/null 2>&1; then
@@ -81,19 +81,19 @@ want=$(printf '%s' "$entry" | sed -n 's/.*"sha256":"\([0-9a-f]\{64\}\)".*/\1/p')
 [ -n "$url" ] && [ -n "$want" ] || fail "the release has no installer for $arch"
 # The binary comes from the release the manifest is of, not from whatever "latest" is now.
 case "$url" in
-  "https://github.com/$REPO/releases/download/v"*"/mikan-$arch") ;;
+  "https://github.com/$REPO/releases/download/v"*"/cozy-$arch") ;;
   *) fail "the manifest names an installer at an address outside this project's releases: $url" ;;
 esac
-get "$url" "$tmp/mikan" || fail "cannot download the installer"
-got=$(sha256sum "$tmp/mikan" | cut -d' ' -f1)
+get "$url" "$tmp/cozy" || fail "cannot download the installer"
+got=$(sha256sum "$tmp/cozy" | cut -d' ' -f1)
 [ "$want" = "$got" ] || fail "the installer does not match the signed release manifest"
 
 # Whole or not at all: the old command stays until the new one is on the disk.
-install -m 755 "$tmp/mikan" /usr/local/bin/.mikan.new
-mv -f /usr/local/bin/.mikan.new /usr/local/bin/mikan
+install -m 755 "$tmp/cozy" /usr/local/bin/.cozy.new
+mv -f /usr/local/bin/.cozy.new /usr/local/bin/cozy
 # The installer is interactive; curl | bash leaves stdin on the script, so it reads the
 # terminal. Without one (a script over ssh) it runs on its flags alone.
 if [ -t 0 ] || ! (exec </dev/tty) 2>/dev/null; then
-  exec /usr/local/bin/mikan install "$@"
+  exec /usr/local/bin/cozy install "$@"
 fi
-exec /usr/local/bin/mikan install "$@" </dev/tty
+exec /usr/local/bin/cozy install "$@" </dev/tty

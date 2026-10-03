@@ -6,8 +6,8 @@ import (
 
 	"github.com/metacubex/mihomo/listener"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 // A Gecko template becomes a Hysteria2 listener mihomo itself accepts, sizes included.

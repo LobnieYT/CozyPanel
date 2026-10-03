@@ -141,7 +141,7 @@ function TrafficCard() {
           </h2>
           <div className="mt-1.5 flex gap-4 text-[13px] text-[var(--ink-600)]">
             <span className="inline-flex items-center gap-2">
-              <i className="h-2 w-2 rounded-full bg-[var(--mikan-500)]" /> {t("chart.down")}
+              <i className="h-2 w-2 rounded-full bg-[var(--cozy-500)]" /> {t("chart.down")}
             </span>
             <span className="inline-flex items-center gap-2">
               <i className="h-2 w-2 rounded-full bg-[var(--lagoon-500)]" /> {t("chart.up")}
@@ -196,7 +196,7 @@ function ServerCard() {
       </div>
       {n && !n.ok ? (
         <div className="banner err mb-4" role="alert">
-          {t("dashboard.nodeUnreachable")} <span className="mono">mikan logs node</span>
+          {t("dashboard.nodeUnreachable")} <span className="mono">cozy logs node</span>
         </div>
       ) : null}
       {node.isError ? (
@@ -363,7 +363,7 @@ function TopCard() {
             <span className="font-display text-xs text-[var(--ink-400)]">{i + 1}</span>
             <div className="min-w-0">
               <div className="mb-1.5 truncate text-[13px] font-medium">{u.name}</div>
-              <Bar pct={(u.bytes / max) * 100} className="[&>i]:!bg-[var(--mikan-400)]" />
+              <Bar pct={(u.bytes / max) * 100} className="[&>i]:!bg-[var(--cozy-400)]" />
             </div>
             <span className="num min-w-[72px] text-right text-[13px] font-medium">{bytes(u.bytes)}</span>
           </Link>

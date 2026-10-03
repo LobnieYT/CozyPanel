@@ -9,7 +9,7 @@ import (
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 // Tunnel sits between mihomo listeners and mihomo's own tunnel: it resolves the slot

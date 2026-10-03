@@ -13,13 +13,13 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"mikan/internal/hostname"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/audit"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/release"
+	"cozy/internal/hostname"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/audit"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/release"
 )
 
 // nodeCmd manages the panel's nodes from the server shell. Join keys go to stdout alone,
@@ -162,7 +162,7 @@ const (
 
 func nodeID(args []string) (int64, error) {
 	if len(args) < 2 {
-		return 0, errors.New("name the node by its ID: mikan admin node list")
+		return 0, errors.New("name the node by its ID: cozy admin node list")
 	}
 	id, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil || id < 1 {

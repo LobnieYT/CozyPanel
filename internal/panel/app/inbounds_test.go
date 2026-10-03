@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // An inbound PATCH refused on any field changes nothing: the pool, the way out, the
@@ -30,7 +30,7 @@ func TestRefusedInboundPatchChangesNothing(t *testing.T) {
 	if err := settings.Set(ctx, settings.New(h.st.Q), settings.KeyPanelPort, 21355); err != nil {
 		t.Fatal(err)
 	}
-	panel, _ := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, _ := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	b, _, err := domain.AddNode(ctx, h.st, panel, domain.NodeInput{Name: "B", Host: "198.51.100.20", APIPort: 40000}, time.Now())
 	if err != nil {
 		t.Fatal(err)

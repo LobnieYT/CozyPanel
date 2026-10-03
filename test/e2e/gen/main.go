@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 type slot struct{ name, uuid, secret string }

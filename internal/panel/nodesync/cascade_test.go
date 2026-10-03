@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/nodetls"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/nodetls"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
 )
 
 // A chain client → A (local) → B → C → internet: A sends one inbound to B, B's relay
@@ -25,7 +25,7 @@ func TestCascadeChain(t *testing.T) {
 	if err := settings.Set(ctx, settings.New(q), settings.KeyPublicHost, "203.0.113.10"); err != nil {
 		t.Fatal(err)
 	}
-	panel, _ := nodetls.Generate("mikan-panel", x509.ExtKeyUsageClientAuth, time.Now())
+	panel, _ := nodetls.Generate("cozy-panel", x509.ExtKeyUsageClientAuth, time.Now())
 	nb, _, err := domain.AddNode(ctx, st, panel, domain.NodeInput{Name: "B", Host: "198.51.100.20", APIPort: 40000}, time.Now())
 	if err != nil {
 		t.Fatal(err)

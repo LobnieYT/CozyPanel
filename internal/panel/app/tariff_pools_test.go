@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // A tariff and its pool limits are one change: a pool list the API refuses (a pool twice,

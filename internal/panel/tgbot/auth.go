@@ -52,7 +52,7 @@ func ParseLinkCode(secret []byte, code string, now time.Time) (int64, error) {
 
 func sum(secret, b []byte) []byte {
 	m := hmac.New(sha256.New, secret)
-	m.Write([]byte("mikan-tg-link"))
+	m.Write([]byte("cozy-tg-link"))
 	m.Write(b)
 	return m.Sum(nil)[:macSize]
 }

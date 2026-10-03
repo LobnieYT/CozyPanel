@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -10,15 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
 )
 
-// A pool is not deleted while it holds what users paid for: the cascade would take their
-// grants (and the catalog's packages) with it, and a paid invoice of a package would lose
-// the package. Each thing that blocks it is named, nothing is deleted, and once they are
-// gone the pool goes.
-func TestDeletePoolKeepsPaidTraffic(t *testing.T) {
+// A pool is not deleted while it holds granted traffic: the cascade would take the
+// users' grants (and the catalog's packages) with it. Each thing that blocks it is
+// named, nothing is deleted, and once they are gone the pool goes.
+func TestDeletePoolKeepsGrantedTraffic(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
 	if err := domain.Seed(ctx, h.st, h.now); err != nil {
@@ -41,7 +38,7 @@ func TestDeletePoolKeepsPaidTraffic(t *testing.T) {
 	var pk struct {
 		ID int64 `json:"id"`
 	}
-	resp, body := h.do(http.MethodPost, api+"/packages", map[string]any{"name": "+50 GB WL", "bytes": 50 * gb, "pool_id": pool.ID, "lifetime": "used", "price_stars": 75}, csrf)
+	resp, body := h.do(http.MethodPost, api+"/packages", map[string]any{"name": "+50 GB WL", "bytes": 50 * gb, "pool_id": pool.ID, "lifetime": "used"}, csrf)
 	if resp.StatusCode != http.StatusCreated || json.Unmarshal(body, &pk) != nil {
 		t.Fatalf("create package: %d %s", resp.StatusCode, body)
 	}
@@ -55,11 +52,6 @@ func TestDeletePoolKeepsPaidTraffic(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("grant: %d %s", resp.StatusCode, body)
 	}
-	pay, err := h.st.Q.CreatePackagePayment(ctx, db.CreatePackagePaymentParams{Provider: "stars", Payload: "p1", TgID: 7, UserID: sql.NullInt64{Int64: u.ID, Valid: true},
-		PackageID: sql.NullInt64{Int64: pk.ID, Valid: true}, TariffName: "+50 GB WL", Amount: 75, Currency: "XTR", CreatedAt: h.now.Unix()})
-	if err != nil {
-		t.Fatal(err)
-	}
 	remove := func() (*http.Response, []byte) { return h.do(http.MethodDelete, api+"/pools/"+id(pool.ID), nil, csrf) }
 	refused := func(step string, want ...string) {
 		t.Helper()
@@ -67,7 +59,7 @@ func TestDeletePoolKeepsPaidTraffic(t *testing.T) {
 		if resp.StatusCode != http.StatusConflict || !strings.Contains(string(body), "pool_in_use") {
 			t.Fatalf("%s: %d %s, want 409 pool_in_use", step, resp.StatusCode, body)
 		}
-		for _, w := range []string{"pool_has_grants", "pool_has_packages", "pool_has_payments"} {
+		for _, w := range []string{"pool_has_grants", "pool_has_packages"} {
 			if has := strings.Contains(string(body), w); has != contains(want, w) {
 				t.Fatalf("%s: %s present=%v in %s", step, w, has, body)
 			}
@@ -80,23 +72,12 @@ func TestDeletePoolKeepsPaidTraffic(t *testing.T) {
 		}
 	}
 
-	refused("all three", "pool_has_grants", "pool_has_packages", "pool_has_payments")
-	// The catalog is cleaned up; the grant and the open invoice still hold the pool.
+	refused("both", "pool_has_grants", "pool_has_packages")
+	// The catalog is cleaned up; the grant still holds the pool.
 	if resp, _ := h.do(http.MethodDelete, api+"/packages/"+id(pk.ID), nil, csrf); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("archive package: %d", resp.StatusCode)
 	}
-	refused("package archived", "pool_has_grants", "pool_has_payments")
-	// A paid invoice that is not applied yet is still money the customer is owed.
-	setStatus := func(status string) {
-		t.Helper()
-		if _, err := h.st.DB.ExecContext(ctx, "UPDATE payments SET status = ? WHERE id = ?", status, pay.ID); err != nil {
-			t.Fatal(err)
-		}
-	}
-	setStatus("paid")
-	refused("invoice paid", "pool_has_grants", "pool_has_payments")
-	setStatus("applied")
-	refused("invoice applied", "pool_has_grants")
+	refused("package archived", "pool_has_grants")
 	// An expired grant is worth nothing and does not hold the pool; a used-up one neither.
 	if _, err := h.st.DB.ExecContext(ctx, "UPDATE traffic_grants SET remaining = 0 WHERE user_id = ?", u.ID); err != nil {
 		t.Fatal(err)

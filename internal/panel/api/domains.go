@@ -9,7 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/dnscheck"
+	"cozy/internal/panel/dnscheck"
 )
 
 // A domain of the panel or of a node is taken only when public DNS sends clients to that

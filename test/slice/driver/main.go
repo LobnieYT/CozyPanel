@@ -174,7 +174,7 @@ func prepare() {
 		{"preset": "shadowsocks_2022"},
 		{"preset": "sudoku"},
 		{"preset": "snell"},
-		{"preset": "custom", "port": "2097", "config": "type: vmess\nws-path: /vm\nmikan:\n  tls: node\n"},
+		{"preset": "custom", "port": "2097", "config": "type: vmess\nws-path: /vm\ncozy:\n  tls: node\n"},
 	} {
 		p.call("POST", "/api/v1/inbounds", in, nil)
 	}
@@ -612,7 +612,7 @@ func addNode() {
 		Key string `json:"key"`
 	}
 	p.call("POST", "/api/v1/nodes", map[string]any{"name": "🇺🇸 US", "host": "node2.slice", "api_port": 7443}, &out)
-	if !strings.HasPrefix(out.Key, "mikan1.") {
+	if !strings.HasPrefix(out.Key, "cozy1.") {
 		log.Fatalf("join key: %q", out.Key)
 	}
 	// Test key in a throwaway volume: node2 runs as the image user, not as the driver.

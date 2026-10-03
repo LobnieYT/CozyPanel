@@ -3,8 +3,8 @@ package subs
 import (
 	"testing"
 
-	"mikan/internal/panel/presets"
-	"mikan/internal/proto"
+	"cozy/internal/panel/presets"
+	"cozy/internal/proto"
 )
 
 // A preset's catalog entry says what its generated template already says: its type, its

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/settings"
 )
 
 // Server routes by the first path segment: the secret admin path, the subscription

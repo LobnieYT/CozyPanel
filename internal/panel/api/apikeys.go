@@ -14,8 +14,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/secure"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/secure"
+	"cozy/internal/panel/store/db"
 )
 
 // API keys let scripts call the API with "Authorization: Bearer <key>" instead of an
@@ -23,7 +23,7 @@ import (
 // Keys never reach the auth and api-keys endpoints: a leaked key must not be able to
 // change the password, read sessions or mint more keys.
 const (
-	apiKeyPrefix    = "mk_"
+	apiKeyPrefix    = "co_"
 	apiKeyLen       = 40 // base62 characters after the prefix: ~238 bits
 	apiKeyShown     = 10 // characters of the key kept to tell keys apart
 	maxAPIKeys      = 50 // per panel
@@ -32,7 +32,7 @@ const (
 )
 
 // sessionOnlyTags are the endpoints an API key cannot use, with the operations marked
-// sessionOnly (payment keys and refunds: whoever sets them decides where money goes).
+// sessionOnly (addresses, keys and the bot: whoever sets them decides where they go).
 var sessionOnlyTags = []string{"auth", "api-keys"}
 
 var (

@@ -1,6 +1,6 @@
 // A fake Telegram Bot API for developing the bot's admin page locally:
 //   node test/tgfake/fake.mjs            (listens on 127.0.0.1:18081)
-//   MIKAN_TG_API=http://127.0.0.1:18081 bin/mikan serve
+//   COZY_TG_API=http://127.0.0.1:18081 bin/cozy serve
 // Any token that looks like one works; messages the bot sends are printed.
 // POST /push {"from": 555, "text": "/start …"} queues a message from a user.
 import { createServer } from "node:http";
@@ -33,7 +33,7 @@ createServer((req, res) => {
     };
     switch (method) {
       case "getMe":
-        return ok({ id: 123456789, is_bot: true, first_name: "Mikan VPN", username: "mikan_dev_bot" });
+        return ok({ id: 123456789, is_bot: true, first_name: "Cozy VPN", username: "cozy_dev_bot" });
       case "getUpdates": {
         // Long polling: whatever was pushed, or nothing after a while.
         const started = Date.now();

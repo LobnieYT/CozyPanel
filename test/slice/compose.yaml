@@ -1,37 +1,37 @@
-name: mikan-slice
+name: cozy-slice
 
 services:
   node:
     build: {context: ../.., dockerfile: Dockerfile}
-    image: mikan:slice
-    entrypoint: ["/usr/local/bin/mikan-node"]
+    image: cozy:slice
+    entrypoint: ["/usr/local/bin/cozy-node"]
     environment:
-      MIKAN_DATA_DIR: /data/node
+      COZY_DATA_DIR: /data/node
       # the test target lives on a private docker network
-      MIKAN_ALLOW_PRIVATE: "true"
-    volumes: ["data:/data", "run:/run/mikan"]
+      COZY_ALLOW_PRIVATE: "true"
+    volumes: ["data:/data", "run:/run/cozy"]
     # The panel takes a public host only as an IP or a full domain name.
     networks:
       default:
         aliases: [node.test]
 
   panel:
-    image: mikan:slice
+    image: cozy:slice
     depends_on: [node]
     environment:
-      MIKAN_DATA_DIR: /data/panel
-      MIKAN_PANEL_LISTEN: 0.0.0.0:2053
+      COZY_DATA_DIR: /data/panel
+      COZY_PANEL_LISTEN: 0.0.0.0:2053
       # The automatic moves' windows in seconds instead of half hours.
-      MIKAN_AUTOTUNE_SCALE: "0.01"
-    volumes: ["data:/data", "run:/run/mikan"]
+      COZY_AUTOTUNE_SCALE: "0.01"
+    volumes: ["data:/data", "run:/run/cozy"]
 
   # A remote node: the panel reaches it over mTLS by the name it was added with.
   node2:
-    image: mikan:slice
-    entrypoint: ["sh", "-c", "MIKAN_NODE_JOIN=$$(cat /work/node2.key) exec /usr/local/bin/mikan-node"]
+    image: cozy:slice
+    entrypoint: ["sh", "-c", "COZY_NODE_JOIN=$$(cat /work/node2.key) exec /usr/local/bin/cozy-node"]
     environment:
-      MIKAN_DATA_DIR: /data/node
-      MIKAN_ALLOW_PRIVATE: "true"
+      COZY_DATA_DIR: /data/node
+      COZY_ALLOW_PRIVATE: "true"
     volumes: ["work:/work:ro", "data2:/data"]
     networks:
       default:
@@ -66,13 +66,13 @@ services:
     volumes:
       - "../..:/src:ro"
       - "work:/work"
-      - "mikan-gomod:/go/pkg/mod"
-      - "mikan-gocache:/root/.cache/go-build"
+      - "cozy-gomod:/go/pkg/mod"
+      - "cozy-gocache:/root/.cache/go-build"
 
 volumes:
   data: {}
   data2: {}
   run: {}
   work: {}
-  mikan-gomod: {external: true}
-  mikan-gocache: {external: true}
+  cozy-gomod: {external: true}
+  cozy-gocache: {external: true}

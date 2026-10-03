@@ -146,28 +146,6 @@ type NodeWarp struct {
 	UpdatedAt     int64
 }
 
-type Payment struct {
-	ID         int64
-	Provider   string
-	Payload    string
-	ExternalID sql.NullString
-	TgID       int64
-	Kind       string
-	UserID     sql.NullInt64
-	TariffID   sql.NullInt64
-	PackageID  sql.NullInt64
-	TariffName string
-	Amount     int64
-	Currency   string
-	Status     string
-	Error      string
-	PayUrl     string
-	CreatedAt  int64
-	PaidAt     sql.NullInt64
-	AppliedAt  sql.NullInt64
-	RefundedAt sql.NullInt64
-}
-
 type RelayUser struct {
 	ExitNodeID int64
 	SrcNodeID  int64
@@ -223,9 +201,6 @@ type Tariff struct {
 	Archived      int64
 	CreatedAt     int64
 	BillingDay    sql.NullInt64
-	PriceStars    sql.NullInt64
-	PriceRub      sql.NullInt64
-	OnSale        int64
 }
 
 type TariffPool struct {
@@ -274,7 +249,6 @@ type TrafficGrant struct {
 	Lifetime  string
 	ExpiresAt sql.NullInt64
 	Source    string
-	PaymentID sql.NullInt64
 	PackageID sql.NullInt64
 	Note      string
 	CreatedAt int64
@@ -288,18 +262,15 @@ type TrafficHourly struct {
 }
 
 type TrafficPackage struct {
-	ID         int64
-	Name       string
-	Bytes      int64
-	PoolID     sql.NullInt64
-	Lifetime   string
-	Days       int64
-	PriceStars sql.NullInt64
-	PriceRub   sql.NullInt64
-	OnSale     int64
-	Sort       int64
-	Archived   int64
-	CreatedAt  int64
+	ID        int64
+	Name      string
+	Bytes     int64
+	PoolID    sql.NullInt64
+	Lifetime  string
+	Days      int64
+	Sort      int64
+	Archived  int64
+	CreatedAt int64
 }
 
 type TrafficPool struct {

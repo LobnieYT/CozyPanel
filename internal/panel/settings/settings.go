@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 const (
@@ -45,6 +45,9 @@ const (
 	// Branding and support: the bot's and the subscription page's name and the support link.
 	KeyBrand      = "brand"
 	KeySupportURL = "support_url"
+	// KeyPayContact is the admin's Telegram contact for manual payment, shown by the
+	// bot instead of invoices: "@name", a t.me link, or any text.
+	KeyPayContact = "pay_contact"
 	// KeyQuietHour is the UTC hour the slot pool is refilled, which reconnects QUIC clients.
 	KeyQuietHour = "quiet_hour_utc"
 )

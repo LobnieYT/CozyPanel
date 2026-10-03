@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // fakeTelegram is the Bot API for tests: it hands out queued updates and records calls.
@@ -55,7 +55,7 @@ func (f *fakeTelegram) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ok := func(result any) { _ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": result}) }
 	switch method {
 	case "getMe":
-		ok(User{ID: 1, IsBot: true, FirstName: "Mikan", Username: "mikan_test_bot"})
+		ok(User{ID: 1, IsBot: true, FirstName: "Cozy", Username: "cozy_test_bot"})
 		return
 	case "getUpdates":
 		off, _ := body["offset"].(float64)
@@ -106,8 +106,6 @@ func (f *fakeTelegram) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch method {
-	case "createInvoiceLink":
-		ok("https://t.me/$inv" + strconv.FormatInt(id, 10))
 	case "sendMessage":
 		ok(Message{MessageID: 1000 + id, Chat: Chat{ID: int64(chat), Type: "private"}})
 	default:
@@ -249,7 +247,7 @@ func setup(t *testing.T, with ...func(e *env, d *Deps)) *env {
 		t.Fatal(err)
 	}
 	e.set = settings.New(e.st.Q)
-	for k, v := range map[string]any{KeyEnabled: true, KeyToken: "123:test", "brand": "Mikan VPN", "support_url": "https://t.me/mikan_support"} {
+	for k, v := range map[string]any{KeyEnabled: true, KeyToken: "123:test", "brand": "Cozy VPN", "support_url": "https://t.me/cozy_support"} {
 		if err := settings.Set(ctx, e.set, k, v); err != nil {
 			t.Fatal(err)
 		}
@@ -314,7 +312,7 @@ func TestBot(t *testing.T) {
 	e.say(anna, "привет")
 	calls := e.tg.wait(t, n, "sendMessage")
 	send, _ := find(calls, "sendMessage")
-	if !strings.Contains(text(send), "Mikan VPN") || buttons(send)["💬 Поддержка"] != "https://t.me/mikan_support" {
+	if !strings.Contains(text(send), "Cozy VPN") || buttons(send)["💬 Поддержка"] != "https://t.me/cozy_support" {
 		t.Fatalf("welcome: %q %v", text(send), buttons(send))
 	}
 
@@ -456,7 +454,7 @@ func TestBot(t *testing.T) {
 		t.Fatalf("broadcast: %d %v", k, err)
 	}
 	send, _ = find(e.tg.wait(t, n, "sendMessage"), "sendMessage")
-	if text(send) != "Плановые работы в Mikan VPN ночью" {
+	if text(send) != "Плановые работы в Cozy VPN ночью" {
 		t.Fatalf("broadcast text: %q", text(send))
 	}
 	if p := e.bot.Progress(); p.Total != 1 || p.Sent != 1 || p.Active() {
@@ -600,7 +598,7 @@ func TestConfigSavedBefore(t *testing.T) {
 
 func TestConfigValidate(t *testing.T) {
 	c := Default("ru")
-	c.Buttons = append(c.Buttons, MenuButton{Action: "url", Label: "Канал", URL: "https://t.me/mikan", On: true},
+	c.Buttons = append(c.Buttons, MenuButton{Action: "url", Label: "Канал", URL: "https://t.me/cozy", On: true},
 		MenuButton{Action: "page", Label: "Правила", Text: "Не делитесь ссылкой", On: true})
 	if err := c.Validate(); err != nil {
 		t.Fatal(err)

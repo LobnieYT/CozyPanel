@@ -30,10 +30,10 @@ import (
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
 
-	"mikan/internal/fsutil"
-	"mikan/internal/hostname"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/fsutil"
+	"cozy/internal/hostname"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/tlscert"
 )
 
 const letsEncrypt = "https://acme-v02.api.letsencrypt.org/directory"
@@ -70,7 +70,7 @@ type Manager struct {
 }
 
 func New(dataDir string, holder *tlscert.Holder, fallback *tls.Certificate, set *settings.Settings, log *slog.Logger, now func() time.Time) *Manager {
-	dir := os.Getenv("MIKAN_ACME_DIRECTORY")
+	dir := os.Getenv("COZY_ACME_DIRECTORY")
 	if dir == "" {
 		dir = letsEncrypt
 	}

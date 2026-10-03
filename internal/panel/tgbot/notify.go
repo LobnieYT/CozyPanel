@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // A notice goes once per subscription term or traffic period (tg_notices).

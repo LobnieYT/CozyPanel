@@ -13,7 +13,7 @@ use serde::Deserialize;
 /// The public half of the release signing key, the same as internal/release.PublicKey.
 pub const PUBLIC_KEY: &str = "Z3wSIPBSaJxh5CsGO8eINI0aM0kyrQ46EcJSNeH85W8=";
 
-pub const REPO: &str = "Miroshka000/mikan";
+pub const REPO: &str = "LobnieYT/CozyPanel";
 
 /// Installs a node of an existing panel on a fresh server (internal/release.JoinCommand).
 pub fn join_command(key: &str) -> String {
@@ -108,7 +108,7 @@ pub fn parse(data: &[u8], sig: &str, key: &VerifyingKey) -> Result<Manifest> {
 /// The release image lives in the project's own namespace on GitHub Packages; the value
 /// goes into .env and the compose file, so its characters are the image name's only.
 fn valid_image(image: &str) -> bool {
-    image.strip_prefix("ghcr.io/miroshka000/").is_some_and(|r| {
+    image.strip_prefix("ghcr.io/lobnieyt/").is_some_and(|r| {
         !r.is_empty() && !r.contains("..") && r.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"._/-".contains(&b))
     })
 }
@@ -197,7 +197,7 @@ mod tests {
 
     fn manifest(version: &str, image: &str) -> Vec<u8> {
         format!(
-            r#"{{"version":"{version}","published":"2026-09-29T10:00:00Z","image":"{image}","digest":"sha256:{}","installer":{{"x86_64":{{"url":"https://github.com/Miroshka000/mikan/releases/download/v{version}/mikan-x86_64","sha256":"{}"}}}},"notes":{{"en":"- x"}}}}"#,
+            r#"{{"version":"{version}","published":"2026-09-29T10:00:00Z","image":"{image}","digest":"sha256:{}","installer":{{"x86_64":{{"url":"https://github.com/LobnieYT/CozyPanel/releases/download/v{version}/cozy-x86_64","sha256":"{}"}}}},"notes":{{"en":"- x"}}}}"#,
             "a".repeat(64),
             "b".repeat(64)
         )
@@ -208,10 +208,10 @@ mod tests {
     fn signed_manifests_only() {
         let signer = SigningKey::from_bytes(&[7; 32]);
         let key = signer.verifying_key();
-        let data = manifest("0.3.9", "ghcr.io/miroshka000/mikan");
+        let data = manifest("0.3.9", "ghcr.io/lobnieyt/cozy");
         let sig = STANDARD.encode(signer.sign(&data).to_bytes());
         let m = parse(&data, &format!("{sig}\n"), &key).unwrap();
-        assert_eq!(m.reference(), format!("ghcr.io/miroshka000/mikan@sha256:{}", "a".repeat(64)));
+        assert_eq!(m.reference(), format!("ghcr.io/lobnieyt/cozy@sha256:{}", "a".repeat(64)));
         assert_eq!(m.installer["x86_64"].sha256, "b".repeat(64));
 
         let mut tampered = data.clone();
@@ -221,7 +221,7 @@ mod tests {
         assert!(parse(&data, &sig, &other).is_err());
         assert!(parse(&data, "not base64!", &key).is_err());
 
-        let docker_hub = manifest("0.3.9", "docker.io/someone/mikan");
+        let docker_hub = manifest("0.3.9", "docker.io/someone/cozy");
         let sig = STANDARD.encode(signer.sign(&docker_hub).to_bytes());
         assert!(parse(&docker_hub, &sig, &key).is_err());
     }
@@ -232,7 +232,7 @@ mod tests {
     fn new_fields_do_not_break_old_installers() {
         let signer = SigningKey::from_bytes(&[7; 32]);
         let key = signer.verifying_key();
-        let text = String::from_utf8(manifest("0.4.4", "ghcr.io/miroshka000/mikan")).unwrap();
+        let text = String::from_utf8(manifest("0.4.4", "ghcr.io/lobnieyt/cozy")).unwrap();
         let extended = text.replacen("{\"version\"", "{\"min_installer\":\"0.4.4\",\"channel\":\"stable\",\"version\"", 1).replacen(
             "\"sha256\":",
             "\"size\":123,\"sha256\":",
@@ -257,19 +257,19 @@ mod tests {
         let signer = SigningKey::from_bytes(&[7; 32]);
         let key = signer.verifying_key();
         let accept = |data: &[u8]| parse(data, &STANDARD.encode(signer.sign(data).to_bytes()), &key).is_ok();
-        assert!(accept(&manifest("0.4.4", "ghcr.io/miroshka000/mikan")));
+        assert!(accept(&manifest("0.4.4", "ghcr.io/lobnieyt/cozy")));
         for bad in [
-            "ghcr.io/someone-else/mikan",
-            "ghcr.io/miroshka000/../x",
-            "ghcr.io/miroshka000/Mi kan",
-            "ghcr.io/miroshka000/",
-            "ghcr.io/miroshka000/m$x",
+            "ghcr.io/someone-else/cozy",
+            "ghcr.io/lobnieyt/../x",
+            "ghcr.io/lobnieyt/Mi kan",
+            "ghcr.io/lobnieyt/",
+            "ghcr.io/lobnieyt/m$x",
         ] {
             assert!(!accept(&manifest("0.4.4", bad)), "{bad}");
         }
-        let short_hash = String::from_utf8(manifest("0.4.4", "ghcr.io/miroshka000/mikan")).unwrap().replace(&"b".repeat(64), "bb");
+        let short_hash = String::from_utf8(manifest("0.4.4", "ghcr.io/lobnieyt/cozy")).unwrap().replace(&"b".repeat(64), "bb");
         assert!(!accept(short_hash.as_bytes()));
-        let plain_http = String::from_utf8(manifest("0.4.4", "ghcr.io/miroshka000/mikan")).unwrap().replace("https://", "http://");
+        let plain_http = String::from_utf8(manifest("0.4.4", "ghcr.io/lobnieyt/cozy")).unwrap().replace("https://", "http://");
         assert!(!accept(plain_http.as_bytes()));
     }
 

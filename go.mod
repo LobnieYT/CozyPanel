@@ -1,4 +1,4 @@
-module mikan
+module cozy
 
 go 1.27
 

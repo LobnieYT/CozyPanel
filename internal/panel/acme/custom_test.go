@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/tlscert"
 )
 
 func ownCert(t *testing.T, name string, until time.Time) (certPEM, keyPEM []byte) {
@@ -38,7 +38,7 @@ func ownCert(t *testing.T, name string, until time.Time) (certPEM, keyPEM []byte
 // address, is noticed when its files change, and an expired one falls back and says so.
 func TestCustomCertificate(t *testing.T) {
 	ctx := context.Background()
-	t.Setenv("MIKAN_ACME_DIRECTORY", "http://127.0.0.1:1/directory") // Let's Encrypt is unreachable here
+	t.Setenv("COZY_ACME_DIRECTORY", "http://127.0.0.1:1/directory") // Let's Encrypt is unreachable here
 	st, err := store.Open(ctx, t.TempDir())
 	if err != nil {
 		t.Fatal(err)

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 type changes struct{ policies, slots int }

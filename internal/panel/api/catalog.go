@@ -10,8 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 type TariffView struct {
@@ -23,9 +22,6 @@ type TariffView struct {
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period"`
 	BillingDay    *int64      `json:"billing_day" doc:"День месяца, в который заканчивается срок; null — срок в днях"`
 	PriceLabel    string      `json:"price_label"`
-	PriceStars    *int64      `json:"price_stars" doc:"Цена в Telegram Stars; null — не продаётся за Stars"`
-	PriceRub      *int64      `json:"price_rub" doc:"Цена в копейках (ЮKassa, CryptoBot); null — не продаётся за рубли"`
-	OnSale        bool        `json:"on_sale" doc:"Продаётся в боте и Mini App"`
 	Pools         []PoolLimit `json:"pools" doc:"Лимиты пулов трафика; пул не в списке — без лимита"`
 	Sort          int64       `json:"sort"`
 }
@@ -33,8 +29,7 @@ type TariffView struct {
 func viewTariff(t db.Tariff) TariffView {
 	return TariffView{ID: t.ID, Name: t.Name, TrafficLimit: ptrInt(t.TrafficLimit.Int64, t.TrafficLimit.Valid),
 		DurationDays: t.DurationDays, DeviceLimit: ptrInt(t.DeviceLimit.Int64, t.DeviceLimit.Valid),
-		ResetStrategy: t.ResetStrategy, BillingDay: ptrInt(t.BillingDay.Int64, t.BillingDay.Valid), PriceLabel: t.PriceLabel, Sort: t.Sort,
-		PriceStars: ptrInt(t.PriceStars.Int64, t.PriceStars.Valid), PriceRub: ptrInt(t.PriceRub.Int64, t.PriceRub.Valid), OnSale: t.OnSale != 0}
+		ResetStrategy: t.ResetStrategy, BillingDay: ptrInt(t.BillingDay.Int64, t.BillingDay.Valid), PriceLabel: t.PriceLabel, Sort: t.Sort}
 }
 
 type tariffBody struct {
@@ -45,9 +40,6 @@ type tariffBody struct {
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period" default:"none"`
 	BillingDay    *int64      `json:"billing_day,omitempty" minimum:"1" maximum:"31" doc:"Срок до этого числа месяца: месяц = от дня оплаты до дня оплаты"`
 	PriceLabel    string      `json:"price_label,omitempty" maxLength:"40"`
-	PriceStars    *int64      `json:"price_stars,omitempty" minimum:"1" maximum:"10000" doc:"Цена в Telegram Stars"`
-	PriceRub      *int64      `json:"price_rub,omitempty" minimum:"100" maximum:"100000000" doc:"Цена в копейках: 19900 — 199 ₽"`
-	OnSale        bool        `json:"on_sale,omitempty" doc:"Продавать в боте и Mini App; нужна хотя бы одна цена"`
 	Pools         []PoolLimit `json:"pools,omitempty" maxItems:"100" doc:"Лимиты пулов трафика; не передан — без изменений"`
 	Sort          int64       `json:"sort,omitempty"`
 }
@@ -96,15 +88,12 @@ func nullable(p *int64) sql.NullInt64 {
 // refused pool list leaves the tariff, and the limits it had, as they were.
 func (h *handlers) createTariff(ctx context.Context, in *tariffInput) (*tariffOutput, error) {
 	b := in.Body
-	if err := b.check(); err != nil {
-		return nil, err
-	}
 	var t db.Tariff
 	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		var err error
 		t, err = q.CreateTariff(ctx, db.CreateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
 			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
-			Sort: b.Sort, CreatedAt: h.d.Now().Unix(), BillingDay: nullable(b.BillingDay), PriceStars: nullable(b.PriceStars), PriceRub: nullable(b.PriceRub), OnSale: domain.Flag(b.OnSale)})
+			Sort: b.Sort, CreatedAt: h.d.Now().Unix(), BillingDay: nullable(b.BillingDay)})
 		if err != nil || b.Pools == nil {
 			return err
 		}
@@ -119,15 +108,12 @@ func (h *handlers) createTariff(ctx context.Context, in *tariffInput) (*tariffOu
 
 func (h *handlers) updateTariff(ctx context.Context, in *tariffUpdateInput) (*tariffOutput, error) {
 	b := in.Body
-	if err := b.check(); err != nil {
-		return nil, err
-	}
 	var t db.Tariff
 	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		var err error
 		t, err = q.UpdateTariff(ctx, db.UpdateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
 			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
-			Sort: b.Sort, BillingDay: nullable(b.BillingDay), PriceStars: nullable(b.PriceStars), PriceRub: nullable(b.PriceRub), OnSale: domain.Flag(b.OnSale), ID: in.ID})
+			Sort: b.Sort, BillingDay: nullable(b.BillingDay), ID: in.ID})
 		if err != nil || b.Pools == nil {
 			return err
 		}
@@ -153,14 +139,6 @@ func (h *handlers) archiveTariff(ctx context.Context, in *userIDInput) (*struct{
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "tariff.archive", "tariff", strconv.FormatInt(in.ID, 10), nil)
 	return nil, nil
-}
-
-// check: a tariff on sale needs a price to sell it for.
-func (b tariffBody) check() error {
-	if b.OnSale && b.PriceStars == nil && b.PriceRub == nil {
-		return huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.on_sale", Message: "on_sale_no_price"})
-	}
-	return nil
 }
 
 func (h *handlers) tariffOut(ctx context.Context, t db.Tariff) (*tariffOutput, error) {

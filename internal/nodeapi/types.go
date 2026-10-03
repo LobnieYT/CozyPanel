@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"mikan/internal/proto"
-	"mikan/internal/scan"
+	"cozy/internal/proto"
+	"cozy/internal/scan"
 )
 
 const (
@@ -42,7 +42,7 @@ type Inbound struct {
 	Listen string          `json:"listen"`
 	Port   string          `json:"port"`             // "443" or a range "20000-20100"
 	Config json.RawMessage `json:"config,omitempty"` // proto.Template as JSON
-	// Preset and Settings are the format of mikan ≤ 0.1.2; the node still reads them
+	// Preset and Settings are the format of cozy ≤ 0.1.2; the node still reads them
 	// from a saved state, the panel no longer sends them.
 	Preset   string          `json:"preset,omitempty"`
 	Settings json.RawMessage `json:"settings,omitempty"`
@@ -246,7 +246,7 @@ type WarpStatus struct {
 
 // RelayListener names the relay's listener. It cannot clash with an inbound: their
 // names are [a-z0-9-].
-const RelayListener = "mikan~relay"
+const RelayListener = "cozy~relay"
 
 // Relay is a node's door for other nodes of the panel: a VLESS REALITY listener with a
 // key per source node. Its connections carry no subscriber, so they pass the per-user

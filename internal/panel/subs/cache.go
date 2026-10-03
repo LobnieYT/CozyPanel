@@ -3,7 +3,7 @@ package subs
 import (
 	"sync"
 
-	"mikan/internal/proto"
+	"cozy/internal/proto"
 )
 
 // A subscription is fetched by every app every hour or so, and each fetch reads every

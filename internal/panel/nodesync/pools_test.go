@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"testing"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // A traffic pool end to end on the panel's side: the user gets the tariff's pool limit,

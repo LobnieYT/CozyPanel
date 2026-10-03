@@ -1,18 +1,17 @@
 // Traffic packages (GitHub issue #12): extra traffic for the main quota or one pool,
-// sold in the bot and the Mini App like tariffs. The base quota of the period is spent
-// first, then the packages, the soonest to expire first.
+// given by the admin. The base quota of the period is spent first, then the packages,
+// the soonest to expire first.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Pencil, Plus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, usePackages, usePaymentSettings, usePools } from "../../api/hooks";
+import { qk, usePackages, usePools } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
-import { Button, Field, Pill, Segmented, Skeleton } from "../../components/ui";
-import { Switch } from "../../components/switch";
+import { Button, Field, Segmented, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
-import { bytes, days as daysText, GiB, rubles } from "../../lib/format";
+import { bytes, days as daysText, GiB } from "../../lib/format";
 
 type Package = Schemas["PackageView"];
 type Pool = Schemas["PoolView"];
@@ -33,7 +32,6 @@ function lifetimeText(lifetime: Lifetime, days: number): string {
 export function PackagesCard() {
   const packages = usePackages();
   const pools = usePools();
-  const selling = usePaymentSettings().data?.enabled === true;
   const qc = useQueryClient();
   const toast = useToast();
   const [edit, setEdit] = useState<Package | "new" | null>(null);
@@ -72,11 +70,6 @@ export function PackagesCard() {
                     <div className="text-xs text-[var(--ink-500)]">
                       {[bytes(p.bytes), targetName(p.pool_id, pools.data), lifetimeText(p.lifetime, p.days)].join(" · ")}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-600)]">
-                      {p.on_sale && selling ? <Pill tone="ok">{t("tariffs.onSale")}</Pill> : <Pill tone="off">{t("packages.notOnSale")}</Pill>}
-                      {p.price_stars != null ? <span className="num">⭐ {p.price_stars}</span> : null}
-                      {p.price_rub != null ? <span className="num">{rubles(p.price_rub)}</span> : null}
-                    </div>
                   </div>
                   <div className="flex gap-1">
                     <button type="button" className="icon-btn" aria-label={t("packages.editLabel", { name: p.name })} onClick={() => setEdit(p)}>
@@ -92,7 +85,7 @@ export function PackagesCard() {
           )
         }
       </QueryBoundary>
-      <PackageDrawer pkg={edit} pools={pools.data ?? []} selling={selling} onClose={() => setEdit(null)} />
+      <PackageDrawer pkg={edit} pools={pools.data ?? []} onClose={() => setEdit(null)} />
       <Confirm
         open={!!archive}
         onOpenChange={(v) => !v && setArchive(null)}
@@ -106,7 +99,7 @@ export function PackagesCard() {
   );
 }
 
-function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" | null; pools: Pool[]; selling: boolean; onClose: () => void }) {
+function PackageDrawer({ pkg, pools, onClose }: { pkg: Package | "new" | null; pools: Pool[]; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [name, setName] = useState("");
@@ -114,9 +107,6 @@ function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" 
   const [pool, setPool] = useState(0);
   const [lifetime, setLifetime] = useState<Lifetime>("used");
   const [days, setDays] = useState("30");
-  const [stars, setStars] = useState("");
-  const [rub, setRub] = useState("");
-  const [onSale, setOnSale] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -127,9 +117,6 @@ function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" 
     setPool(p?.pool_id ?? 0);
     setLifetime(p?.lifetime ?? "used");
     setDays(String(p?.days || 30));
-    setStars(p?.price_stars != null ? String(p.price_stars) : "");
-    setRub(p?.price_rub != null ? String(p.price_rub / 100) : "");
-    setOnSale(p?.on_sale ?? false);
     setErrors({});
   }, [pkg]);
 
@@ -152,14 +139,9 @@ function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" 
     const errs: Record<string, string> = {};
     const gbN = Number(gb.replace(",", "."));
     const daysN = Number(days);
-    const starsN = Number(stars);
-    const rubN = Math.round(Number(rub.replace(",", ".")) * 100);
     if (!name.trim()) errs.name = t("packages.errName");
     if (!Number.isFinite(gbN) || gbN < 1 || gbN > 102400) errs.bytes = t("errors.api.bad_bytes");
     if (lifetime === "days" && (!Number.isInteger(daysN) || daysN < 1 || daysN > 3650)) errs.days = t("errors.api.bad_days");
-    if (stars.trim() && (!Number.isInteger(starsN) || starsN < 1 || starsN > 10000)) errs.price_stars = t("tariffs.errStars");
-    if (rub.trim() && (!Number.isFinite(rubN) || rubN < 100 || rubN > 100000000)) errs.price_rub = t("tariffs.errRub");
-    if (onSale && !stars.trim() && !rub.trim()) errs.on_sale = t("errors.api.on_sale_no_price");
     setErrors(errs);
     if (Object.keys(errs).length) return;
     save.mutate({
@@ -168,9 +150,6 @@ function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" 
       pool_id: pool || undefined,
       lifetime,
       days: lifetime === "days" ? daysN : undefined,
-      price_stars: stars.trim() ? starsN : undefined,
-      price_rub: rub.trim() ? rubN : undefined,
-      on_sale: onSale,
       // PUT replaces the package: keep its place in the list.
       sort: pkg && pkg !== "new" ? pkg.sort : undefined,
     });
@@ -235,34 +214,6 @@ function PackageDrawer({ pkg, pools, selling, onClose }: { pkg: Package | "new" 
             </div>
           ) : null}
         </Field>
-        <div className="border-t border-[var(--hairline)] pt-4" role="group" aria-label={t("tariffs.sale")}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[13px] font-semibold">{t("tariffs.sale")}</div>
-              <div className="text-xs text-[var(--ink-500)]">{selling ? t("packages.saleSub") : t("packages.sellingOff")}</div>
-            </div>
-            <Switch checked={onSale} onChange={setOnSale} label={t("tariffs.onSale")} />
-          </div>
-          {errors.on_sale ? (
-            <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-              {errors.on_sale}
-            </p>
-          ) : null}
-          <div className="grid gap-x-3 sm:grid-cols-2">
-            <Field label={t("tariffs.priceStars")} htmlFor="pk-stars" error={errors.price_stars}>
-              <div className="flex items-center gap-2">
-                <input id="pk-stars" className="input max-w-[140px]" inputMode="numeric" value={stars} onChange={(e) => setStars(e.target.value)} placeholder="75" aria-invalid={!!errors.price_stars} />
-                <span className="text-[var(--ink-500)]">⭐</span>
-              </div>
-            </Field>
-            <Field label={t("tariffs.priceRub")} htmlFor="pk-rub" hint={t("tariffs.priceRubHint")} error={errors.price_rub}>
-              <div className="flex items-center gap-2">
-                <input id="pk-rub" className="input max-w-[140px]" inputMode="decimal" value={rub} onChange={(e) => setRub(e.target.value)} placeholder="79" aria-invalid={!!errors.price_rub} />
-                <span className="text-[var(--ink-500)]">₽</span>
-              </div>
-            </Field>
-          </div>
-        </div>
       </form>
     </Drawer>
   );

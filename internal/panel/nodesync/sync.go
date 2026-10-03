@@ -20,12 +20,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/settings"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/warp"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/settings"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/warp"
+	"cozy/internal/proto"
 )
 
 // Node is the subset of the node API the syncer needs.

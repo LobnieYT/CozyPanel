@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 // A traffic pool has its own counter and quota: running it out closes only its own

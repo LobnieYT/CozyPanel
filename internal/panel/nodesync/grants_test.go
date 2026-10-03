@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"testing"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
 )
 
 // Traffic packages on the panel's side: counters past the base quota spend the grants

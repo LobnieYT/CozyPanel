@@ -144,7 +144,7 @@ func TestNeeds(t *testing.T) {
 	reality := "reality-config: {dest: www.microsoft.com:443, private-key: " + priv + ", short-id: [ab], server-names: [www.microsoft.com]}\n"
 	for src, want := range map[string]Needs{
 		"type: vless\nxhttp-config: {path: /x, mode: stream-one}\n" + reality: {Type: "vless", Transport: "xhttp"},
-		"type: vless\nmikan: {flow: xtls-rprx-vision}\n" + reality:            {Type: "vless", Transport: "tcp"},
+		"type: vless\ncozy: {flow: xtls-rprx-vision}\n" + reality:             {Type: "vless", Transport: "tcp"},
 		"type: trojan\ngrpc-service-name: g\n" + reality:                      {Type: "trojan", Transport: "grpc"},
 		"type: tuic\n":        {Type: "tuic"},
 		"type: trusttunnel\n": {Type: "trusttunnel"},

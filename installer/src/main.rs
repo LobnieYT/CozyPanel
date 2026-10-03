@@ -1,8 +1,7 @@
-//! mikan: installs the mikan VPN panel, or a node of one, and manages it from the
+//! cozy: installs the cozy VPN panel, or a node of one, and manages it from the
 //! server's shell. Without a command it opens the installer on a fresh server and the
 //! menu on an installed one; every menu action is a command too.
 
-mod addon;
 mod backup;
 mod clock;
 mod docker;
@@ -27,19 +26,19 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-/// Where mikan lives on the server.
-pub const DIR: &str = "/opt/mikan";
+/// Where cozy lives on the server.
+pub const DIR: &str = "/opt/cozy";
 
 /// This installer's version: the release tag it was built from, "dev" otherwise.
 pub fn version() -> &'static str {
-    option_env!("MIKAN_VERSION").map(|v| v.trim_start_matches('v')).unwrap_or("dev")
+    option_env!("COZY_VERSION").map(|v| v.trim_start_matches('v')).unwrap_or("dev")
 }
 
 #[derive(Parser)]
 #[command(
-    name = "mikan",
+    name = "cozy",
     version = version(),
-    about = "mikan VPN panel: the installer and the server's menu",
+    about = "cozy VPN panel: the installer and the server's menu",
     after_help = "Without a command: the installer on a fresh server, the menu on an installed one."
 )]
 struct Cli {
@@ -88,7 +87,7 @@ enum Cmd {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
-    /// Back up the database, certificates and settings to /opt/mikan/backups
+    /// Back up the database, certificates and settings to /opt/cozy/backups
     Backup,
     /// Replace the data with a backup's
     Restore {
@@ -99,11 +98,8 @@ enum Cmd {
     },
     /// Update to the latest release; goes back when the new version does not start
     Update(update::UpdateArgs),
-    /// Payment adapters of the marketplace: list, install, remove
-    #[command(subcommand)]
-    Addon(AddonCmd),
     /// Node: take a new join key from the panel's Nodes page (asked for when not given;
-    /// MIKAN_JOIN_KEY works too: the key holds the node's private key, keep it out of ps)
+    /// COZY_JOIN_KEY works too: the key holds the node's private key, keep it out of ps)
     Join {
         key: Option<String>,
         /// Open the node's API port in ufw for this address only, the panel's
@@ -116,7 +112,7 @@ enum Cmd {
     PostUpdate,
     /// Restart the containers
     Restart,
-    /// Stop mikan and remove the command; the data stays in /opt/mikan
+    /// Stop cozy and remove the command; the data stays in /opt/cozy
     Uninstall {
         /// Do not ask
         #[arg(long, short = 'y')]
@@ -125,21 +121,9 @@ enum Cmd {
 }
 
 #[derive(Subcommand)]
-enum AddonCmd {
-    /// What runs here and what the marketplace offers
-    List,
-    /// Install an adapter, or update it to the marketplace's build
-    Install { id: String },
-    /// Stop and remove an adapter; the panel keeps its settings and payments
-    Remove { id: String },
-    /// Do what the panel asked for (the update request unit runs this)
-    Apply,
-}
-
-#[derive(Subcommand)]
 enum CertCmd {
     /// Install a certificate: the chain and its key. Fits a renewal hook:
-    /// certbot ... --deploy-hook "mikan cert set --cert $RENEWED_LINEAGE/fullchain.pem --key $RENEWED_LINEAGE/privkey.pem"
+    /// certbot ... --deploy-hook "cozy cert set --cert $RENEWED_LINEAGE/fullchain.pem --key $RENEWED_LINEAGE/privkey.pem"
     Set {
         /// The chain, leaf first (fullchain.pem)
         #[arg(long)]
@@ -147,7 +131,7 @@ enum CertCmd {
         /// The private key (privkey.pem)
         #[arg(long)]
         key: PathBuf,
-        /// A node's own certificate instead of the panel's (mikan node list)
+        /// A node's own certificate instead of the panel's (cozy node list)
         #[arg(long)]
         node: Option<u32>,
     },
@@ -191,12 +175,11 @@ fn main() -> ExitCode {
             }
         }
         Some(Cmd::Update(a)) => update::update(&a, &mut out, &mut progress_line()),
-        Some(Cmd::Addon(c)) => addon_cmd(c),
         Some(Cmd::Join { key, panel_ip }) => ops::join_key(key).and_then(|k| ops::join(&k, panel_ip)),
         Some(Cmd::PostUpdate) => update::converge(&mut out),
         Some(Cmd::Restart) => ops::restart(),
         Some(Cmd::Uninstall { yes }) => {
-            if yes || ops::confirm("Stop mikan and remove the mikan command? The data stays in /opt/mikan.") {
+            if yes || ops::confirm("Stop cozy and remove the cozy command? The data stays in /opt/cozy.") {
                 ops::uninstall().map(|()| out(&format!("Done. The data and backups stay in {DIR}; remove them with: rm -rf {DIR}")))
             } else {
                 Ok(())
@@ -206,7 +189,7 @@ fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            let _ = writeln!(std::io::stderr(), "mikan: {e:#}");
+            let _ = writeln!(std::io::stderr(), "cozy: {e:#}");
             ExitCode::FAILURE
         }
     }
@@ -216,19 +199,6 @@ fn main() -> ExitCode {
 /// the middle of an update must not panic the update half way (println! would).
 pub fn out(l: &str) {
     let _ = writeln!(std::io::stdout(), "{l}");
-}
-
-fn addon_cmd(c: AddonCmd) -> anyhow::Result<()> {
-    let install = ops::Install::load()?;
-    install.panel_only()?;
-    let panel = install.version();
-    let mut say = out;
-    match c {
-        AddonCmd::List => addon::list(&panel),
-        AddonCmd::Install { id } => addon::install(&id, &panel, &mut say),
-        AddonCmd::Remove { id } => addon::remove(&id, &mut say),
-        AddonCmd::Apply => addon::apply(&panel, &mut say),
-    }
 }
 
 fn passthrough(cmd: &str, args: &[String]) -> anyhow::Result<()> {

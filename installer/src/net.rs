@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::system::Level;
 
 fn agent(timeout: Duration, v4_only: bool) -> ureq::Agent {
-    let mut cfg = ureq::Agent::config_builder().timeout_global(Some(timeout)).user_agent(format!("mikan-installer/{}", crate::version()));
+    let mut cfg = ureq::Agent::config_builder().timeout_global(Some(timeout)).user_agent(format!("cozy-installer/{}", crate::version()));
     if v4_only {
         cfg = cfg.ip_family(ureq::config::IpFamily::Ipv4Only);
     }

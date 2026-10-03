@@ -1,5 +1,5 @@
-//! What mikan changes on the host besides /opt/mikan: kernel tuning, ufw rules, the
-//! update timer and the mikan command itself.
+//! What cozy changes on the host besides /opt/cozy: kernel tuning, ufw rules, the
+//! update timer and the cozy command itself.
 
 use std::fs;
 use std::path::Path;
@@ -9,9 +9,9 @@ use anyhow::{Context, Result, bail};
 
 use crate::system;
 
-pub const SYSCTL: &str = "/etc/sysctl.d/99-mikan.conf";
+pub const SYSCTL: &str = "/etc/sysctl.d/99-cozy.conf";
 
-const SYSCTL_CONF: &str = "# mikan: BBR for the TCP protocols, bigger UDP buffers for Hysteria2 and TUIC (QUIC)
+const SYSCTL_CONF: &str = "# cozy: BBR for the TCP protocols, bigger UDP buffers for Hysteria2 and TUIC (QUIC)
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 net.core.rmem_max = 16777216
@@ -97,9 +97,9 @@ fn ufw(args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-pub const BIN: &str = "/usr/local/bin/mikan";
+pub const BIN: &str = "/usr/local/bin/cozy";
 
-/// Puts this binary at /usr/local/bin/mikan, the server's command, unless it runs from there.
+/// Puts this binary at /usr/local/bin/cozy, the server's command, unless it runs from there.
 pub fn install_self() -> Result<()> {
     let me = std::env::current_exe()?;
     if fs::canonicalize(&me).ok() == fs::canonicalize(BIN).ok() {
@@ -108,7 +108,7 @@ pub fn install_self() -> Result<()> {
     replace_bin(&fs::read(&me)?, None)
 }
 
-/// Replaces /usr/local/bin/mikan at once; the running process keeps its old copy. The new
+/// Replaces /usr/local/bin/cozy at once; the running process keeps its old copy. The new
 /// file is on the disk, not only in the page cache (a power cut must not leave the command,
 /// which both update units run, empty), and it runs and reports the release it is meant to
 /// be before it takes the working one's place.
@@ -164,9 +164,9 @@ fn version_of(path: &Path) -> Result<String> {
 
 const UNITS: [(&str, &str); 4] = [
     (
-        "mikan-update.service",
+        "cozy-update.service",
         "[Unit]
-Description=mikan: update when automatic updates are on
+Description=cozy: update when automatic updates are on
 After=docker.service network-online.target
 Wants=network-online.target
 
@@ -175,13 +175,13 @@ Type=oneshot
 # A oneshot unit has no time limit by default: an update stuck on a dead connection
 # would keep the timer from ever starting it again.
 TimeoutStartSec=45min
-ExecStart=/usr/local/bin/mikan update --auto
+ExecStart=/usr/local/bin/cozy update --auto
 ",
     ),
     (
-        "mikan-update.timer",
+        "cozy-update.timer",
         "[Unit]
-Description=mikan: look for an update once a day
+Description=cozy: look for an update once a day
 
 [Timer]
 OnCalendar=*-*-* 03:00:00
@@ -193,25 +193,25 @@ WantedBy=timers.target
 ",
     ),
     (
-        "mikan-update-request.service",
+        "cozy-update-request.service",
         "[Unit]
-Description=mikan: update asked for in the panel
+Description=cozy: update asked for in the panel
 After=docker.service
 
 [Service]
 Type=oneshot
 TimeoutStartSec=45min
-ExecStart=/usr/local/bin/mikan update --requested
+ExecStart=/usr/local/bin/cozy update --requested
 ",
     ),
     (
-        "mikan-update-request.path",
+        "cozy-update-request.path",
         "[Unit]
-Description=mikan: wait for an update request from the panel
+Description=cozy: wait for an update request from the panel
 
 [Path]
-PathExists=/opt/mikan/data/panel/update/request
-Unit=mikan-update-request.service
+PathExists=/opt/cozy/data/panel/update/request
+Unit=cozy-update-request.service
 
 [Install]
 WantedBy=paths.target
@@ -234,15 +234,15 @@ pub fn install_units(panel: bool) -> Result<()> {
         fs::write(format!("/etc/systemd/system/{name}"), text)?;
     }
     systemctl(&["daemon-reload"])?;
-    systemctl(&["enable", "--now", "mikan-update.timer"])?;
+    systemctl(&["enable", "--now", "cozy-update.timer"])?;
     if panel {
-        systemctl(&["enable", "--now", "mikan-update-request.path"])?;
+        systemctl(&["enable", "--now", "cozy-update-request.path"])?;
     }
     Ok(())
 }
 
 pub fn remove_units() {
-    let _ = systemctl(&["disable", "--now", "mikan-update.timer", "mikan-update-request.path"]);
+    let _ = systemctl(&["disable", "--now", "cozy-update.timer", "cozy-update-request.path"]);
     for (name, _) in UNITS {
         let _ = fs::remove_file(format!("/etc/systemd/system/{name}"));
     }
@@ -317,11 +317,11 @@ mod tests {
     fn the_command_is_replaced_only_by_a_working_release() {
         use std::os::unix::fs::PermissionsExt;
         let d = tmpdir("bin");
-        let bin = d.join("mikan");
-        fs::write(&bin, "#!/bin/sh\necho mikan 0.4.3\n").unwrap();
+        let bin = d.join("cozy");
+        fs::write(&bin, "#!/bin/sh\necho cozy 0.4.3\n").unwrap();
         fs::set_permissions(&bin, fs::Permissions::from_mode(0o755)).unwrap();
         let old = fs::read(&bin).unwrap();
-        let new = b"#!/bin/sh\necho mikan 0.4.4\n";
+        let new = b"#!/bin/sh\necho cozy 0.4.4\n";
         for (what, data, release) in [
             ("wrong release", &new[..], Some("0.4.5")),
             ("does not run", &b"#!/bin/sh\nexit 3\n"[..], None),
@@ -330,7 +330,7 @@ mod tests {
         ] {
             assert!(replace_at(&bin, data, release).is_err(), "{what} replaced the command");
             assert_eq!(fs::read(&bin).unwrap(), old, "{what}");
-            assert!(!d.join("mikan.new").exists(), "{what} left its file");
+            assert!(!d.join("cozy.new").exists(), "{what} left its file");
         }
         replace_at(&bin, new, Some("0.4.4")).unwrap();
         assert_eq!(fs::read(&bin).unwrap(), new);

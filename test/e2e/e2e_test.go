@@ -1,6 +1,6 @@
 //go:build e2e
 
-// Node end-to-end tests: real mihomo clients talk to mikan-node through every preset.
+// Node end-to-end tests: real mihomo clients talk to cozy-node through every preset.
 // Run with test/e2e/run.sh.
 package e2e
 
@@ -21,7 +21,7 @@ import (
 
 	"golang.org/x/net/proxy"
 
-	"mikan/internal/nodeapi"
+	"cozy/internal/nodeapi"
 )
 
 const (
@@ -55,7 +55,7 @@ func slotName(n int) string { return fmt.Sprintf("s%06d", n) }
 type nodeClient struct{ hc *http.Client }
 
 func newNode() *nodeClient {
-	sock := "/run/mikan/node.sock"
+	sock := "/run/cozy/node.sock"
 	return &nodeClient{hc: &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
@@ -394,7 +394,7 @@ func TestDeviceLimit(t *testing.T) {
 	}
 	first.aliveFor(t, time.Second, "first device")
 	first.conn.Close()
-	time.Sleep(5 * time.Second) // MIKAN_DEVICE_RELEASE=3s in compose
+	time.Sleep(5 * time.Second) // COZY_DEVICE_RELEASE=3s in compose
 	if _, err := download(clientB, socksPort(3, "vision"), 1024); err != nil {
 		t.Fatalf("second device after release: %v", err)
 	}

@@ -111,8 +111,8 @@ export function TrafficChart({ points, range }: { points: TrafficPoint[]; range:
       <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full overflow-visible" role="img" aria-label={t("chart.label")}>
         <defs>
           <linearGradient id="g-down" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" style={{ stopColor: "var(--mikan-500)", stopOpacity: 0.24 }} />
-            <stop offset="1" style={{ stopColor: "var(--mikan-500)", stopOpacity: 0 }} />
+            <stop offset="0" style={{ stopColor: "var(--cozy-500)", stopOpacity: 0.24 }} />
+            <stop offset="1" style={{ stopColor: "var(--cozy-500)", stopOpacity: 0 }} />
           </linearGradient>
           <linearGradient id="g-up" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" style={{ stopColor: "var(--lagoon-500)", stopOpacity: 0.2 }} />
@@ -141,14 +141,14 @@ export function TrafficChart({ points, range }: { points: TrafficPoint[]; range:
           <>
             <path d={`${g.down} L${g.x(g.n - 1)},${g.base} L${g.x(0)},${g.base} Z`} fill="url(#g-down)" />
             <path d={`${g.up} L${g.x(g.n - 1)},${g.base} L${g.x(0)},${g.base} Z`} fill="url(#g-up)" />
-            <path d={g.down} fill="none" stroke="var(--mikan-500)" strokeWidth={2.25} strokeLinecap="round" />
+            <path d={g.down} fill="none" stroke="var(--cozy-500)" strokeWidth={2.25} strokeLinecap="round" />
             <path d={g.up} fill="none" stroke="var(--lagoon-500)" strokeWidth={2} strokeLinecap="round" />
           </>
         ) : null}
         {hp && hover !== null ? (
           <g>
             <line x1={g.x(hover)} x2={g.x(hover)} y1={PAD.t} y2={g.base} stroke="rgba(22,26,36,.18)" strokeDasharray="3 3" />
-            <circle cx={g.x(hover)} cy={g.y(hp.down)} r={4.5} fill="#fff" stroke="var(--mikan-500)" strokeWidth={2} />
+            <circle cx={g.x(hover)} cy={g.y(hp.down)} r={4.5} fill="#fff" stroke="var(--cozy-500)" strokeWidth={2} />
             <circle cx={g.x(hover)} cy={g.y(hp.up)} r={4} fill="#fff" stroke="var(--lagoon-500)" strokeWidth={2} />
           </g>
         ) : null}

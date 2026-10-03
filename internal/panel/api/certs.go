@@ -8,7 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/tlscert"
+	"cozy/internal/panel/tlscert"
 )
 
 // The admin's own certificates (GitHub issue #9): the panel's instead of Let's Encrypt,

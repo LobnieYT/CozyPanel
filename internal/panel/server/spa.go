@@ -15,9 +15,9 @@ import (
 
 // baseMarker is replaced with <base href="/<prefix>/"> so the bundle (built with
 // relative asset URLs) works under a secret path chosen at install time, and with the
-// panel's default language, <meta name="mikan-lang">, which the page opens in until the
+// panel's default language, <meta name="cozy-lang">, which the page opens in until the
 // visitor picks one.
-const baseMarker = "<!-- mikan:base -->"
+const baseMarker = "<!-- cozy:base -->"
 
 // SPA serves a Vite build: hashed files under /assets are cached forever, any other
 // path falls back to the HTML entry so client-side routes survive a reload.
@@ -61,7 +61,7 @@ func (s *SPA) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	head := `<base href="` + html.EscapeString("/"+*s.prefix.Load()+"/") + `">`
 	if l := *s.lang.Load(); l != "" {
-		head += `<meta name="mikan-lang" content="` + html.EscapeString(l) + `">`
+		head += `<meta name="cozy-lang" content="` + html.EscapeString(l) + `">`
 	}
 	page := bytes.Replace(s.entry, []byte(baseMarker), []byte(head), 1)
 	h := w.Header()

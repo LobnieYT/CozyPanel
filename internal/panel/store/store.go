@@ -14,7 +14,7 @@ import (
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 //go:embed migrations/*.sql
@@ -30,7 +30,7 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
-	path := filepath.Join(dataDir, "mikan.db")
+	path := filepath.Join(dataDir, "cozy.db")
 	// _txlock=immediate takes the write lock at BEGIN, so concurrent writers wait on
 	// busy_timeout instead of failing with SQLITE_BUSY on lock upgrade.
 	dsn := "file:" + filepath.ToSlash(path) +

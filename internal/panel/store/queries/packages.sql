@@ -2,32 +2,29 @@
 SELECT * FROM traffic_packages WHERE archived = 0 ORDER BY sort, id;
 
 -- name: ListAllTrafficPackages :many
--- Archived ones too: grants and payments keep naming them.
+-- Archived ones too: grants keep naming them.
 SELECT * FROM traffic_packages ORDER BY id;
-
--- name: ListTrafficPackagesOnSale :many
-SELECT * FROM traffic_packages WHERE archived = 0 AND on_sale = 1 ORDER BY sort, id;
 
 -- name: GetTrafficPackage :one
 SELECT * FROM traffic_packages WHERE id = ?;
 
 -- name: CreateTrafficPackage :one
-INSERT INTO traffic_packages (name, bytes, pool_id, lifetime, days, price_stars, price_rub, on_sale, sort, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO traffic_packages (name, bytes, pool_id, lifetime, days, sort, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateTrafficPackage :one
 UPDATE traffic_packages
-SET name = ?, bytes = ?, pool_id = ?, lifetime = ?, days = ?, price_stars = ?, price_rub = ?, on_sale = ?, sort = ?
+SET name = ?, bytes = ?, pool_id = ?, lifetime = ?, days = ?, sort = ?
 WHERE id = ? AND archived = 0
 RETURNING *;
 
 -- name: ArchiveTrafficPackage :execrows
-UPDATE traffic_packages SET archived = 1, on_sale = 0 WHERE id = ? AND archived = 0;
+UPDATE traffic_packages SET archived = 1 WHERE id = ? AND archived = 0;
 
 -- name: CreateTrafficGrant :one
-INSERT INTO traffic_grants (user_id, pool_id, bytes, remaining, lifetime, expires_at, source, payment_id, package_id, note, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO traffic_grants (user_id, pool_id, bytes, remaining, lifetime, expires_at, source, package_id, note, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: ListUserGrants :many
@@ -65,14 +62,3 @@ WHERE user_id = sqlc.arg(user_id) AND lifetime = 'period' AND remaining > 0
 
 -- name: GetUserPool :one
 SELECT * FROM user_pools WHERE user_id = ? AND pool_id = ?;
-
--- name: CreatePackagePayment :one
-INSERT INTO payments (provider, payload, tg_id, kind, user_id, package_id, tariff_name, amount, currency, status, created_at)
-VALUES (?, ?, ?, 'package', ?, ?, ?, ?, ?, 'pending', ?)
-RETURNING *;
-
--- name: FindOpenPackagePayment :one
-SELECT * FROM payments
-WHERE tg_id = ? AND package_id = ? AND provider = ? AND kind = 'package' AND user_id = ?
-  AND status = 'pending' AND pay_url <> '' AND created_at > sqlc.arg(since)
-ORDER BY id DESC LIMIT 1;

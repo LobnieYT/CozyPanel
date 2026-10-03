@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// dist is produced by `pnpm build` in this directory and must exist before `go build ./cmd/mikan`.
+// dist is produced by `pnpm build` in this directory and must exist before `go build ./cmd/cozy`.
 //
 //go:embed all:dist
 var dist embed.FS

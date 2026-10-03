@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"mikan/internal/panel/settings"
+	"cozy/internal/panel/settings"
 )
 
 func TestParseProxy(t *testing.T) {

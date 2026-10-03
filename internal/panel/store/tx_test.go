@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/store/db"
 )
 
 // A panic inside a transaction (it holds the write lock from BEGIN) rolls it back before

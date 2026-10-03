@@ -8,7 +8,7 @@ import (
 // Behind a TCP proxy (GitHub issue #11) clients get the proxy's address, port and TLS
 // name; the node keeps listening where it does.
 func TestSetClientEndpoint(t *testing.T) {
-	tpl := mustParse(t, "type: trojan\nws-path: /ws\nmikan:\n  tls: node\n  client:\n    fingerprint: ios\n")
+	tpl := mustParse(t, "type: trojan\nws-path: /ws\ncozy:\n  tls: node\n  client:\n    fingerprint: ios\n")
 	if err := SetClientEndpoint(tpl, "vpn.example.com", 443, "trojan.example.com"); err != nil {
 		t.Fatal(err)
 	}

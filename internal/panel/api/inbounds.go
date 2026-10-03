@@ -10,12 +10,12 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/nodeapi"
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/presets"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/panel/subs"
-	"mikan/internal/proto"
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/presets"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
+	"cozy/internal/proto"
 )
 
 type InboundView struct {
@@ -49,7 +49,7 @@ type InboundView struct {
 	Outbound    string         `json:"outbound" enum:"direct,warp,node" doc:"Выход в интернет: напрямую с сервера, через WARP ноды или через другую ноду (каскад)"`
 	ExitNodeID  *int64         `json:"exit_node_id,omitempty" doc:"Нода, через которую выходит трафик, если outbound=node"`
 	PoolID      *int64         `json:"pool_id,omitempty" doc:"Пул трафика, в который считается подключение; нет — основной трафик"`
-	Client      ClientEndpoint `json:"client" doc:"Куда подключаются клиенты, если не к ноде напрямую (mikan.client в шаблоне)"`
+	Client      ClientEndpoint `json:"client" doc:"Куда подключаются клиенты, если не к ноде напрямую (cozy.client в шаблоне)"`
 	ClientSNI   bool           `json:"client_sni" doc:"Можно ли задать клиентам свой SNI: у REALITY имя задаёт сайт маскировки"`
 }
 
@@ -349,7 +349,7 @@ func inboundError(err error, dest bool) error {
 	case errors.As(err, &edit):
 		// The client endpoint names its part: body.client.sni.
 		location := "body." + edit.Field
-		if part, ok := strings.CutPrefix(edit.Err.Field, "mikan.client."); ok && edit.Field == "client" {
+		if part, ok := strings.CutPrefix(edit.Err.Field, "cozy.client."); ok && edit.Field == "client" {
 			location += "." + part
 		}
 		return huma.Error422UnprocessableEntity("bad_"+edit.Field, &huma.ErrorDetail{Location: location, Message: edit.Err.Code})
@@ -361,7 +361,7 @@ func inboundError(err error, dest bool) error {
 	return configError(portError(cascadeError(err, "exit_node_id")))
 }
 
-// configError maps a template's refusal, mikan's own or the node's mihomo's, to the
+// configError maps a template's refusal, cozy's own or the node's mihomo's, to the
 // API's code; other errors pass through.
 func configError(err error) error {
 	var pe *proto.Error

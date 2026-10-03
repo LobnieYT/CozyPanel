@@ -10,9 +10,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // Traffic pools (GitHub issue #6): chosen inbounds count to a pool with its own limit per
@@ -149,10 +149,9 @@ func (h *handlers) renamePool(ctx context.Context, in *poolPatchInput) (*poolOut
 	return nil, huma.Error404NotFound("not_found")
 }
 
-// deletePool refuses while the pool holds what users paid for: deleting it would cascade
-// to their grants and to the catalog's packages, and a paid invoice of a package would
-// lose it. The traffic stays theirs; the admin waits for it to run out, or archives the
-// packages first.
+// deletePool refuses while the pool holds granted traffic: deleting it would cascade
+// to their grants and to the catalog's packages. The traffic stays theirs; the admin
+// waits for it to run out, or archives the packages first.
 func (h *handlers) deletePool(ctx context.Context, in *userIDInput) (*struct{}, error) {
 	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		use, err := q.PoolUsage(ctx, db.PoolUsageParams{PoolID: sql.NullInt64{Int64: in.ID, Valid: true}, Now: h.d.Now().Unix()})
@@ -163,7 +162,7 @@ func (h *handlers) deletePool(ctx context.Context, in *userIDInput) (*struct{}, 
 		for _, c := range []struct {
 			n    int64
 			code string
-		}{{use.Grants, "pool_has_grants"}, {use.Packages, "pool_has_packages"}, {use.Payments, "pool_has_payments"}} {
+		}{{use.Grants, "pool_has_grants"}, {use.Packages, "pool_has_packages"}} {
 			if c.n > 0 {
 				details = append(details, &huma.ErrorDetail{Location: "path.id", Message: c.code, Value: c.n})
 			}

@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"mikan/internal/panel/domain"
-	"mikan/internal/panel/store/db"
-	"mikan/internal/proto"
+	"cozy/internal/panel/domain"
+	"cozy/internal/panel/store/db"
+	"cozy/internal/proto"
 )
 
 func TestDetectApp(t *testing.T) {

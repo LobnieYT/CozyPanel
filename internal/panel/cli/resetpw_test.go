@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"mikan/internal/panel/auth"
-	"mikan/internal/panel/store"
-	"mikan/internal/panel/store/db"
+	"cozy/internal/panel/auth"
+	"cozy/internal/panel/store"
+	"cozy/internal/panel/store/db"
 )
 
 // A reset ends every session and every API key of the admin: it is what the owner runs on
@@ -30,7 +30,7 @@ func TestResetPasswordRevokesSessionsAndKeys(t *testing.T) {
 	if _, _, err := auth.NewSessions(st.Q, func() time.Time { return now }, nil).Create(ctx, a.ID, "127.0.0.1", "test"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{AdminID: a.ID, Name: "ci", Prefix: "mk_abcdefg", Hash: "h", Scope: "full", CreatedAt: now.Unix()}); err != nil {
+	if _, err := st.Q.CreateAPIKey(ctx, db.CreateAPIKeyParams{AdminID: a.ID, Name: "ci", Prefix: "co_abcdefg", Hash: "h", Scope: "full", CreatedAt: now.Unix()}); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
