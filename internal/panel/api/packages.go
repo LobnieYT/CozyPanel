@@ -19,13 +19,13 @@ import (
 // catalog and a user's grants.
 
 type PackageView struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	Bytes      int64  `json:"bytes"`
-	PoolID     *int64 `json:"pool_id" doc:"Пул трафика; null — основной трафик"`
-	Lifetime   string `json:"lifetime" enum:"used,period,days" doc:"used — пока не израсходован, period — до конца периода, days — N дней с покупки"`
-	Days       int64  `json:"days" doc:"Срок в днях для lifetime=days"`
-	Sort       int64  `json:"sort"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Bytes    int64  `json:"bytes"`
+	PoolID   *int64 `json:"pool_id" doc:"Пул трафика; null — основной трафик"`
+	Lifetime string `json:"lifetime" enum:"used,period,days" doc:"used — пока не израсходован, period — до конца периода, days — N дней с покупки"`
+	Days     int64  `json:"days" doc:"Срок в днях для lifetime=days"`
+	Sort     int64  `json:"sort"`
 }
 
 func viewPackage(p db.TrafficPackage) PackageView {
@@ -33,12 +33,12 @@ func viewPackage(p db.TrafficPackage) PackageView {
 }
 
 type PackageBody struct {
-	Name       string `json:"name" minLength:"1" maxLength:"60"`
-	Bytes      int64  `json:"bytes" minimum:"1073741824" maximum:"109951162777600" doc:"От 1 ГБ до 100 ТБ"`
-	PoolID     *int64 `json:"pool_id,omitempty" minimum:"1" doc:"Пул трафика; не передан — основной трафик"`
-	Lifetime   string `json:"lifetime" enum:"used,period,days"`
-	Days       int64  `json:"days,omitempty" minimum:"0" maximum:"3650" doc:"Для lifetime=days: 1–3650"`
-	Sort       int64  `json:"sort,omitempty"`
+	Name     string `json:"name" minLength:"1" maxLength:"60"`
+	Bytes    int64  `json:"bytes" minimum:"1073741824" maximum:"109951162777600" doc:"От 1 ГБ до 100 ТБ"`
+	PoolID   *int64 `json:"pool_id,omitempty" minimum:"1" doc:"Пул трафика; не передан — основной трафик"`
+	Lifetime string `json:"lifetime" enum:"used,period,days"`
+	Days     int64  `json:"days,omitempty" minimum:"0" maximum:"3650" doc:"Для lifetime=days: 1–3650"`
+	Sort     int64  `json:"sort,omitempty"`
 }
 
 func (b PackageBody) input() domain.PackageInput {

@@ -48,6 +48,12 @@ const (
 	// KeyPayContact is the admin's Telegram contact for manual payment, shown by the
 	// bot instead of invoices: "@name", a t.me link, or any text.
 	KeyPayContact = "pay_contact"
+	// Network defaults (DNS, routes, outbounds): JSON documents; a node whose override
+	// column is NULL or empty inherits these. Subscription profiles read KeySubDNS.
+	KeyNodeDNS       = "node_dns"
+	KeyNodeRoutes    = "node_routes"
+	KeyNodeOutbounds = "node_outbounds"
+	KeySubDNS        = "sub_dns"
 	// KeyQuietHour is the UTC hour the slot pool is refilled, which reconnects QUIC clients.
 	KeyQuietHour = "quiet_hour_utc"
 )

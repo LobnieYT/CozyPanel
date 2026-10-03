@@ -101,6 +101,9 @@ func warpRules(st nodeapi.DesiredState) []string {
 // probe asks Cloudflare's trace page through an outbound (WARP, NODE-<id>) what it sees.
 func probe(ctx context.Context, proxy string) nodeapi.WarpStatus {
 	st := nodeapi.WarpStatus{Configured: true, CheckedAt: time.Now().UTC()}
+	if proxy == "DIRECT" {
+		return probeDirect(ctx, st)
+	}
 	p, ok := tunnel.Proxies()[proxy]
 	if !ok {
 		st.Error = "not_loaded"
@@ -118,6 +121,39 @@ func probe(ctx context.Context, proxy string) nodeapi.WarpStatus {
 		TLSClientConfig:   &tls.Config{MinVersion: tls.VersionTLS12},
 		DisableKeepAlives: true,
 	}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.cloudflare.com/cdn-cgi/trace", nil)
+	if err != nil {
+		st.Error = err.Error()
+		return st
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		st.Error = "unreachable"
+		return st
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	for _, line := range strings.Split(string(body), "\n") {
+		k, v, _ := strings.Cut(strings.TrimSpace(line), "=")
+		switch k {
+		case "ip":
+			st.IP = v
+		case "warp":
+			st.Warp = v
+		case "colo":
+			st.Colo = v
+		}
+	}
+	st.OK = resp.StatusCode == http.StatusOK && st.IP != ""
+	if !st.OK {
+		st.Error = "bad_answer"
+	}
+	return st
+}
+
+// probeDirect asks the trace page straight, without an outbound.
+func probeDirect(ctx context.Context, st nodeapi.WarpStatus) nodeapi.WarpStatus {
+	hc := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.cloudflare.com/cdn-cgi/trace", nil)
 	if err != nil {
 		st.Error = err.Error()

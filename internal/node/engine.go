@@ -21,10 +21,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/metacubex/mihomo/adapter"
+	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener"
 	mlog "github.com/metacubex/mihomo/log"
+	mrules "github.com/metacubex/mihomo/rules"
 	"github.com/metacubex/mihomo/tunnel"
 
 	"cozy/internal/fsutil"
@@ -84,7 +87,10 @@ func routesKey(st nodeapi.DesiredState, allowPrivate bool) string {
 		W *nodeapi.Warp
 		E []nodeapi.Exit
 		R []string
-	}{st.Warp, st.Exits, rules(st, allowPrivate)})
+		D *nodeapi.NodeDNS
+		C nodeapi.NodeRoutes
+		O []nodeapi.NodeOutbound
+	}{st.Warp, st.Exits, rules(st, allowPrivate), st.DNS, st.Routes, st.Outbounds})
 	return string(raw)
 }
 
@@ -282,6 +288,54 @@ func (e *Engine) Validate(req nodeapi.ValidateRequest) error {
 	}
 	_, err = listener.ParseListener(l)
 	return err
+}
+
+// ValidateNet parses candidate network sections with mihomo's own parsers without
+// applying them, so the panel can refuse them before they replace a working config.
+// GEO rules need the node's geodata and are checked when it is ensured, at apply.
+func (e *Engine) ValidateNet(req nodeapi.ValidateNetRequest) error {
+	if req.DNS != nil && req.DNS.Enable {
+		// Hosts live outside the dns section and are already checked by the panel.
+		section := dnsSection(nodeapi.DesiredState{DNS: req.DNS})
+		raw, err := json.Marshal(section)
+		if err != nil {
+			return err
+		}
+		var dns config.RawDNS
+		if err := json.Unmarshal(raw, &dns); err != nil {
+			return err
+		}
+	}
+	for _, o := range req.Outbounds {
+		var m map[string]any
+		if err := json.Unmarshal(o.Config, &m); err != nil {
+			return err
+		}
+		m["name"] = o.Name
+		if _, err := adapter.ParseProxy(m); err != nil {
+			return err
+		}
+	}
+	for _, r := range req.Routes.Rules {
+		typ, value, target, params := splitNodeRule(r.Rule)
+		if typ == "GEOIP" || typ == "GEOSITE" || typ == "SRC-GEOIP" {
+			continue
+		}
+		if _, err := mrules.ParseRule(typ, value, target, params, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// splitNodeRule splits a validated "TYPE,VALUE,TARGET[,no-resolve]" rule for mihomo.
+func splitNodeRule(rule string) (typ, value, target string, params []string) {
+	parts := strings.Split(rule, ",")
+	typ, value, target = parts[0], parts[1], parts[2]
+	if len(parts) == 4 {
+		params = []string{strings.TrimSpace(parts[3])}
+	}
+	return typ, value, target, params
 }
 
 // TargetAllowed says whether the node may test dest as a REALITY target for the panel:
@@ -560,15 +614,18 @@ func setAside(path string, why error, log *slog.Logger) error {
 }
 
 // Probe checks the internet through one outbound of the running config, at most once a
-// minute per outbound: only WARP and the exits to other nodes may be asked about.
+// minute per outbound: DIRECT, WARP, the exits to other nodes and the admin's own.
 func (e *Engine) Probe(ctx context.Context, proxy string) (nodeapi.ProbeResult, bool) {
 	if proxy == warpProxy {
 		return e.WarpStatus(ctx), true
 	}
 	e.mu.Lock()
-	known := false
+	known := proxy == "DIRECT"
 	for _, x := range e.applied.Exits {
 		known = known || x.Name == proxy
+	}
+	for _, o := range e.applied.Outbounds {
+		known = known || o.Name == proxy
 	}
 	e.mu.Unlock()
 	if !known {

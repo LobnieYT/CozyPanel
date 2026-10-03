@@ -2,9 +2,11 @@ package node
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/metacubex/mihomo/listener"
 
+	"cozy/internal/geox"
 	"cozy/internal/nodeapi"
 	"cozy/internal/proto"
 )
@@ -35,10 +37,20 @@ func rules(st nodeapi.DesiredState, allowPrivate bool) []string {
 	r = append(r, "DST-PORT,25,REJECT")
 	r = append(r, exitRules(st)...)
 	r = append(r, warpRules(st)...)
-	return append(r, "MATCH,DIRECT")
+	// The admin's own rules come last; the MATCH target is their default outbound.
+	// Safety REJECTs above always win, and anything unmatched leaves by the default.
+	for _, route := range st.Routes.Rules {
+		r = append(r, route.Rule)
+	}
+	match := "DIRECT"
+	if d := st.Routes.Default; d != "" {
+		match = d
+	}
+	return append(r, "MATCH,"+match)
 }
 
-// outbounds are the proxies besides DIRECT: WARP and the other nodes used as exits.
+// outbounds are the proxies besides DIRECT: WARP, the other nodes used as exits,
+// and the admin's own.
 func outbounds(st nodeapi.DesiredState) ([]any, error) {
 	out := []any{}
 	if st.Warp != nil {
@@ -53,6 +65,14 @@ func outbounds(st nodeapi.DesiredState) ([]any, error) {
 		if err != nil {
 			return nil, err
 		}
+		out = append(out, p)
+	}
+	for _, o := range st.Outbounds {
+		var p map[string]any
+		if err := json.Unmarshal(o.Config, &p); err != nil {
+			return nil, err
+		}
+		p["name"] = o.Name
 		out = append(out, p)
 	}
 	return out, nil
@@ -99,13 +119,84 @@ func buildConfig(st nodeapi.DesiredState, cert proto.Cert, allowPrivate bool) (r
 		"mixed-port":        0,
 		"find-process-mode": "off",
 		"profile":           map[string]any{"store-selected": false, "store-fake-ip": false},
-		"dns":               map[string]any{"enable": false},
+		"dns":               dnsSection(st),
 		"proxies":           proxies,
 		"rules":             rules(st, allowPrivate),
 		"listeners":         listeners,
 	}
+	if hosts := dnsHosts(st); len(hosts) > 0 {
+		cfg["hosts"] = hosts
+	}
+	if needsGeo(st) {
+		// GEO rules and geosite DNS policies read MetaCubeX data: mihomo
+		// downloads it into its home itself and refreshes it on its own.
+		cfg["geodata-mode"] = true
+		cfg["geo-auto-update"] = true
+		cfg["geox-url"] = geox.URL
+	}
 	raw, err = json.Marshal(cfg)
 	return raw, rejected, err
+}
+
+// needsGeo says whether the state references GEO data: GEO rules or a DNS policy
+// on a geosite. GEOIP,LAN is built in and needs no files.
+func needsGeo(st nodeapi.DesiredState) bool {
+	for _, r := range st.Routes.Rules {
+		up := strings.ToUpper(strings.TrimSpace(r.Rule))
+		if strings.HasPrefix(up, "GEOIP,LAN,") || strings.HasPrefix(up, "GEOIP,LAN ") || up == "GEOIP,LAN" {
+			continue
+		}
+		for _, p := range []string{"GEOIP,", "GEOSITE,", "SRC-GEOIP,"} {
+			if strings.HasPrefix(up, p) {
+				return true
+			}
+		}
+	}
+	if st.DNS != nil {
+		for k := range st.DNS.Policy {
+			if strings.HasPrefix(strings.ToLower(k), "geosite:") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// dnsSection renders the mihomo dns section. Without an enabled admin DNS the
+// resolver stays off and the system resolver answers, as before.
+func dnsSection(st nodeapi.DesiredState) map[string]any {
+	d := st.DNS
+	if d == nil || !d.Enable {
+		return map[string]any{"enable": false}
+	}
+	out := map[string]any{"enable": true, "ipv6": d.IPv6}
+	if len(d.Nameservers) > 0 {
+		out["nameserver"] = d.Nameservers
+	}
+	if len(d.ProxyServers) > 0 {
+		out["proxy-server-nameserver"] = d.ProxyServers
+	}
+	if len(d.Policy) > 0 {
+		out["nameserver-policy"] = d.Policy
+	}
+	return out
+}
+
+// dnsHosts renders the top-level hosts map (mihomo keeps hosts outside dns).
+func dnsHosts(st nodeapi.DesiredState) map[string]any {
+	d := st.DNS
+	if d == nil || !d.Enable || len(d.Hosts) == 0 {
+		return nil
+	}
+	hosts := map[string]any{}
+	for k, vs := range d.Hosts {
+		if len(vs) == 1 {
+			hosts[k] = vs[0]
+		} else {
+			hosts[k] = vs
+		}
+	}
+	return hosts
 }
 
 func listenerFor(in nodeapi.Inbound, slots []nodeapi.Slot, cert proto.Cert, o proto.Options) (map[string]any, error) {

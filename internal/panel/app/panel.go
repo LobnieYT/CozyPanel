@@ -23,6 +23,7 @@ import (
 	"cozy/internal/panel/autotune"
 	"cozy/internal/panel/dnscheck"
 	"cozy/internal/panel/domain"
+	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/nodesync"
 	"cozy/internal/panel/server"
 	"cozy/internal/panel/settings"
@@ -223,6 +224,11 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		}
 		cfg := subs.Config{Brand: brand, SupportURL: support, Groups: groups, Routing: subs.ParseRouting(routing), Fingerprint: fingerprint,
 			Direct: []string{publicHost, domainName}, Lang: lang, Rules: subs.ServedRules(rules, groups.WithDefaults(lang))}
+		if dnsRaw, err := set.String(ctx, settings.KeySubDNS); err != nil {
+			return subs.Config{}, err
+		} else if cfg.DNS, err = netcfg.ParseSubDNS(dnsRaw); err != nil {
+			return subs.Config{}, err
+		}
 		if cfg.Binding, err = set.On(ctx, settings.DeviceBinding); err != nil {
 			return subs.Config{}, err
 		}

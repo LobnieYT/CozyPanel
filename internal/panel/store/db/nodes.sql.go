@@ -7,12 +7,13 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createNode = `-- name: CreateNode :one
 INSERT INTO nodes (name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at
+RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override
 `
 
 type CreateNodeParams struct {
@@ -46,6 +47,9 @@ func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, e
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DnsOverride,
+		&i.RoutesOverride,
+		&i.OutboundsOverride,
 	)
 	return i, err
 }
@@ -60,7 +64,7 @@ func (q *Queries) DeleteNode(ctx context.Context, id int64) error {
 }
 
 const getNode = `-- name: GetNode :one
-SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at FROM nodes WHERE id = ?
+SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override FROM nodes WHERE id = ?
 `
 
 func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
@@ -76,12 +80,15 @@ func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DnsOverride,
+		&i.RoutesOverride,
+		&i.OutboundsOverride,
 	)
 	return i, err
 }
 
 const listNodes = `-- name: ListNodes :many
-SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at FROM nodes ORDER BY id
+SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override FROM nodes ORDER BY id
 `
 
 func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
@@ -103,6 +110,9 @@ func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DnsOverride,
+			&i.RoutesOverride,
+			&i.OutboundsOverride,
 		); err != nil {
 			return nil, err
 		}
@@ -132,8 +142,31 @@ func (q *Queries) SetNodeCert(ctx context.Context, arg SetNodeCertParams) error 
 	return err
 }
 
+const setNodeNet = `-- name: SetNodeNet :exec
+UPDATE nodes SET dns_override = ?, routes_override = ?, outbounds_override = ?, updated_at = ? WHERE id = ?
+`
+
+type SetNodeNetParams struct {
+	DnsOverride       sql.NullString
+	RoutesOverride    sql.NullString
+	OutboundsOverride sql.NullString
+	UpdatedAt         int64
+	ID                int64
+}
+
+func (q *Queries) SetNodeNet(ctx context.Context, arg SetNodeNetParams) error {
+	_, err := q.db.ExecContext(ctx, setNodeNet,
+		arg.DnsOverride,
+		arg.RoutesOverride,
+		arg.OutboundsOverride,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
 const updateNode = `-- name: UpdateNode :one
-UPDATE nodes SET name = ?, address = ?, public_host = ?, domain = ?, enabled = ?, updated_at = ? WHERE id = ? RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at
+UPDATE nodes SET name = ?, address = ?, public_host = ?, domain = ?, enabled = ?, updated_at = ? WHERE id = ? RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override
 `
 
 type UpdateNodeParams struct {
@@ -167,6 +200,9 @@ func (q *Queries) UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, e
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DnsOverride,
+		&i.RoutesOverride,
+		&i.OutboundsOverride,
 	)
 	return i, err
 }

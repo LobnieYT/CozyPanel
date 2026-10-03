@@ -188,4 +188,3 @@ func TestHSTSOnlyWhereTheTLSIsOurs(t *testing.T) {
 		t.Fatal("the panel does not know what else its domain serves")
 	}
 }
-

@@ -15,5 +15,8 @@ UPDATE nodes SET name = ?, address = ?, public_host = ?, domain = ?, enabled = ?
 -- name: SetNodeCert :exec
 UPDATE nodes SET cert_sha256 = ?, updated_at = ? WHERE id = ?;
 
+-- name: SetNodeNet :exec
+UPDATE nodes SET dns_override = ?, routes_override = ?, outbounds_override = ?, updated_at = ? WHERE id = ?;
+
 -- name: DeleteNode :exec
 DELETE FROM nodes WHERE id = ? AND id != 1;

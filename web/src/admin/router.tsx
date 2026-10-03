@@ -71,6 +71,7 @@ export function createAppRouter(queryClient: QueryClient) {
   });
   const inbounds = createRoute({ getParentRoute: () => app, path: "/inbounds", component: page(() => import("./pages/inbounds"), "InboundsPage") });
   const nodes = createRoute({ getParentRoute: () => app, path: "/nodes", component: page(() => import("./pages/nodes"), "NodesPage") });
+  const network = createRoute({ getParentRoute: () => app, path: "/network", component: page(() => import("./pages/network"), "NetworkPage") });
   const settings = createRoute({
     getParentRoute: () => app,
     path: "/settings",
@@ -91,7 +92,7 @@ export function createAppRouter(queryClient: QueryClient) {
   // The API section lived in the sidebar until 0.4.2: old links land on its new place.
   const apiDocsOld = createRoute({ getParentRoute: () => app, path: "/api-docs", beforeLoad: () => { throw redirect({ to: "/settings/api" }); } });
 
-  const routeTree = root.addChildren([login, app.addChildren([dashboard, users, tariffs, inbounds, nodes, telegram, apiDocs, apiDocsOld, settings])]);
+  const routeTree = root.addChildren([login, app.addChildren([dashboard, users, tariffs, inbounds, nodes, network, telegram, apiDocs, apiDocsOld, settings])]);
   return createRouter({
     routeTree,
     basepath: basePath || "/",

@@ -128,6 +128,19 @@ func (c *Client) Validate(ctx context.Context, req ValidateRequest) error {
 	return c.do(ctx, http.MethodPost, "/v1/validate", req, nil, 10*time.Second)
 }
 
+// ValidateNet returns *Error{Code: "invalid_config"} when mihomo refuses the
+// candidate network sections.
+func (c *Client) ValidateNet(ctx context.Context, req ValidateNetRequest) error {
+	return c.do(ctx, http.MethodPost, "/v1/net/validate", req, nil, 15*time.Second)
+}
+
+// RouteTest asks the node which rule a connection would hit, without traffic.
+func (c *Client) RouteTest(ctx context.Context, req RouteTestRequest) (RouteTestResult, error) {
+	var r RouteTestResult
+	err := c.do(ctx, http.MethodPost, "/v1/route/test", req, &r, 25*time.Second)
+	return r, err
+}
+
 func (c *Client) SetPolicies(ctx context.Context, epoch string, p []Policy) error {
 	return c.do(ctx, http.MethodPut, "/v1/policies", PoliciesRequest{Epoch: epoch, Policies: p}, nil, 30*time.Second)
 }

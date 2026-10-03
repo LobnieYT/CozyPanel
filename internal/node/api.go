@@ -45,6 +45,31 @@ func Handler(e *Engine, log *slog.Logger) http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+	mux.HandleFunc("POST /v1/net/validate", func(w http.ResponseWriter, r *http.Request) {
+		var req nodeapi.ValidateNetRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		if err := e.ValidateNet(req); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, nodeapi.Error{Code: "invalid_config", Message: err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("POST /v1/route/test", func(w http.ResponseWriter, r *http.Request) {
+		var req nodeapi.RouteTestRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		defer cancel()
+		res, err := e.RouteTest(ctx, req)
+		if err != nil {
+			fail(w, log, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
 	mux.HandleFunc("PUT /v1/policies", func(w http.ResponseWriter, r *http.Request) {
 		var req nodeapi.PoliciesRequest
 		if !decode(w, r, &req) {

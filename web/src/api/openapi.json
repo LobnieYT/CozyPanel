@@ -1080,6 +1080,28 @@
         ],
         "type": "object"
       },
+      "ImportOutboundInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "conf": {
+            "description": "WireGuard .conf: секции [Interface] и [Peer]",
+            "maxLength": 8192,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "Имя нового исходящего",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "conf"
+        ],
+        "type": "object"
+      },
       "InboundView": {
         "additionalProperties": false,
         "properties": {
@@ -1421,6 +1443,34 @@
         ],
         "type": "object"
       },
+      "NetworkView": {
+        "additionalProperties": false,
+        "properties": {
+          "node_dns": {
+            "description": "DNS нод: JSON NodeDNS; пусто — резолвер mihomo выключен",
+            "type": "string"
+          },
+          "node_outbounds": {
+            "description": "Исходящие нод: JSON-массив прокси mihomo",
+            "type": "string"
+          },
+          "node_routes": {
+            "description": "Маршруты нод: по правилу mihomo на строку",
+            "type": "string"
+          },
+          "sub_dns": {
+            "description": "DNS подписок: JSON SubDNS; пусто — встроенный DNS профилей",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_dns",
+          "node_routes",
+          "node_outbounds",
+          "sub_dns"
+        ],
+        "type": "object"
+      },
       "NodeCertInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1474,6 +1524,51 @@
           "issuer",
           "not_after",
           "trusted"
+        ],
+        "type": "object"
+      },
+      "NodeDNS": {
+        "additionalProperties": false,
+        "properties": {
+          "enable": {
+            "type": "boolean"
+          },
+          "hosts": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "ipv6": {
+            "type": "boolean"
+          },
+          "nameservers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "policy": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "proxy_servers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "enable"
         ],
         "type": "object"
       },
@@ -1596,6 +1691,78 @@
           "node",
           "key",
           "command"
+        ],
+        "type": "object"
+      },
+      "NodeNetworkView": {
+        "additionalProperties": false,
+        "properties": {
+          "dns_override": {
+            "description": "Пусто — наследовать глобальный node_dns",
+            "type": "string"
+          },
+          "effective_default": {
+            "description": "MATCH для несработавшего: DIRECT по умолчанию",
+            "type": "string"
+          },
+          "effective_dns": {
+            "$ref": "#/components/schemas/NodeDNS"
+          },
+          "effective_outbounds": {
+            "items": {
+              "$ref": "#/components/schemas/NodeOutbound"
+            },
+            "type": "array"
+          },
+          "effective_routes": {
+            "items": {
+              "$ref": "#/components/schemas/NodeRoute"
+            },
+            "type": "array"
+          },
+          "outbounds_override": {
+            "description": "Пусто — наследовать глобальный node_outbounds",
+            "type": "string"
+          },
+          "routes_override": {
+            "description": "Пусто — наследовать глобальный node_routes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dns_override",
+          "routes_override",
+          "outbounds_override",
+          "effective_dns",
+          "effective_default",
+          "effective_routes",
+          "effective_outbounds"
+        ],
+        "type": "object"
+      },
+      "NodeOutbound": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {},
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "config"
+        ],
+        "type": "object"
+      },
+      "NodeRoute": {
+        "additionalProperties": false,
+        "properties": {
+          "rule": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule"
         ],
         "type": "object"
       },
@@ -1942,6 +2109,24 @@
         },
         "type": "object"
       },
+      "PatchNetworkInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "node_dns": {
+            "type": "string"
+          },
+          "node_outbounds": {
+            "type": "string"
+          },
+          "node_routes": {
+            "type": "string"
+          },
+          "sub_dns": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PatchNodeInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1958,6 +2143,21 @@
           },
           "name": {
             "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PatchNodeNetworkInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dns_override": {
+            "type": "string"
+          },
+          "outbounds_override": {
+            "type": "string"
+          },
+          "routes_override": {
             "type": "string"
           }
         },
@@ -2229,6 +2429,21 @@
         ],
         "type": "object"
       },
+      "ProbeInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "proxy": {
+            "description": "Имя исходящего: DIRECT, WARP, NODE-\u003cid\u003e или свой",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "proxy"
+        ],
+        "type": "object"
+      },
       "ProbeView": {
         "additionalProperties": false,
         "properties": {
@@ -2368,6 +2583,75 @@
         },
         "required": [
           "mode"
+        ],
+        "type": "object"
+      },
+      "RouteTestInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 253,
+            "type": "string"
+          },
+          "inbound": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "ip": {
+            "maxLength": 45,
+            "type": "string"
+          },
+          "network": {
+            "enum": [
+              "tcp",
+              "udp"
+            ],
+            "type": "string"
+          },
+          "port": {
+            "format": "int64",
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "RouteTestMatch": {
+        "additionalProperties": false,
+        "properties": {
+          "geo_skipped": {
+            "type": "boolean"
+          },
+          "matched": {
+            "type": "boolean"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "matched"
+        ],
+        "type": "object"
+      },
+      "RouteTestOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dry": {
+            "$ref": "#/components/schemas/RouteTestMatch",
+            "description": "Сухая проверка в панели, без ноды"
+          },
+          "live": {
+            "$ref": "#/components/schemas/RouteTestMatch",
+            "description": "Прогон через mihomo ноды; null — нода недоступна"
+          }
+        },
+        "required": [
+          "dry"
         ],
         "type": "object"
       },
@@ -4445,6 +4729,77 @@
         ]
       }
     },
+    "/api/v1/network": {
+      "get": {
+        "operationId": "get-network",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Сетевые настройки (DNS, маршруты, исходящие)",
+        "tags": [
+          "network"
+        ]
+      },
+      "patch": {
+        "operationId": "update-network",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchNetworkInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Изменить сетевые настройки",
+        "tags": [
+          "network"
+        ],
+        "x-session-only": true
+      }
+    },
     "/api/v1/node": {
       "get": {
         "operationId": "node-health",
@@ -4879,6 +5234,261 @@
           "node"
         ],
         "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/network": {
+      "get": {
+        "operationId": "get-node-network",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeNetworkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Сеть ноды: оверрайды и итог",
+        "tags": [
+          "node"
+        ]
+      },
+      "patch": {
+        "operationId": "update-node-network",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchNodeNetworkInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeNetworkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Изменить сеть ноды",
+        "tags": [
+          "node"
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/outbounds/import": {
+      "post": {
+        "operationId": "import-node-outbound",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportOutboundInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeNetworkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Импорт исходящего из WireGuard .conf",
+        "tags": [
+          "node"
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/probe": {
+      "post": {
+        "operationId": "probe-node-outbound",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить исходящее ноды",
+        "tags": [
+          "node"
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/route-test": {
+      "post": {
+        "operationId": "test-node-route",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteTestInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteTestOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить маршрут: сухое и живое",
+        "tags": [
+          "node"
+        ]
       }
     },
     "/api/v1/nodes/{id}/warp": {

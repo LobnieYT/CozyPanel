@@ -127,4 +127,3 @@ func TestParsedTemplatesAreKeptAndCopied(t *testing.T) {
 		t.Fatal("and keeps failing")
 	}
 }
-

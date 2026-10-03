@@ -280,6 +280,29 @@ func (m *Manager) Validate(ctx context.Context, id int64, req nodeapi.ValidateRe
 	return v.Validate(ctx, req)
 }
 
+// ValidateNet runs mihomo's parsers on candidate network sections on the node
+// that will run them.
+func (m *Manager) ValidateNet(ctx context.Context, id int64, req nodeapi.ValidateNetRequest) error {
+	v, err := clientOf[interface {
+		ValidateNet(context.Context, nodeapi.ValidateNetRequest) error
+	}](m, id)
+	if err != nil {
+		return err
+	}
+	return v.ValidateNet(ctx, req)
+}
+
+// RouteTest asks the node which rule a connection would hit, without traffic.
+func (m *Manager) RouteTest(ctx context.Context, id int64, req nodeapi.RouteTestRequest) (nodeapi.RouteTestResult, error) {
+	v, err := clientOf[interface {
+		RouteTest(context.Context, nodeapi.RouteTestRequest) (nodeapi.RouteTestResult, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.RouteTestResult{}, err
+	}
+	return v.RouteTest(ctx, req)
+}
+
 // Activity reports which inbounds of a node each device reached lately.
 func (m *Manager) Activity(ctx context.Context, id int64) (nodeapi.Activity, error) {
 	c, err := clientOf[interface {

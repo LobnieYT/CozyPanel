@@ -12,7 +12,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"cozy/internal/geox"
 	"cozy/internal/panel/domain"
+	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/store/db"
 	"cozy/internal/proto"
 )
@@ -64,14 +66,8 @@ func ParseRouting(s string) Routing {
 	return DefaultRouting
 }
 
-// geoxURL is the geodata Koala Clash ships (MetaCubeX meta-rules-dat, mihomo's own
-// default). Apps without the files download them from here before the profile starts.
-var geoxURL = map[string]string{
-	"geoip":   "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat",
-	"geosite": "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat",
-	"mmdb":    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb",
-	"asn":     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb",
-}
+// geoxURL is the geodata download map client profiles point at.
+var geoxURL = geox.URL
 
 // WithDefaults fills in the names the admin left empty, in the panel's default language
 // ("en", Russian otherwise).
@@ -132,6 +128,8 @@ type Profile struct {
 	Fingerprint string
 	// Rules are the admin's own Clash rules (ServedRules), before the built-in routing.
 	Rules []string
+	// DNS is the admin's subscription DNS (sub_dns); nil: the built-in profile DNS.
+	DNS *netcfg.SubDNS
 }
 
 type proxy struct {
@@ -281,6 +279,26 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 	if r == RoutingRUDirect {
 		rules = append(rules, "GEOSITE,category-ru,DIRECT", "GEOIP,ru,DIRECT")
 		cfg["geodata-mode"], cfg["geox-url"] = false, geoxURL
+		applyProfileDNS(dns, p.DNS, true)
+	} else {
+		applyProfileDNS(dns, p.DNS, false)
+		if needsProfileGeo(rules, p.DNS) {
+			cfg["geodata-mode"], cfg["geox-url"] = false, geoxURL
+		}
+	}
+	cfg["rules"] = append(rules, "MATCH,"+g.Main)
+	return json.MarshalIndent(cfg, "", "  ")
+}
+
+// applyProfileDNS puts the admin's subscription DNS into the profile's dns section.
+// Nil doc keeps the built-in one: DoH through the tunnel in ru_direct mode (GEOIP,ru
+// makes the app resolve every domain itself, and DoH straight from Russia stalls),
+// plain DoH otherwise.
+func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
+	if doc == nil {
+		if !ruDirect {
+			return
+		}
 		// GEOIP,ru makes the app resolve every domain itself. DoH straight from Russia
 		// stalls under TSPU throttling, so it goes through the tunnel (the alias group has
 		// a fixed name: "&" or "=" in a renamed group would break the "#group" suffix).
@@ -288,9 +306,68 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 		dns["nameserver"] = []string{"https://1.1.1.1/dns-query#" + AliasGroup, "https://8.8.8.8/dns-query#" + AliasGroup}
 		dns["proxy-server-nameserver"] = []string{"https://1.1.1.1/dns-query", "https://dns.google/dns-query"}
 		dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}
+		return
 	}
-	cfg["rules"] = append(rules, "MATCH,"+g.Main)
-	return json.MarshalIndent(cfg, "", "  ")
+	dns["ipv6"] = doc.IPv6
+	if !doc.FakeIP {
+		delete(dns, "enhanced-mode")
+		delete(dns, "fake-ip-range")
+	}
+	ns := append([]string{}, doc.Nameservers...)
+	if ruDirect {
+		for i, s := range ns {
+			if strings.HasPrefix(s, "https://") {
+				ns[i] = s + "#" + AliasGroup
+			}
+		}
+	}
+	dns["nameserver"] = ns
+	if len(doc.Proxy) > 0 {
+		dns["proxy-server-nameserver"] = append([]string{}, doc.Proxy...)
+	} else {
+		delete(dns, "proxy-server-nameserver")
+	}
+	if len(doc.Policy) > 0 {
+		policy := map[string]any{}
+		for k, vs := range doc.Policy {
+			policy[k] = append([]string{}, vs...)
+		}
+		if ruDirect {
+			if _, ok := policy["geosite:category-ru"]; !ok {
+				policy["geosite:category-ru"] = []string{"77.88.8.8", "77.88.8.1"}
+			}
+		}
+		dns["nameserver-policy"] = policy
+	} else if ruDirect {
+		dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}
+	} else {
+		delete(dns, "nameserver-policy")
+	}
+}
+
+// needsProfileGeo says whether the profile's rules or DNS policy reference GEO data,
+// which the app must download before the profile starts. GEOIP,LAN is built in and
+// needs no files.
+func needsProfileGeo(rules []string, doc *netcfg.SubDNS) bool {
+	for _, r := range rules {
+		up := strings.ToUpper(strings.TrimSpace(r))
+		if strings.HasPrefix(up, "GEOIP,LAN,") || strings.HasPrefix(up, "GEOIP,LAN ") || up == "GEOIP,LAN" {
+			continue
+		}
+		for _, p := range []string{"GEOIP,", "GEOSITE,", "SRC-GEOIP,"} {
+			if strings.HasPrefix(up, p) {
+				return true
+			}
+		}
+	}
+	if doc != nil {
+		for k := range doc.Policy {
+			if strings.HasPrefix(strings.ToLower(k), "geosite:") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func urlTest(name string, proxies []string) map[string]any {

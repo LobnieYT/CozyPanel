@@ -296,6 +296,24 @@ export interface paths {
         patch: operations["update-inbound"];
         trace?: never;
     };
+    "/api/v1/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Сетевые настройки (DNS, маршруты, исходящие) */
+        get: operations["get-network"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить сетевые настройки */
+        patch: operations["update-network"];
+        trace?: never;
+    };
     "/api/v1/node": {
         parameters: {
             query?: never;
@@ -396,6 +414,75 @@ export interface paths {
         put?: never;
         /** Выпустить новый ключ ноды (старый перестаёт работать) */
         post: operations["rekey-node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Сеть ноды: оверрайды и итог */
+        get: operations["get-node-network"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить сеть ноды */
+        patch: operations["update-node-network"];
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/outbounds/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Импорт исходящего из WireGuard .conf */
+        post: operations["import-node-outbound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить исходящее ноды */
+        post: operations["probe-node-outbound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/route-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить маршрут: сухое и живое */
+        post: operations["test-node-route"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1391,6 +1478,12 @@ export interface components {
             state: "running" | "ok" | "failed";
             version: string;
         };
+        ImportOutboundInputBody: {
+            /** @description WireGuard .conf: секции [Interface] и [Peer] */
+            conf: string;
+            /** @description Имя нового исходящего */
+            name: string;
+        };
         InboundView: {
             /** @description Приложения, которым подключение попадает в подписку: mihomo, xray, singbox, stash, other */
             apps: string[];
@@ -1504,6 +1597,16 @@ export interface components {
             /** @description Для action=url: https:// или tg:// */
             url?: string;
         };
+        NetworkView: {
+            /** @description DNS нод: JSON NodeDNS; пусто — резолвер mihomo выключен */
+            node_dns: string;
+            /** @description Исходящие нод: JSON-массив прокси mihomo */
+            node_outbounds: string;
+            /** @description Маршруты нод: по правилу mihomo на строку */
+            node_routes: string;
+            /** @description DNS подписок: JSON SubDNS; пусто — встроенный DNS профилей */
+            sub_dns: string;
+        };
         NodeCertInputBody: {
             /** @description Цепочка в PEM: сначала сертификат, за ним промежуточные (fullchain.pem) */
             cert: string;
@@ -1520,6 +1623,18 @@ export interface components {
             not_after: string;
             /** @description Публично доверенный для адреса: приложения принимают его без пина */
             trusted: boolean;
+        };
+        NodeDNS: {
+            enable: boolean;
+            hosts?: {
+                [key: string]: string[];
+            };
+            ipv6?: boolean;
+            nameservers?: string[];
+            policy?: {
+                [key: string]: string[];
+            };
+            proxy_servers?: string[];
         };
         NodeInfo: {
             /** @description host:port API ноды; пусто у своей ноды */
@@ -1562,6 +1677,26 @@ export interface components {
             /** @description Ключ подключения ноды: показывается один раз */
             key: string;
             node: components["schemas"]["NodeInfo"];
+        };
+        NodeNetworkView: {
+            /** @description Пусто — наследовать глобальный node_dns */
+            dns_override: string;
+            /** @description MATCH для несработавшего: DIRECT по умолчанию */
+            effective_default: string;
+            effective_dns: components["schemas"]["NodeDNS"];
+            effective_outbounds: components["schemas"]["NodeOutbound"][];
+            effective_routes: components["schemas"]["NodeRoute"][];
+            /** @description Пусто — наследовать глобальный node_outbounds */
+            outbounds_override: string;
+            /** @description Пусто — наследовать глобальный node_routes */
+            routes_override: string;
+        };
+        NodeOutbound: {
+            config: unknown;
+            name: string;
+        };
+        NodeRoute: {
+            rule: string;
         };
         NodeView: {
             /** Format: date-time */
@@ -1698,11 +1833,22 @@ export interface components {
             /** @description SNI для клиентов, если dest — IP (цель из подбора соседей) */
             server_name?: string;
         };
+        PatchNetworkInputBody: {
+            node_dns?: string;
+            node_outbounds?: string;
+            node_routes?: string;
+            sub_dns?: string;
+        };
         PatchNodeInputBody: {
             domain?: string;
             enabled?: boolean;
             host?: string;
             name?: string;
+        };
+        PatchNodeNetworkInputBody: {
+            dns_override?: string;
+            outbounds_override?: string;
+            routes_override?: string;
         };
         PatchSettingsInputBody: {
             auto_port?: boolean;
@@ -1794,6 +1940,10 @@ export interface components {
             inbounds: string[];
             name: string;
         };
+        ProbeInputBody: {
+            /** @description Имя исходящего: DIRECT, WARP, NODE-<id> или свой */
+            proxy: string;
+        };
         ProbeView: {
             /** Format: date-time */
             checked_at: string;
@@ -1839,6 +1989,27 @@ export interface components {
             node_id?: number;
             /** @description socks5://user:pass@host:port, http://… или https://…; не передан — прежний (mode=proxy) */
             proxy?: string;
+        };
+        RouteTestInputBody: {
+            domain?: string;
+            inbound?: string;
+            ip?: string;
+            /** @enum {string} */
+            network?: "tcp" | "udp";
+            /** Format: int64 */
+            port?: number;
+        };
+        RouteTestMatch: {
+            geo_skipped?: boolean;
+            matched: boolean;
+            rule?: string;
+            target?: string;
+        };
+        RouteTestOutputBody: {
+            /** @description Сухая проверка в панели, без ноды */
+            dry: components["schemas"]["RouteTestMatch"];
+            /** @description Прогон через mihomo ноды; null — нода недоступна */
+            live?: components["schemas"]["RouteTestMatch"];
         };
         ScanTargetsOutputBody: {
             /** @description Адрес сервера, вокруг которого искали */
@@ -2925,6 +3096,68 @@ export interface operations {
             };
         };
     };
+    "get-network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchNetworkInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "node-health": {
         parameters: {
             query?: {
@@ -3231,6 +3464,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NodeKeyOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-node-network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeNetworkView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-node-network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchNodeNetworkInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeNetworkView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "import-node-outbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportOutboundInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeNetworkView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "probe-node-outbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProbeInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "test-node-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteTestInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteTestOutputBody"];
                 };
             };
             /** @description Error */

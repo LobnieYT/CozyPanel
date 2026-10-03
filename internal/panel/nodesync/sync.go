@@ -22,6 +22,7 @@ import (
 
 	"cozy/internal/nodeapi"
 	"cozy/internal/panel/domain"
+	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store/db"
 	"cozy/internal/panel/warp"
@@ -60,6 +61,7 @@ type Syncer struct {
 	failedKey   string    // the state key the last failed Apply was for
 	retry       retry     // the pace of attempts at a node that does not answer
 	badInbounds string    // the inbounds left out of the state, as last logged
+	badNet      string    // the routes left out of the state, as last logged
 
 	// Only the counters loop touches these.
 	counterFails int       // consecutive failed pulls
@@ -171,6 +173,9 @@ func (s *Syncer) desired(ctx context.Context) (nodeapi.DesiredState, error) {
 		return st, err
 	}
 	if st.Relay, st.Exits, err = s.cascade(ctx, n, inbounds); err != nil {
+		return st, err
+	}
+	if st.DNS, st.Routes, st.Outbounds, err = s.net(ctx, n); err != nil {
 		return st, err
 	}
 	if s.local {
@@ -665,14 +670,17 @@ func (s *Syncer) refreshHealth(ctx context.Context) {
 
 func stateKey(st nodeapi.DesiredState) string {
 	raw, _ := json.Marshal(struct {
-		I []nodeapi.Inbound
-		S []nodeapi.Slot
-		T *nodeapi.TLSFiles
-		P int
-		W *nodeapi.Warp
-		R *nodeapi.Relay
-		E []nodeapi.Exit
-	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits})
+		I  []nodeapi.Inbound
+		S  []nodeapi.Slot
+		T  *nodeapi.TLSFiles
+		P  int
+		W  *nodeapi.Warp
+		R  *nodeapi.Relay
+		E  []nodeapi.Exit
+		D  *nodeapi.NodeDNS
+		Rt nodeapi.NodeRoutes
+		O  []nodeapi.NodeOutbound
+	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
@@ -717,6 +725,66 @@ func (s *Syncer) warp(ctx context.Context, n db.Node, inbounds []db.Inbound) (*n
 		out.Inbounds = append(out.Inbounds, nodeapi.RelayListener)
 	}
 	return out, nil
+}
+
+// net is the node's network setup: DNS, custom routes and outbounds. Each comes
+// from the node's override column when set, else from the global setting. Routes
+// whose target names no outbound of this node are left out (and logged like bad
+// inbounds) instead of breaking the whole state.
+func (s *Syncer) net(ctx context.Context, n db.Node) (*nodeapi.NodeDNS, nodeapi.NodeRoutes, []nodeapi.NodeOutbound, error) {
+	res, err := netcfg.Resolve(ctx, s.m.st.Q, s.m.set, n)
+	if err != nil {
+		return nil, nodeapi.NodeRoutes{}, nil, err
+	}
+	known := map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true, "WARP": true}
+	for _, o := range res.Outbounds {
+		known[strings.ToUpper(o.Name)] = true
+	}
+	// Cascade exits are proxies too; their names come from the exits below, which
+	// resolve after this, so accept any NODE-<n> target here and check the rest now.
+	kept := res.Routes.Rules[:0]
+	var bad []string
+	for _, r := range res.Routes.Rules {
+		target := ruleTarget(r.Rule)
+		up := strings.ToUpper(target)
+		if known[up] || strings.HasPrefix(up, "NODE-") {
+			kept = append(kept, r)
+			continue
+		}
+		bad = append(bad, r.Rule)
+	}
+	res.Routes.Rules = kept
+	if def := strings.ToUpper(res.Routes.Default); def != "" && !known[def] && !strings.HasPrefix(def, "NODE-") {
+		bad = append(bad, "# default: "+res.Routes.Default)
+		res.Routes.Default = ""
+	}
+	s.noteBadNet(bad)
+	return res.DNS, res.Routes, res.Outbounds, nil
+}
+
+// ruleTarget is the TARGET of a validated "TYPE,VALUE,TARGET[,no-resolve]" rule.
+func ruleTarget(rule string) string {
+	parts := strings.Split(rule, ",")
+	if len(parts) < 3 {
+		return ""
+	}
+	return strings.TrimSpace(parts[2])
+}
+
+// noteBadNet logs the routes left out of the node's state when that set changes,
+// not at every tick.
+func (s *Syncer) noteBadNet(bad []string) {
+	sort.Strings(bad)
+	now := strings.Join(bad, "\n")
+	s.mu.Lock()
+	changed := now != s.badNet
+	s.badNet = now
+	s.mu.Unlock()
+	if changed {
+		for _, b := range bad {
+			s.log.Error("route left out of the node's state", "route", b)
+		}
+	}
 }
 
 // Warp asks the node how it reaches the internet through WARP.

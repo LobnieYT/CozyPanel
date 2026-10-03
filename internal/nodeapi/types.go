@@ -35,6 +35,48 @@ type DesiredState struct {
 	// Exits are the other nodes this one sends chosen inbounds through (a cascade).
 	Relay *Relay `json:"relay,omitempty"`
 	Exits []Exit `json:"exits,omitempty"`
+	// DNS is the node's resolver setup; nil or disabled: mihomo's DNS stays off and
+	// the system resolver answers.
+	DNS *NodeDNS `json:"dns,omitempty"`
+	// Routes are the admin's own rules, applied after the safety rules. Default
+	// names the MATCH target for unmatched traffic (DIRECT when empty); Rules
+	// carry "TYPE,VALUE,TARGET" with targets naming DIRECT, REJECT or proxies.
+	Routes NodeRoutes `json:"routes,omitempty"`
+	// Outbounds are the admin's own proxies besides WARP and cascade exits.
+	Outbounds []NodeOutbound `json:"outbounds,omitempty"`
+}
+
+// NodeDNS is a mihomo dns section. Nameservers are plain IPs ("1.1.1.1") or
+// encrypted endpoints ("https://1.1.1.1/dns-query", "tls://8.8.8.8"). Policy keys
+// are "geosite:<name>", "domain:<suffix>" or an IP network in CIDR notation;
+// Hosts maps a domain to addresses, like a hosts file.
+type NodeDNS struct {
+	Enable       bool                `json:"enable"`
+	IPv6         bool                `json:"ipv6,omitempty"`
+	Nameservers  []string            `json:"nameservers,omitempty"`
+	ProxyServers []string            `json:"proxy_servers,omitempty"`
+	Policy       map[string][]string `json:"policy,omitempty"`
+	Hosts        map[string][]string `json:"hosts,omitempty"`
+}
+
+// NodeRoutes is a node's routing: the MATCH target and the custom rules.
+type NodeRoutes struct {
+	Default string      `json:"default,omitempty"`
+	Rules   []NodeRoute `json:"rules,omitempty"`
+}
+
+// NodeRoute is one mihomo rule: TYPE,VALUE,TARGET with an optional no-resolve,
+// e.g. "DOMAIN-SUFFIX,example.com,DIRECT" or "GEOIP,ru,WARP".
+type NodeRoute struct {
+	Rule string `json:"rule"`
+}
+
+// NodeOutbound is one mihomo proxy: the map mihomo parses, with "name" and "type"
+// required (e.g. {"name":"office","type":"wireguard",...}). Names must not clash
+// with DIRECT, REJECT, WARP or NODE-<id>.
+type NodeOutbound struct {
+	Name   string          `json:"name"`
+	Config json.RawMessage `json:"config"`
 }
 
 type Inbound struct {
@@ -57,6 +99,15 @@ type Slot = proto.Slot
 type ValidateRequest struct {
 	Inbound       Inbound `json:"inbound"`
 	SelfStealPort int     `json:"self_steal_port,omitempty"`
+}
+
+// ValidateNetRequest asks the node to parse candidate network sections with mihomo
+// without applying them: the DNS section as mihomo reads it, custom outbounds as
+// proxies, and custom rules (GEO ones need the node's geodata and are skipped).
+type ValidateNetRequest struct {
+	DNS       *NodeDNS       `json:"dns,omitempty"`
+	Routes    NodeRoutes     `json:"routes,omitempty"`
+	Outbounds []NodeOutbound `json:"outbounds,omitempty"`
 }
 
 type Policy struct {
@@ -272,6 +323,23 @@ func ExitName(id int64) string { return "NODE-" + strconv.FormatInt(id, 10) }
 
 // ProbeResult is the internet as seen through one outbound of the node.
 type ProbeResult = WarpStatus
+
+// RouteTestRequest asks the node which of its effective rules a connection would
+// hit: the same matcher mihomo runs, on synthetic metadata, without any traffic.
+type RouteTestRequest struct {
+	Domain  string `json:"domain,omitempty"`
+	IP      string `json:"ip,omitempty"`
+	Port    int    `json:"port,omitempty"`
+	Network string `json:"network,omitempty"` // tcp (default) or udp
+	Inbound string `json:"inbound,omitempty"`
+}
+
+// RouteTestResult is the first matching rule and where it sends the connection.
+type RouteTestResult struct {
+	Matched bool   `json:"matched"`
+	Rule    string `json:"rule,omitempty"`
+	Target  string `json:"target,omitempty"`
+}
 
 // PoolQuota is what is left of one traffic pool for a slot, as of the policy's BaseSeq.
 type PoolQuota struct {

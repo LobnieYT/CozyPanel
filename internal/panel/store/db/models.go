@@ -102,15 +102,18 @@ type InboundReach struct {
 }
 
 type Node struct {
-	ID         int64
-	Name       string
-	Address    string
-	PublicHost string
-	Domain     string
-	CertSha256 string
-	Enabled    int64
-	CreatedAt  int64
-	UpdatedAt  int64
+	ID                int64
+	Name              string
+	Address           string
+	PublicHost        string
+	Domain            string
+	CertSha256        string
+	Enabled           int64
+	CreatedAt         int64
+	UpdatedAt         int64
+	DnsOverride       sql.NullString
+	RoutesOverride    sql.NullString
+	OutboundsOverride sql.NullString
 }
 
 type NodeRelay struct {

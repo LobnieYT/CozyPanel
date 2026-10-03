@@ -103,6 +103,10 @@ type NodeRuntime interface {
 	Warp(ctx context.Context, id int64) (nodeapi.WarpStatus, error)
 	// Probe checks the internet through one outbound of a node (NODE-<id> of a cascade).
 	Probe(ctx context.Context, id int64, proxy string) (nodeapi.ProbeResult, error)
+	// ValidateNet runs mihomo's parsers on candidate network sections on the node.
+	ValidateNet(ctx context.Context, id int64, req nodeapi.ValidateNetRequest) error
+	// RouteTest asks the node which rule a connection would hit, without traffic.
+	RouteTest(ctx context.Context, id int64, req nodeapi.RouteTestRequest) (nodeapi.RouteTestResult, error)
 }
 
 type ctxKey int
@@ -195,6 +199,7 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h.registerPools()
 	h.registerPackages()
 	h.registerAudit()
+	h.registerNetwork()
 	return noStore(mux), api, nil
 }
 
