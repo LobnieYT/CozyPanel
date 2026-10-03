@@ -1,0 +1,906 @@
+// Package nodesync keeps the panel's nodes in line with the database: desired state,
+// access policies and traffic counters per node (Syncer), and the panel-wide upkeep of
+// period resets, the slot pool and devices (Manager).
+package nodesync
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"mikan/internal/nodeapi"
+	"mikan/internal/panel/domain"
+	"mikan/internal/panel/settings"
+	"mikan/internal/panel/store/db"
+	"mikan/internal/panel/warp"
+	"mikan/internal/proto"
+)
+
+// Node is the subset of the node API the syncer needs.
+type Node interface {
+	Apply(ctx context.Context, s nodeapi.DesiredState) (nodeapi.ApplyResult, error)
+	SetPolicies(ctx context.Context, epoch string, p []nodeapi.Policy) error
+	Counters(ctx context.Context) (nodeapi.Counters, error)
+	Ack(ctx context.Context, epoch string, seq int64) error
+	Health(ctx context.Context) (nodeapi.Health, error)
+}
+
+// TLSSource returns the certificate the node uses for Hysteria2/TUIC.
+type TLSSource func() (*nodeapi.TLSFiles, error)
+
+// Syncer drives one node.
+type Syncer struct {
+	id    int64
+	m     *Manager
+	node  Node
+	tls   TLSSource
+	local bool
+	log   *slog.Logger
+
+	policiesDirty chan struct{}
+	stateDirty    chan struct{}
+
+	mu          sync.Mutex
+	stateKey    string
+	policyKey   string
+	lastApplied nodeapi.ApplyResult
+	lastPush    time.Time // when the policies last reached the node
+	failedKey   string    // the state key the last failed Apply was for
+	retry       retry     // the pace of attempts at a node that does not answer
+	badInbounds string    // the inbounds left out of the state, as last logged
+
+	// Only the counters loop touches these.
+	counterFails int       // consecutive failed pulls
+	lastStored   time.Time // when a batch was last stored
+	epochPush    time.Time // when a new counter epoch last made the policies go out again
+	vetLogged    time.Time
+
+	health atomic.Pointer[HealthView]
+	online atomic.Pointer[map[string]nodeapi.Online]
+}
+
+type HealthView struct {
+	OK        bool
+	Error     string
+	Health    nodeapi.Health
+	Listeners []nodeapi.ListenerStatus
+	CheckedAt time.Time
+}
+
+func newSyncer(m *Manager, id int64, t Target) *Syncer {
+	s := &Syncer{id: id, m: m, node: t.Node, tls: t.TLS, local: t.Local, log: m.log.With("node", id),
+		policiesDirty: make(chan struct{}, 1), stateDirty: make(chan struct{}, 1)}
+	empty := map[string]nodeapi.Online{}
+	s.online.Store(&empty)
+	s.health.Store(&HealthView{Error: "not checked yet"})
+	return s
+}
+
+func (s *Syncer) PoliciesChanged() { signal(s.policiesDirty) }
+func (s *Syncer) SlotsChanged()    { signal(s.stateDirty) }
+
+func signal(ch chan struct{}) {
+	select {
+	case ch <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Syncer) Health() HealthView { return *s.health.Load() }
+
+// Online returns the node's live connection view keyed by slot name.
+func (s *Syncer) Online() map[string]nodeapi.Online { return *s.online.Load() }
+
+// run keeps the node in line until ctx ends. State and policies go in one loop, one at a
+// time; the counters and the health check have their own, so a node that is slow to
+// apply a state does not freeze the traffic accounting or the health the admin sees.
+func (s *Syncer) run(ctx context.Context) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		every(ctx, 2*time.Second, s.pullCounters)
+	}()
+	go func() {
+		defer wg.Done()
+		s.refreshHealth(ctx)
+		every(ctx, 5*time.Second, s.refreshHealth)
+	}()
+	s.applyState(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.stateDirty:
+			s.applyState(ctx)
+		case <-s.policiesDirty:
+			// Coalesce bursts (bulk actions) into one push.
+			t := time.NewTimer(150 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return
+			case <-t.C:
+			}
+			s.pushPolicies(ctx, true)
+		}
+	}
+}
+
+// every calls fn on a ticker until ctx ends.
+func every(ctx context.Context, d time.Duration, fn func(context.Context)) {
+	t := time.NewTicker(d)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			fn(ctx)
+		}
+	}
+}
+
+// desired builds the node's full state from the database.
+func (s *Syncer) desired(ctx context.Context) (nodeapi.DesiredState, error) {
+	var st nodeapi.DesiredState
+	q := s.m.st.Q
+	n, err := q.GetNode(ctx, s.id)
+	if err != nil {
+		return st, err
+	}
+	inbounds, err := q.ListInbounds(ctx)
+	if err != nil {
+		return st, err
+	}
+	st.Inbounds = []nodeapi.Inbound{}
+	if st.Warp, err = s.warp(ctx, n, inbounds); err != nil {
+		return st, err
+	}
+	if st.Relay, st.Exits, err = s.cascade(ctx, n, inbounds); err != nil {
+		return st, err
+	}
+	if s.local {
+		// The panel runs next to its own node, so its HTTPS port is the self-steal REALITY target.
+		if st.SelfStealPort, _, err = settings.Get[int](ctx, s.m.set, settings.KeyPanelPort); err != nil {
+			return st, err
+		}
+	}
+	var bad []string
+	for _, in := range inbounds {
+		// A disabled node keeps running but serves nothing.
+		if in.NodeID != s.id || in.Enabled == 0 || n.Enabled == 0 {
+			continue
+		}
+		// Saved configs were validated when they were saved, but what holds then may not
+		// later: the panel's port moved (REALITY self-steal), or the rules got stricter. The
+		// node refuses such a state as a whole, so the inbound stays out of it, and the
+		// others, the new users and the policies still reach the node.
+		t, err := proto.Parse(in.Config)
+		if err == nil {
+			err = proto.Validate(t, proto.Options{SelfStealPort: st.SelfStealPort})
+		}
+		if err != nil {
+			bad = append(bad, in.Name+": "+err.Error())
+			continue
+		}
+		ni := nodeapi.Inbound{Name: in.Name, Listen: in.Listen, Port: in.Port, Config: t.JSON()}
+		if in.PoolID.Valid {
+			ni.Pool = strconv.FormatInt(in.PoolID.Int64, 10)
+		}
+		st.Inbounds = append(st.Inbounds, ni)
+	}
+	s.noteBadInbounds(bad)
+	slots, err := q.ListSlots(ctx)
+	if err != nil {
+		return st, err
+	}
+	for _, sl := range slots {
+		st.Slots = append(st.Slots, nodeapi.Slot{Name: sl.Name, UUID: sl.Uuid, Secret: sl.Secret})
+	}
+	if st.TLS, err = s.tls(); err != nil {
+		return st, err
+	}
+	st.Epoch, st.Policies, _, err = s.policies(ctx)
+	return st, err
+}
+
+func (s *Syncer) applyState(ctx context.Context) {
+	st, err := s.desired(ctx)
+	if err != nil {
+		s.log.Error("build node state", "err", err)
+		return
+	}
+	key := stateKey(st)
+	now := s.m.now()
+	s.mu.Lock()
+	same := key == s.stateKey
+	// A node that refused this very state is not asked again at once: the pause grows
+	// while it keeps refusing, and a different state is tried straight away.
+	paused := key == s.failedKey && s.retry.waiting(now)
+	s.mu.Unlock()
+	if same {
+		s.sendPolicies(ctx, st.Epoch, st.Policies, s.policiesStale(now))
+		return
+	}
+	if paused {
+		return
+	}
+	rev, err := s.nextRevision(ctx)
+	if err != nil {
+		s.log.Error("revision", "err", err)
+		return
+	}
+	st.Revision = rev
+	res, err := s.node.Apply(ctx, st)
+	if err != nil {
+		s.mu.Lock()
+		s.failedKey = key
+		log := s.retry.fail(now, err)
+		s.mu.Unlock()
+		if log {
+			s.log.Warn("apply node state", "err", err)
+		}
+		return
+	}
+	if err := s.saveRevision(ctx, rev); err != nil {
+		s.log.Error("revision", "err", err)
+	}
+	for _, l := range res.Listeners {
+		if !l.OK {
+			s.log.Error("listener failed", "name", l.Name, "err", l.Error)
+		}
+	}
+	s.mu.Lock()
+	s.stateKey = key
+	s.policyKey = policyKey(st.Policies)
+	s.lastPush = now
+	s.lastApplied = res
+	s.failedKey = ""
+	recovered := s.retry.ok()
+	s.mu.Unlock()
+	if recovered {
+		s.log.Info("node answers again")
+	}
+	s.log.Info("node state applied", "revision", rev, "recreated", res.Recreated)
+}
+
+// noteBadInbounds logs the inbounds left out of the node's state when that set changes,
+// not at every tick.
+func (s *Syncer) noteBadInbounds(bad []string) {
+	sort.Strings(bad)
+	now := strings.Join(bad, "\n")
+	s.mu.Lock()
+	changed := now != s.badInbounds
+	s.badInbounds = now
+	s.mu.Unlock()
+	if changed {
+		for _, b := range bad {
+			s.log.Error("inbound left out of the node's state", "inbound", b)
+		}
+	}
+}
+
+// policiesStale says whether it is time to send the policies although nothing in them
+// changed. What the node holds goes out of date by itself, as the user's traffic on the
+// other nodes counts against the same quota, and a node sums only its own.
+func (s *Syncer) policiesStale(now time.Time) bool {
+	every := 5 * time.Minute
+	if len(s.m.Syncers()) > 1 {
+		every = time.Minute
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return now.Sub(s.lastPush) >= every
+}
+
+// pushPolicies sends the policies when they changed (or force says so).
+func (s *Syncer) pushPolicies(ctx context.Context, force bool) {
+	epoch, ps, _, err := s.policies(ctx)
+	if err != nil {
+		s.log.Error("build policies", "err", err)
+		return
+	}
+	s.sendPolicies(ctx, epoch, ps, force)
+}
+
+func (s *Syncer) sendPolicies(ctx context.Context, epoch string, ps []nodeapi.Policy, force bool) {
+	key := policyKey(ps)
+	now := s.m.now()
+	s.mu.Lock()
+	unchanged := key == s.policyKey && !force
+	// A node that does not answer would not take these either.
+	down := s.retry.unreachable(now)
+	s.mu.Unlock()
+	if unchanged || down {
+		return
+	}
+	if err := s.node.SetPolicies(ctx, epoch, ps); err != nil {
+		s.mu.Lock()
+		log := s.retry.fail(now, err)
+		s.mu.Unlock()
+		if log {
+			s.log.Warn("push policies", "err", err)
+		}
+		return
+	}
+	s.mu.Lock()
+	s.policyKey = key
+	s.lastPush = now
+	s.mu.Unlock()
+}
+
+// policies are the same slots on every node; what differs is the counter position the
+// quota refers to, the inbounds that exist here and the devices seen elsewhere. A user
+// has the own slot and one per bound device: all of them get the user's rules, and the
+// device limit counts the user's devices under all of them.
+func (s *Syncer) policies(ctx context.Context) (epoch string, out []nodeapi.Policy, slotUser map[string]int64, err error) {
+	q := s.m.st.Q
+	epoch, seq, err := s.countersPos(ctx)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	users, err := q.ListUsers(ctx)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	owners, err := q.ListSlotUsers(ctx)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	inbounds, err := q.ListInbounds(ctx)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	slotUser = make(map[string]int64, len(owners))
+	slotsOf := map[int64][]string{}
+	for _, o := range owners {
+		slotUser[o.SlotName] = o.UserID
+		slotsOf[o.UserID] = append(slotsOf[o.UserID], o.SlotName)
+	}
+	here := map[int64]string{}
+	for _, in := range inbounds {
+		if in.NodeID == s.id {
+			here[in.ID] = in.Name
+		}
+	}
+	others := s.m.otherIPs(s.id, slotUser)
+	now := s.m.now()
+	grants, err := domain.LoadGrantsLeft(ctx, q, now)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	pools, err := userPoolQuotas(ctx, q, grants)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	for _, u := range users {
+		names := slotsOf[u.ID]
+		sort.Strings(names)
+		for _, name := range names {
+			p := userPolicy(u, grants.Main(u.ID), name, seq, now, here, others[name])
+			p.Pools = pools[u.ID]
+			out = append(out, p)
+		}
+	}
+	return epoch, out, slotUser, nil
+}
+
+// userPolicy is the user's rules for one of the user's slots; grants is what is left of
+// the user's main grants, added to the quota.
+func userPolicy(u db.User, grants int64, name string, seq int64, now time.Time, here map[int64]string, otherIPs []string) nodeapi.Policy {
+	// A user whose main traffic ran out still gets in: the node turns away the inbounds
+	// outside every pool (QuotaRemaining 0) and keeps the pools that have traffic left.
+	state := domain.State(u, grants, now)
+	p := nodeapi.Policy{Slot: name, Allowed: domain.CanConnect(state) || state == domain.StateLimited, BaseSeq: seq, OtherIPs: otherIPs,
+		QuotaRemaining: domain.TrafficLeft(u.TrafficLimit, u.UsedUp+u.UsedDown, grants)}
+	if u.DeviceLimit.Valid {
+		p.DeviceLimit = int(u.DeviceLimit.Int64)
+	}
+	if allowed := domain.DecodeInbounds(u.Inbounds); len(allowed) > 0 {
+		for _, id := range allowed {
+			if n, ok := here[id]; ok {
+				p.Inbounds = append(p.Inbounds, n)
+			}
+		}
+		// An empty list means "all": a user limited to other nodes' inbounds gets none here.
+		if len(p.Inbounds) == 0 {
+			p.Allowed = false
+		}
+	}
+	return p
+}
+
+// failedPullsBlank is how many pulls in a row may fail before the node's live view is
+// forgotten: devices a node last reported are not still there once it has gone quiet, and
+// would hold places in the device limit on the other nodes.
+const failedPullsBlank = 3
+
+func (s *Syncer) pullCounters(ctx context.Context) {
+	c, err := s.node.Counters(ctx)
+	if err != nil {
+		if s.counterFails++; s.counterFails >= failedPullsBlank {
+			none := map[string]nodeapi.Online{}
+			s.online.Store(&none)
+		}
+		return
+	}
+	s.counterFails = 0
+	online := c.Online
+	if online == nil {
+		online = map[string]nodeapi.Online{}
+	}
+	s.online.Store(&online)
+
+	epoch, seq, err := s.countersPos(ctx)
+	if err != nil {
+		s.log.Error("counters position", "err", err)
+		return
+	}
+	if c.Idle && c.Epoch == epoch {
+		return // no traffic, nothing cut: only the live view above was of use
+	}
+	if c.Epoch == epoch && c.Seq <= seq {
+		_ = s.node.Ack(ctx, c.Epoch, c.Seq)
+		return
+	}
+	now := s.m.now()
+	c = s.vet(c, now)
+	hour, day := now.Unix()/3600, now.Unix()/86400
+	err = s.m.st.Tx(ctx, func(q *db.Queries) error {
+		rows, err := q.ListSlotUsers(ctx)
+		if err != nil {
+			return err
+		}
+		owner := make(map[string]int64, len(rows))
+		for _, r := range rows {
+			owner[r.SlotName] = r.UserID
+		}
+		for slot, t := range c.Slots {
+			uid, ok := owner[slot]
+			if !ok {
+				continue
+			}
+			// Traffic past the base quota is taken from the grants here, on the batch's
+			// transaction: a batch delivered again is skipped above, grants included.
+			if err := domain.CountUserTraffic(ctx, q, uid, t.Up, t.Down, now); err != nil {
+				return err
+			}
+			if err := q.AddTrafficHourly(ctx, db.AddTrafficHourlyParams{UserID: uid, Hour: hour, Up: t.Up, Down: t.Down}); err != nil {
+				return err
+			}
+			if err := q.AddTrafficDaily(ctx, db.AddTrafficDailyParams{UserID: uid, Day: day, Up: t.Up, Down: t.Down}); err != nil {
+				return err
+			}
+		}
+		// Pool traffic counts to the pool, not to the main quota; the statistics take all.
+		// A pool deleted meanwhile is skipped: the batch must still go through.
+		known := map[int64]bool{}
+		if len(c.Pools) > 0 {
+			ps, err := q.ListTrafficPools(ctx)
+			if err != nil {
+				return err
+			}
+			for _, p := range ps {
+				known[p.ID] = true
+			}
+		}
+		for slot, pools := range c.Pools {
+			uid, ok := owner[slot]
+			if !ok {
+				continue
+			}
+			for pool, t := range pools {
+				id, err := strconv.ParseInt(pool, 10, 64)
+				if err == nil && !known[id] {
+					continue
+				}
+				if err != nil {
+					continue
+				}
+				if err := q.AddUserTotalTraffic(ctx, db.AddUserTotalTrafficParams{Up: t.Up, Down: t.Down, ID: uid}); err != nil {
+					return err
+				}
+				if err := domain.CountPoolTraffic(ctx, q, uid, id, t.Up, t.Down, now); err != nil {
+					return err
+				}
+				if err := q.AddTrafficHourly(ctx, db.AddTrafficHourlyParams{UserID: uid, Hour: hour, Up: t.Up, Down: t.Down}); err != nil {
+					return err
+				}
+				if err := q.AddTrafficDaily(ctx, db.AddTrafficDailyParams{UserID: uid, Day: day, Up: t.Up, Down: t.Down}); err != nil {
+					return err
+				}
+			}
+		}
+		if err := q.SetNodeState(ctx, db.SetNodeStateParams{Key: stateKeyOf("counters_epoch", s.id), Value: c.Epoch}); err != nil {
+			return err
+		}
+		return q.SetNodeState(ctx, db.SetNodeStateParams{Key: stateKeyOf("counters_seq", s.id), Value: strconv.FormatInt(c.Seq, 10)})
+	})
+	if err != nil {
+		s.log.Error("store counters", "err", err)
+		return
+	}
+	s.lastStored = now
+	// An idle reply has no batch behind it: there is nothing for the node to drop, and it
+	// would answer the acknowledgement with stale_ack.
+	if !c.Idle {
+		if err := s.node.Ack(ctx, c.Epoch, c.Seq); err != nil {
+			s.log.Warn("ack counters", "err", err)
+		}
+	}
+	if c.Epoch != epoch && now.Sub(s.epochPush) >= 30*time.Second {
+		// The node started a new counter epoch (fresh volume): re-base its quotas. The
+		// policy loop does it, so no two pushes run at once; a node that keeps changing
+		// its epoch gets one push in half a minute, not one per batch.
+		s.epochPush = now
+		signal(s.policiesDirty)
+	}
+}
+
+// What a node can have carried for one slot between two stored batches: 2.5 GB/s, 20
+// Gbit/s, for as long as it has been (and at least ten minutes). Nothing a node reports
+// is trusted beyond that: a node is a server somebody else may run.
+const maxBytesPerSecond = 2_500_000_000
+
+// vet drops what a node cannot have carried: negative amounts, which would take usage
+// from a user and give it to another, and amounts beyond what the link allows. The batch
+// itself is still stored and acknowledged, or the node would offer it again for ever.
+func (s *Syncer) vet(c nodeapi.Counters, now time.Time) nodeapi.Counters {
+	window := 10 * time.Minute
+	if !s.lastStored.IsZero() {
+		window = max(window, now.Sub(s.lastStored))
+	} else {
+		window = 7 * 24 * time.Hour // the panel was not running for who knows how long
+	}
+	limit := int64(window.Seconds()) * maxBytesPerSecond
+	sane := func(t nodeapi.Traffic) bool {
+		return t.Up >= 0 && t.Down >= 0 && t.Up <= limit && t.Down <= limit
+	}
+	var dropped []string
+	slots := make(map[string]nodeapi.Traffic, len(c.Slots))
+	for slot, t := range c.Slots {
+		if sane(t) {
+			slots[slot] = t
+		} else {
+			dropped = append(dropped, slot)
+		}
+	}
+	c.Slots = slots
+	if len(c.Pools) > 0 {
+		pools := make(map[string]map[string]nodeapi.Traffic, len(c.Pools))
+		for slot, byPool := range c.Pools {
+			for pool, t := range byPool {
+				if !sane(t) {
+					dropped = append(dropped, slot+"/"+pool)
+					continue
+				}
+				if pools[slot] == nil {
+					pools[slot] = map[string]nodeapi.Traffic{}
+				}
+				pools[slot][pool] = t
+			}
+		}
+		c.Pools = pools
+	}
+	if len(dropped) > 0 && now.Sub(s.vetLogged) >= time.Minute {
+		s.vetLogged = now
+		sort.Strings(dropped)
+		s.log.Warn("the node reported traffic it cannot have carried: ignored", "slots", len(dropped), "first", dropped[0])
+	}
+	return c
+}
+
+func (s *Syncer) countersPos(ctx context.Context) (string, int64, error) {
+	epoch, err := s.m.st.Q.GetNodeState(ctx, stateKeyOf("counters_epoch", s.id))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", 0, err
+	}
+	raw, err := s.m.st.Q.GetNodeState(ctx, stateKeyOf("counters_seq", s.id))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", 0, err
+	}
+	seq, _ := strconv.ParseInt(raw, 10, 64)
+	return epoch, seq, nil
+}
+
+// nextRevision is the revision the next Apply carries; saveRevision keeps it once the node
+// took the state, so attempts that fail do not each cost a write.
+func (s *Syncer) nextRevision(ctx context.Context) (int64, error) {
+	raw, err := s.m.st.Q.GetNodeState(ctx, stateKeyOf("revision", s.id))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	rev, _ := strconv.ParseInt(raw, 10, 64)
+	return rev + 1, nil
+}
+
+func (s *Syncer) saveRevision(ctx context.Context, rev int64) error {
+	return s.m.st.Q.SetNodeState(ctx, db.SetNodeStateParams{Key: stateKeyOf("revision", s.id), Value: strconv.FormatInt(rev, 10)})
+}
+
+func (s *Syncer) refreshHealth(ctx context.Context) {
+	h, err := s.node.Health(ctx)
+	view := &HealthView{CheckedAt: s.m.now()}
+	if err != nil {
+		view.Error = err.Error()
+		s.health.Store(view)
+		return
+	}
+	view.OK, view.Health, view.Listeners = true, h, h.Listeners
+	s.health.Store(view)
+	s.mu.Lock()
+	applied := s.lastApplied.Revision
+	// The node is back: what was held off for it goes out now.
+	back := s.retry.down
+	if back {
+		s.retry.ok()
+	}
+	s.mu.Unlock()
+	if back {
+		signal(s.stateDirty)
+		signal(s.policiesDirty)
+	}
+	// A node that lost its state (new volume, crash before saving) reports an older revision.
+	if h.Revision < applied || (applied == 0 && h.Revision == 0) {
+		s.mu.Lock()
+		s.stateKey = ""
+		s.mu.Unlock()
+		signal(s.stateDirty)
+	}
+}
+
+func stateKey(st nodeapi.DesiredState) string {
+	raw, _ := json.Marshal(struct {
+		I []nodeapi.Inbound
+		S []nodeapi.Slot
+		T *nodeapi.TLSFiles
+		P int
+		W *nodeapi.Warp
+		R *nodeapi.Relay
+		E []nodeapi.Exit
+	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits})
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+// policyKey ignores QuotaRemaining/BaseSeq: they change with every byte and the node
+// tracks consumption itself between pushes.
+func policyKey(ps []nodeapi.Policy) string {
+	h := sha256.New()
+	for _, p := range ps {
+		raw, _ := json.Marshal([]any{p.Slot, p.Allowed, p.Inbounds, p.DeviceLimit, p.QuotaRemaining < 0, p.OtherIPs, poolKey(p.Pools)})
+		h.Write(raw)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// warp is the node's WARP outbound, nil when it has none or it is off. Inbounds set to
+// WARP on a node without it simply leave directly.
+func (s *Syncer) warp(ctx context.Context, n db.Node, inbounds []db.Inbound) (*nodeapi.Warp, error) {
+	w, err := s.m.st.Q.GetNodeWarp(ctx, n.ID)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && w.Enabled == 0 {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := &nodeapi.Warp{PrivateKey: w.PrivateKey, PeerPublicKey: w.PeerPublicKey, Endpoint: w.Endpoint, IPv4: w.Ipv4, IPv6: w.Ipv6,
+		MTU: int(w.Mtu), Inbounds: []string{}}
+	if r, err := base64.StdEncoding.DecodeString(w.Reserved); err == nil && len(r) == 3 {
+		out.Reserved = r
+	}
+	var routes []string
+	_ = json.Unmarshal([]byte(w.Routes), &routes)
+	rs, _ := warp.ParseRoutes(routes)
+	out.Domains, out.CIDRs = rs.Domains, rs.CIDRs
+	for _, in := range inbounds {
+		if in.NodeID == n.ID && in.Enabled != 0 && in.Outbound == "warp" && !in.ExitNodeID.Valid {
+			out.Inbounds = append(out.Inbounds, in.Name)
+		}
+	}
+	// Traffic other nodes relay through this one may leave by WARP too.
+	if r, err := s.m.st.Q.GetNodeRelay(ctx, n.ID); err == nil && r.Outbound == "warp" && !r.ExitNodeID.Valid {
+		out.Inbounds = append(out.Inbounds, nodeapi.RelayListener)
+	}
+	return out, nil
+}
+
+// Warp asks the node how it reaches the internet through WARP.
+func (m *Manager) Warp(ctx context.Context, id int64) (nodeapi.WarpStatus, error) {
+	s, ok := m.Syncer(id)
+	if !ok {
+		return nodeapi.WarpStatus{}, nodeapi.ErrUnavailable
+	}
+	c, ok := s.node.(interface {
+		Warp(ctx context.Context) (nodeapi.WarpStatus, error)
+	})
+	if !ok {
+		return nodeapi.WarpStatus{}, nodeapi.ErrUnavailable
+	}
+	return c.Warp(ctx)
+}
+
+// cascade is the node's part in cascades: its relay listener when other nodes leave
+// through it, and the other nodes it sends inbounds (and its own relay) to. Keys and
+// relays are made by the API when an exit is chosen; a missing one leaves that exit out,
+// and the inbounds behind it fail instead of going direct.
+func (s *Syncer) cascade(ctx context.Context, n db.Node, inbounds []db.Inbound) (*nodeapi.Relay, []nodeapi.Exit, error) {
+	q := s.m.st.Q
+	if n.Enabled == 0 {
+		return nil, nil, nil
+	}
+	var relay *nodeapi.Relay
+	own, err := q.GetNodeRelay(ctx, n.ID)
+	hasRelay := err == nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, err
+	}
+	if hasRelay {
+		users, err := q.ListRelayUsers(ctx, n.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(users) > 0 {
+			t, err := proto.Parse(own.Config)
+			if err != nil {
+				return nil, nil, err
+			}
+			relay = &nodeapi.Relay{Port: own.Port, Config: t.JSON()}
+			for _, u := range users {
+				relay.Users = append(relay.Users, nodeapi.Slot{Name: domain.RelayUserName(u.SrcNodeID), UUID: u.Uuid})
+			}
+		}
+	}
+	// Which listeners go to which exit, in the order exits first appear.
+	routes := map[int64][]string{}
+	var order []int64
+	add := func(exit int64, name string) {
+		if _, ok := routes[exit]; !ok {
+			order = append(order, exit)
+		}
+		routes[exit] = append(routes[exit], name)
+	}
+	for _, in := range inbounds {
+		if in.NodeID == n.ID && in.Enabled != 0 && in.ExitNodeID.Valid {
+			add(in.ExitNodeID.Int64, in.Name)
+		}
+	}
+	if relay != nil && own.ExitNodeID.Valid {
+		add(own.ExitNodeID.Int64, nodeapi.RelayListener)
+	}
+	var exits []nodeapi.Exit
+	for _, id := range order {
+		e, err := s.exitTo(ctx, n.ID, id)
+		if err != nil {
+			s.log.Warn("cascade exit", "exit", id, "err", err)
+			// Still name the exit, with no way to reach it: the inbounds fail, not leak.
+			e = nodeapi.Exit{Name: nodeapi.ExitName(id), Proxy: unreachableExit(id)}
+		}
+		e.Inbounds = routes[id]
+		exits = append(exits, e)
+	}
+	return relay, exits, nil
+}
+
+// exitTo is the outbound from node src to node id's relay.
+func (s *Syncer) exitTo(ctx context.Context, src, id int64) (nodeapi.Exit, error) {
+	q := s.m.st.Q
+	x, err := q.GetNode(ctx, id)
+	if err != nil {
+		return nodeapi.Exit{}, err
+	}
+	if x.Enabled == 0 {
+		return nodeapi.Exit{}, errors.New("exit node is off")
+	}
+	r, err := q.GetNodeRelay(ctx, id)
+	if err != nil {
+		return nodeapi.Exit{}, err
+	}
+	key, err := q.GetRelayUser(ctx, db.GetRelayUserParams{ExitNodeID: id, SrcNodeID: src})
+	if err != nil {
+		return nodeapi.Exit{}, err
+	}
+	host := domain.NodeHost(x)
+	if x.Address == "" {
+		// The panel's own node: clients reach it at the panel's address.
+		ep, err := settings.New(q).Endpoint(ctx)
+		if err != nil {
+			return nodeapi.Exit{}, err
+		}
+		host = ep.Host
+	}
+	port, err := strconv.Atoi(r.Port)
+	if err != nil || host == "" {
+		return nodeapi.Exit{}, errors.New("exit node has no address")
+	}
+	t, err := proto.Parse(r.Config)
+	if err != nil {
+		return nodeapi.Exit{}, err
+	}
+	c, err := proto.ClientConfig(t, proto.ClientInput{Name: nodeapi.ExitName(id), Host: host, Port: port, Slot: proto.Slot{Name: domain.RelayUserName(src), UUID: key}})
+	if err != nil {
+		return nodeapi.Exit{}, err
+	}
+	raw, _ := json.Marshal(c.Mihomo)
+	return nodeapi.Exit{Name: nodeapi.ExitName(id), Proxy: raw}, nil
+}
+
+// unreachableExit is a VLESS outbound to nowhere (TEST-NET-1, port 9): it keeps an
+// exit's rules in place while the exit itself is not usable.
+func unreachableExit(id int64) json.RawMessage {
+	raw, _ := json.Marshal(map[string]any{"name": nodeapi.ExitName(id), "type": "vless", "server": "192.0.2.1", "port": 9,
+		"uuid": "00000000-0000-4000-8000-000000000000", "udp": true})
+	return raw
+}
+
+// Probe asks the node how it reaches the internet through one of its outbounds.
+func (m *Manager) Probe(ctx context.Context, id int64, proxy string) (nodeapi.ProbeResult, error) {
+	s, ok := m.Syncer(id)
+	if !ok {
+		return nodeapi.ProbeResult{}, nodeapi.ErrUnavailable
+	}
+	c, ok := s.node.(interface {
+		Probe(ctx context.Context, proxy string) (nodeapi.ProbeResult, error)
+	})
+	if !ok {
+		return nodeapi.ProbeResult{}, nodeapi.ErrUnavailable
+	}
+	return c.Probe(ctx, proxy)
+}
+
+// Tunnel opens a stream to addr through node id: the bot reaches Telegram this way when
+// the panel's own server cannot. The node lets through only nodeapi.TunnelHosts.
+func (m *Manager) Tunnel(ctx context.Context, id int64, addr string) (net.Conn, error) {
+	s, ok := m.Syncer(id)
+	if !ok {
+		return nil, nodeapi.ErrUnavailable
+	}
+	c, ok := s.node.(interface {
+		Tunnel(ctx context.Context, addr string) (net.Conn, error)
+	})
+	if !ok {
+		return nil, nodeapi.ErrUnavailable
+	}
+	return c.Tunnel(ctx, addr)
+}
+
+// userPoolQuotas are the users' pool quotas with a limit: what is left of each, with the
+// pool's grants.
+func userPoolQuotas(ctx context.Context, q *db.Queries, grants domain.GrantsLeft) (map[int64][]nodeapi.PoolQuota, error) {
+	rows, err := q.ListAllUserPools(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[int64][]nodeapi.PoolQuota{}
+	for _, p := range rows {
+		if !p.TrafficLimit.Valid {
+			continue
+		}
+		left := domain.TrafficLeft(p.TrafficLimit, p.UsedUp+p.UsedDown, grants.Pool(p.UserID, p.PoolID))
+		out[p.UserID] = append(out[p.UserID], nodeapi.PoolQuota{Pool: strconv.FormatInt(p.PoolID, 10), Remaining: left})
+	}
+	return out, nil
+}
+
+// poolKey: which pools have a quota, not how much is left (the node counts that down).
+func poolKey(ps []nodeapi.PoolQuota) []string {
+	out := make([]string, 0, len(ps))
+	for _, p := range ps {
+		out = append(out, p.Pool)
+	}
+	return out
+}
