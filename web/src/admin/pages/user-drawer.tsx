@@ -1,0 +1,155 @@
+import * as Menu from "@radix-ui/react-dropdown-menu";
+import { CalendarPlus, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { errorText, type User } from "../../api/client";
+import { onePeriod, userActions, useUser, useUserMutation } from "../../api/hooks";
+import { Confirm, Drawer } from "../../components/overlay";
+import { useToast } from "../../components/toast";
+import { QueryBoundary } from "../../components/query";
+import { Avatar, Button, Skeleton, StatePill } from "../../components/ui";
+import { t } from "../../i18n";
+import { ago, dateShort } from "../../lib/format";
+import { GrantsSection } from "./user/grants";
+import { PoolsSection, TariffSection, TrafficSection } from "./user/traffic";
+import { ExpirySection } from "./user/expiry";
+import { NoteSection, ProtocolsSection, SubscriptionSection, TelegramSection } from "./user/access";
+import { DevicesSection } from "./user/devices";
+
+export function UserDrawer({ id, onClose }: { id?: number; onClose: () => void }) {
+  const user = useUser(id);
+  const u = user.data;
+  return (
+    <Drawer
+      open={!!id}
+      onOpenChange={(v) => !v && onClose()}
+      title={u?.name ?? t("userDrawer.fallbackTitle")}
+      lead={u ? <Avatar name={u.name} seed={u.id} size="lg" /> : undefined}
+      meta={
+        u ? (
+          <>
+            <StatePill state={u.state} />
+            <span>{t("userDrawer.created", { date: dateShort(u.created_at) })}</span>
+            <span className="mono">#{u.id}</span>
+            {u.online ? <span className="text-[var(--leaf-700)]">{t("userDrawer.online")}</span> : u.online_at ? <span>{t("userDrawer.seen", { ago: ago(u.online_at) })}</span> : null}
+          </>
+        ) : undefined
+      }
+    >
+      <QueryBoundary
+        query={user}
+        pending={
+          <div className="space-y-4 pt-5">
+            <Skeleton style={{ height: 40 }} />
+            <Skeleton style={{ height: 120, borderRadius: 16 }} />
+            <Skeleton style={{ height: 160, borderRadius: 16 }} />
+          </div>
+        }
+      >
+        {/* A failed poll keeps the card (and the forms in it); the notice sits above it. */}
+        {(data) => <UserBody key={data.id} u={data} onDeleted={onClose} />}
+      </QueryBoundary>
+    </Drawer>
+  );
+}
+
+function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {
+  const toast = useToast();
+  const extend = useUserMutation(userActions.extend);
+  const reset = useUserMutation(userActions.reset);
+  const update = useUserMutation(userActions.update);
+  const reissue = useUserMutation(userActions.reissue);
+  const remove = useUserMutation(userActions.remove);
+  const [confirm, setConfirm] = useState<"reissue" | "delete" | null>(null);
+  const fail = (e: unknown) => toast.error(errorText(e));
+  const disabled = u.state === "disabled";
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 py-4">
+        <Button variant="primary" loading={extend.isPending} onClick={() => extend.mutate({ id: u.id, ...onePeriod(u) }, { onSuccess: (r) => toast.ok(t("userDrawer.extendedUntil", { date: dateShort(r.expires_at!) })), onError: fail })}>
+          <CalendarPlus size={18} aria-hidden /> {u.billing_day != null ? t("userDrawer.extendMonth") : t("userDrawer.extend30")}
+        </Button>
+        <Button loading={reset.isPending} onClick={() => reset.mutate(u.id, { onSuccess: () => toast.ok(t("userDrawer.trafficReset")), onError: fail })}>
+          <RotateCcw size={18} aria-hidden /> {t("users.resetTraffic")}
+        </Button>
+        <Button
+          loading={update.isPending && update.variables?.body.disabled !== undefined}
+          onClick={() =>
+            update.mutate(
+              { id: u.id, body: { disabled: !disabled } },
+              { onSuccess: () => toast.ok(disabled ? t("userDrawer.enabledToast", { name: u.name }) : t("userDrawer.disabledToast", { name: u.name })), onError: fail },
+            )
+          }
+        >
+          <Power size={18} aria-hidden /> {disabled ? t("common.enable") : t("users.disable")}
+        </Button>
+        <Menu.Root>
+          <Menu.Trigger asChild>
+            <button type="button" className="icon-btn h-10 w-10" aria-label={t("userDrawer.more")}>
+              <MoreHorizontal size={18} />
+            </button>
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Content className="menu glass-strong" align="end" sideOffset={6}>
+              <Menu.Item className="menu-item" onSelect={() => setConfirm("reissue")}>
+                <RefreshCw size={16} aria-hidden /> {t("userDrawer.reissue")}
+              </Menu.Item>
+              <Menu.Separator className="menu-sep" />
+              <Menu.Item className="menu-item danger" onSelect={() => setConfirm("delete")}>
+                <Trash2 size={16} aria-hidden /> {t("userDrawer.delete")}
+              </Menu.Item>
+            </Menu.Content>
+          </Menu.Portal>
+        </Menu.Root>
+      </div>
+
+      <TariffSection u={u} />
+      <TrafficSection u={u} />
+      <PoolsSection u={u} />
+      <GrantsSection u={u} />
+      <ExpirySection u={u} />
+      <SubscriptionSection u={u} onReissue={() => setConfirm("reissue")} />
+      <TelegramSection u={u} />
+      <DevicesSection u={u} />
+      <ProtocolsSection u={u} />
+      <NoteSection u={u} />
+
+      <Confirm
+        open={confirm === "reissue"}
+        onOpenChange={(v) => !v && setConfirm(null)}
+        title={t("userDrawer.reissueTitle")}
+        text={t("userDrawer.reissueText")}
+        confirm={t("userDrawer.reissueConfirm")}
+        loading={reissue.isPending}
+        onConfirm={() =>
+          reissue.mutate(u.id, {
+            onSuccess: () => {
+              setConfirm(null);
+              toast.ok(t("userDrawer.reissued"));
+            },
+            onError: fail,
+          })
+        }
+      />
+      <Confirm
+        open={confirm === "delete"}
+        onOpenChange={(v) => !v && setConfirm(null)}
+        title={t("userDrawer.deleteTitle", { name: u.name })}
+        text={t("userDrawer.deleteText")}
+        confirm={t("common.delete")}
+        danger
+        loading={remove.isPending}
+        onConfirm={() =>
+          remove.mutate(u.id, {
+            onSuccess: () => {
+              setConfirm(null);
+              toast.ok(t("userDrawer.deleted", { name: u.name }));
+              onDeleted();
+            },
+            onError: fail,
+          })
+        }
+      />
+    </>
+  );
+}
