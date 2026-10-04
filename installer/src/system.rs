@@ -254,7 +254,7 @@ pub fn checks(node: bool) -> Vec<Check> {
 
 /// The checks of an install that continues (resume): the VPN ports are held by the
 /// containers of the attempt before, which is no problem.
-pub fn checks_for(node: bool, resume: bool) -> Vec<Check> {
+pub fn checks_for(node: bool, resume: bool, skip_ports: bool) -> Vec<Check> {
     let mut out = Vec::new();
     out.push(if is_root() {
         Check::new("Root", Level::Ok, "running as root")
