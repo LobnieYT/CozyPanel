@@ -1428,6 +1428,13 @@ export interface components {
             port?: number;
             tag?: string;
         };
+        DNSServerAnswer: {
+            error?: string;
+            ips?: string[];
+            /** Format: int64 */
+            rtt_ms?: number;
+            server: string;
+        };
         DeviceView: {
             /** Format: date-time */
             first_seen: string;
@@ -1437,9 +1444,13 @@ export interface components {
             online: boolean;
         };
         DnsMatch: {
+            /** @description Живая: DNS на ноде включён */
+            enabled?: boolean;
             geo_skipped?: boolean;
             /** @description Совпавший матчер или default */
             key?: string;
+            /** @description Живая: политики, которые бежат на ноде */
+            keys?: string[];
             matched: boolean;
             /** @description Серверы, которые наперегонки спросят ответ */
             servers?: string[];
@@ -1448,6 +1459,8 @@ export interface components {
             domain: string;
         };
         DnsMatchOutputBody: {
+            /** @description Живой резолв каждым сервером ноды */
+            answers?: components["schemas"]["DNSServerAnswer"][];
             /** @description Сухая проверка в панели, без ноды */
             dry: components["schemas"]["DnsMatch"];
             /** @description Матчинг матчером mihomo ноды; null — нода недоступна */
@@ -1767,6 +1780,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             status: "ok" | "error" | "unknown";
+            /** @description Почему стейт ноды не применился; пусто — бежит актуальное */
+            sync_error?: string;
             version?: string;
         };
         NodeKeyOutputBody: {

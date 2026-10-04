@@ -187,6 +187,11 @@ function NodeCard({
           {n.local ? t("nodes.localOffline") : t("nodes.remoteOffline")}
         </p>
       ) : null}
+      {n.sync_error ? (
+        <p className="mt-3 text-[13px] text-[var(--honey-600)]" role="alert">
+          {t("nodes.syncStale")}: <span className="mono">{n.sync_error}</span>
+        </p>
+      ) : null}
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
         <div>
           <dt className="text-xs text-[var(--ink-500)]">{t("nodes.protocols")}</dt>

@@ -868,6 +868,31 @@
         ],
         "type": "object"
       },
+      "DNSServerAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rtt_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "server": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server"
+        ],
+        "type": "object"
+      },
       "DeviceView": {
         "additionalProperties": false,
         "properties": {
@@ -897,12 +922,23 @@
       "DnsMatch": {
         "additionalProperties": false,
         "properties": {
+          "enabled": {
+            "description": "Живая: DNS на ноде включён",
+            "type": "boolean"
+          },
           "geo_skipped": {
             "type": "boolean"
           },
           "key": {
             "description": "Совпавший матчер или default",
             "type": "string"
+          },
+          "keys": {
+            "description": "Живая: политики, которые бежат на ноде",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "matched": {
             "type": "boolean"
@@ -937,6 +973,13 @@
       "DnsMatchOutputBody": {
         "additionalProperties": false,
         "properties": {
+          "answers": {
+            "description": "Живой резолв каждым сервером ноды",
+            "items": {
+              "$ref": "#/components/schemas/DNSServerAnswer"
+            },
+            "type": "array"
+          },
           "dry": {
             "$ref": "#/components/schemas/DnsMatch",
             "description": "Сухая проверка в панели, без ноды"
@@ -1818,6 +1861,10 @@
               "error",
               "unknown"
             ],
+            "type": "string"
+          },
+          "sync_error": {
+            "description": "Почему стейт ноды не применился; пусто — бежит актуальное",
             "type": "string"
           },
           "version": {

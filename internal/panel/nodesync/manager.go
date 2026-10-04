@@ -269,6 +269,17 @@ func (m *Manager) Health(id int64) (HealthView, bool) {
 	return s.Health(), true
 }
 
+// SyncError is why the node's state last failed to apply, "" when it runs
+// what the panel wants.
+func (m *Manager) SyncError(ctx context.Context, id int64) string {
+	_ = ctx
+	s, ok := m.Syncer(id)
+	if !ok {
+		return ""
+	}
+	return s.SyncError()
+}
+
 // Validate runs mihomo's parser on an inbound on the node that will run it.
 func (m *Manager) Validate(ctx context.Context, id int64, req nodeapi.ValidateRequest) error {
 	v, err := clientOf[interface {
@@ -313,6 +324,17 @@ func (m *Manager) DNSMatch(ctx context.Context, id int64, req nodeapi.DNSMatchRe
 		return nodeapi.DNSMatchResult{}, err
 	}
 	return v.DNSMatch(ctx, req)
+}
+
+// DNSResolve asks the node to resolve a domain with each effective server.
+func (m *Manager) DNSResolve(ctx context.Context, id int64, req nodeapi.DNSResolveRequest) (nodeapi.DNSResolveResult, error) {
+	v, err := clientOf[interface {
+		DNSResolve(context.Context, nodeapi.DNSResolveRequest) (nodeapi.DNSResolveResult, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.DNSResolveResult{}, err
+	}
+	return v.DNSResolve(ctx, req)
 }
 
 // GeoStatus lists the node's geodata files.

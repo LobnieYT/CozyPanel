@@ -101,6 +101,8 @@ type dnsMatch struct {
 	Matched bool     `json:"matched"`
 	Key     string   `json:"key,omitempty" doc:"Совпавший матчер или default"`
 	Servers []string `json:"servers,omitempty" doc:"Серверы, которые наперегонки спросят ответ"`
+	Enabled bool     `json:"enabled,omitempty" doc:"Живая: DNS на ноде включён"`
+	Keys    []string `json:"keys,omitempty" doc:"Живая: политики, которые бежат на ноде"`
 	// GeoSkipped: GEO-матчер пропущен без геодаты (сухая проверка),
 	// живой тест на ноде точнее.
 	GeoSkipped bool `json:"geo_skipped,omitempty"`
@@ -108,8 +110,9 @@ type dnsMatch struct {
 
 type dnsMatchOutput struct {
 	Body struct {
-		Dry  dnsMatch  `json:"dry" doc:"Сухая проверка в панели, без ноды"`
-		Live *dnsMatch `json:"live,omitempty" doc:"Матчинг матчером mihomo ноды; null — нода недоступна"`
+		Dry     dnsMatch                  `json:"dry" doc:"Сухая проверка в панели, без ноды"`
+		Live    *dnsMatch                 `json:"live,omitempty" doc:"Матчинг матчером mihomo ноды; null — нода недоступна"`
+		Answers []nodeapi.DNSServerAnswer `json:"answers,omitempty" doc:"Живой резолв каждым сервером ноды"`
 	}
 }
 
@@ -136,7 +139,11 @@ func (h *handlers) testNodeDNS(ctx context.Context, in *dnsMatchInput) (*dnsMatc
 	if h.d.Nodes != nil {
 		live, lerr := h.d.Nodes.DNSMatch(ctx, n.ID, nodeapi.DNSMatchRequest{Domain: domain})
 		if lerr == nil {
-			out.Body.Live = &dnsMatch{Matched: live.Matched, Key: live.Key, Servers: live.Servers}
+			out.Body.Live = &dnsMatch{Matched: live.Matched, Key: live.Key, Servers: live.Servers, Enabled: live.Enabled, Keys: live.Keys}
+		}
+		ans, aerr := h.d.Nodes.DNSResolve(ctx, n.ID, nodeapi.DNSResolveRequest{Domain: domain})
+		if aerr == nil {
+			out.Body.Answers = ans.Answers
 		}
 	}
 	return out, nil

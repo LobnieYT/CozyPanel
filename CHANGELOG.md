@@ -3,6 +3,19 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.3
+### en
+- Live DNS resolve test on the node's card: every server is asked for the domain from the node itself, with answers, round-trip times and errors — the ground truth behind "which DNS answered".
+- The DNS check now shows what the node actually runs (policies included), so a config that never applied is told apart from a miss. A refused config is shown on the node's card instead of living only in logs.
+- GEO matcher load failures are returned as errors instead of quietly falling back to default.
+- The node fetches geodata before applying a GEO configuration; geodata files show their age.
+
+### ru
+- Живой резолв-тест DNS на карточке ноды: каждый сервер опрашивается за домен с самой ноды — ответы, RTT и ошибки. Истина в последней инстанции вместо «какой DNS ответил».
+- Проверка DNS показывает, что реально бежит на ноде (включая политики): неприменившийся конфиг отличается от промаха. Отклонённый конфиг виден на карточке ноды, а не только в логах.
+- Ошибки загрузки GEO-матчеров возвращаются ошибкой, а не тихим откатом на default.
+- Нода докачивает геодату до применения GEO-конфигурации; у файлов геодаты виден возраст.
+
 ## 1.1.2
 ### en
 - Subscription app icons actually load: the server serves the bundled icons instead of answering 404, so the letter placeholders are gone.

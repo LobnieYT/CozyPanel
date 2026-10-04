@@ -395,14 +395,41 @@ type DNSMatchRequest struct {
 	Domain string `json:"domain"`
 }
 
+// DNSResolveRequest asks the node to resolve a domain with each of its
+// effective DNS servers in turn and report what each answered: the ground
+// truth behind "which DNS answered".
+type DNSResolveRequest struct {
+	Domain string `json:"domain"`
+	// Type is A (default) or AAAA.
+	Type string `json:"type,omitempty"`
+}
+
+// DNSServerAnswer is what one server answered: addresses, round-trip time, or
+// why it did not answer.
+type DNSServerAnswer struct {
+	Server string   `json:"server"`
+	IPs    []string `json:"ips,omitempty"`
+	RTTMs  int64    `json:"rtt_ms,omitempty"`
+	Error  string   `json:"error,omitempty"`
+}
+
+// DNSResolveResult carries one answer per effective server, in order.
+type DNSResolveResult struct {
+	Answers []DNSServerAnswer `json:"answers"`
+}
+
 // DNSMatchResult names the matched policy key ("default" when none claimed the
-// domain) and the servers that would race for the answer. GeoSkipped says a
-// GEO matcher was skipped for lack of geodata (dry only): a live test on the
-// node may still judge otherwise.
+// domain) and the servers that would race for the answer. Enabled and Keys say
+// what DNS the node actually runs, so a stale state is told apart from a miss:
+// when the panel's document names a policy the node does not list, the config
+// never applied. GeoSkipped says a GEO matcher was skipped for lack of
+// geodata (dry only): a live test on the node may still judge otherwise.
 type DNSMatchResult struct {
 	Matched    bool     `json:"matched"`
 	Key        string   `json:"key,omitempty"`
 	Servers    []string `json:"servers,omitempty"`
+	Enabled    bool     `json:"enabled,omitempty"`
+	Keys       []string `json:"keys,omitempty"`
 	GeoSkipped bool     `json:"geo_skipped,omitempty"`
 }
 

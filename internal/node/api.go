@@ -84,6 +84,19 @@ func Handler(e *Engine, log *slog.Logger) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, res)
 	})
+	mux.HandleFunc("POST /v1/dns/resolve", func(w http.ResponseWriter, r *http.Request) {
+		var req nodeapi.DNSResolveRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		// Bounded by the caller's timeout (the panel allows a minute).
+		res, err := e.DNSResolve(r.Context(), req)
+		if err != nil {
+			fail(w, log, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
 	mux.HandleFunc("GET /v1/geo", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, e.GeoStatus())
 	})

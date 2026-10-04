@@ -149,6 +149,13 @@ func (c *Client) DNSMatch(ctx context.Context, req DNSMatchRequest) (DNSMatchRes
 	return r, err
 }
 
+// DNSResolve asks the node to resolve a domain with each effective server.
+func (c *Client) DNSResolve(ctx context.Context, req DNSResolveRequest) (DNSResolveResult, error) {
+	var r DNSResolveResult
+	err := c.do(ctx, http.MethodPost, "/v1/dns/resolve", req, &r, 90*time.Second)
+	return r, err
+}
+
 // GeoStatus lists the node's geodata files.
 func (c *Client) GeoStatus(ctx context.Context) (GeoStatus, error) {
 	var r GeoStatus

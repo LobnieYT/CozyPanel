@@ -32,6 +32,7 @@ type NodeInfo struct {
 	Inbounds    int        `json:"inbounds"`
 	Status      string     `json:"status" enum:"ok,error,unknown"`
 	Error       string     `json:"error,omitempty"`
+	SyncError   string     `json:"sync_error,omitempty" doc:"Почему стейт ноды не применился; пусто — бежит актуальное"`
 	Version     string     `json:"version,omitempty"`
 	Listeners   int        `json:"listeners"`
 	ListenersOK int        `json:"listeners_ok"`
@@ -111,6 +112,7 @@ func (h *handlers) viewNode(ctx context.Context, n db.Node, inbounds []db.Inboun
 		return v
 	}
 	v.Status, v.Version, v.Conns = "ok", hv.Health.Version, hv.Health.Conns
+	v.SyncError = h.d.Nodes.SyncError(ctx, n.ID)
 	v.CPUPercent, v.MemUsed, v.MemTotal = hv.Health.System.CPUPercent, hv.Health.System.MemUsed, hv.Health.System.MemTotal
 	for _, l := range hv.Listeners {
 		v.Listeners++

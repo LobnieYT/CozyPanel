@@ -57,11 +57,12 @@ type Syncer struct {
 	stateKey    string
 	policyKey   string
 	lastApplied nodeapi.ApplyResult
-	lastPush    time.Time // when the policies last reached the node
-	failedKey   string    // the state key the last failed Apply was for
-	retry       retry     // the pace of attempts at a node that does not answer
-	badInbounds string    // the inbounds left out of the state, as last logged
-	badNet      string    // the routes left out of the state, as last logged
+	lastPush    time.Time              // when the policies last reached the node
+	failedKey   string                 // the state key the last failed Apply was for
+	lastErr     atomic.Pointer[string] // why the last Apply failed; nil once one lands
+	retry       retry                  // the pace of attempts at a node that does not answer
+	badInbounds string                 // the inbounds left out of the state, as last logged
+	badNet      string                 // the routes left out of the state, as last logged
 
 	// Only the counters loop touches these.
 	counterFails int       // consecutive failed pulls
@@ -101,6 +102,15 @@ func signal(ch chan struct{}) {
 }
 
 func (s *Syncer) Health() HealthView { return *s.health.Load() }
+
+// SyncError is why the node's state last failed to apply: the node runs an
+// older state while it is set. Empty once a state lands.
+func (s *Syncer) SyncError() string {
+	if p := s.lastErr.Load(); p != nil {
+		return *p
+	}
+	return ""
+}
 
 // Online returns the node's live connection view keyed by slot name.
 func (s *Syncer) Online() map[string]nodeapi.Online { return *s.online.Load() }
@@ -257,6 +267,8 @@ func (s *Syncer) applyState(ctx context.Context) {
 	if err != nil {
 		s.mu.Lock()
 		s.failedKey = key
+		msg := err.Error()
+		s.lastErr.Store(&msg)
 		log := s.retry.fail(now, err)
 		s.mu.Unlock()
 		if log {
@@ -278,6 +290,7 @@ func (s *Syncer) applyState(ctx context.Context) {
 	s.lastPush = now
 	s.lastApplied = res
 	s.failedKey = ""
+	s.lastErr.Store(nil)
 	recovered := s.retry.ok()
 	s.mu.Unlock()
 	if recovered {

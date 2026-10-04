@@ -95,26 +95,32 @@ func (e *Engine) DNSMatch(ctx context.Context, req nodeapi.DNSMatchRequest) (nod
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	running := nodeapi.DNSMatchResult{Enabled: true, Keys: keys}
 	for _, k := range keys {
 		if name, ok := strings.CutPrefix(k, "geosite:"); ok {
 			m, err := geodata.LoadGeoSiteMatcher(name)
 			if err != nil {
-				continue
+				// A policy the node cannot load is an error, not a miss:
+				// failing quiet into default hides a broken geodata.
+				return nodeapi.DNSMatchResult{}, err
 			}
 			if m.ApplyDomain(domain) {
-				return nodeapi.DNSMatchResult{Matched: true, Key: k, Servers: policy[k]}, nil
+				running.Matched, running.Key, running.Servers = true, k, policy[k]
+				return running, nil
 			}
 			continue
 		}
 		suffix := strings.ToLower(strings.TrimPrefix(k, "."))
 		if suffix != "" && (domain == suffix || strings.HasSuffix(domain, "."+suffix)) {
-			return nodeapi.DNSMatchResult{Matched: true, Key: k, Servers: policy[k]}, nil
+			running.Matched, running.Key, running.Servers = true, k, policy[k]
+			return running, nil
 		}
 	}
 	if len(defaults) == 0 {
-		return nodeapi.DNSMatchResult{}, nil
+		return running, nil
 	}
-	return nodeapi.DNSMatchResult{Matched: true, Key: "default", Servers: defaults}, nil
+	running.Matched, running.Key, running.Servers = true, "default", defaults
+	return running, nil
 }
 
 // testMetadata builds the metadata a connection to (domain or ip):(port) would

@@ -11,6 +11,7 @@ import { useToast } from "../../components/toast";
 import { Button, Field, Pill, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
 import { fieldErrors, fieldPrefix } from "../../lib/fields";
+import { ago } from "../../lib/format";
 import {
   DeleteConfirm,
   DNSEditor,
@@ -457,6 +458,18 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
         <div className="mt-3 flex flex-col gap-2">
           <DNSCard title={t("network.tDry")} m={dns.dry} />
           {dns.live ? <DNSCard title={t("network.tLive")} m={dns.live} /> : <p className="text-xs text-[var(--ink-500)]">{t("network.tOffline")}</p>}
+          {dns.answers?.length ? (
+            <div className="panel-soft p-3">
+              <div className="mb-2 text-[13px] font-semibold">{t("network.tDnsAnswers")}</div>
+              <ul className="flex flex-col gap-1 text-xs">
+                {dns.answers.map((a) => (
+                  <li key={a.server} className="mono break-all text-[var(--ink-600)]">
+                    {a.server} → {a.error ? <span className="text-[var(--berry-600)]">{a.error}</span> : <span>{a.ips?.join(", ")} · {a.rtt_ms} ms</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -483,13 +496,18 @@ function MatchCard({ title, m }: { title: string; m: { matched: boolean; rule?: 
   );
 }
 
-function DNSCard({ title, m }: { title: string; m: { matched: boolean; key?: string; servers?: string[]; geo_skipped?: boolean } }) {
+function DNSCard({ title, m }: { title: string; m: { matched: boolean; key?: string; servers?: string[]; enabled?: boolean; keys?: string[]; geo_skipped?: boolean } }) {
   return (
     <div className="panel-soft p-3">
       <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
         {title} · {t("network.tDns")}
         {m.matched ? <Pill tone="ok">{t("network.tMatched")}</Pill> : <Pill tone="off">{t("network.tDnsDefault")}</Pill>}
       </div>
+      {m.enabled != null ? (
+        <div className="mb-1 text-xs text-[var(--ink-600)]">
+          {t("network.tDnsRunning")}: {(m.keys ?? []).join(", ") || "—"}
+        </div>
+      ) : null}
       {m.matched ? (
         <div className="text-xs text-[var(--ink-600)]">
           <div>
@@ -534,7 +552,7 @@ export function NodeGeoSection({ nodeId }: { nodeId: number }) {
                   <div className="min-w-0">
                     <div className="text-[13px] font-semibold">{f.name}</div>
                     <div className="text-xs text-[var(--ink-500)]">
-                      {f.present ? `${Math.round((f.size ?? 0) / 1024)} KB` : t("network.geoMissing")}
+                      {f.present ? `${Math.round((f.size ?? 0) / 1024)} KB${f.updated_at ? ` · ${ago(f.updated_at)}` : ""}` : t("network.geoMissing")}
                     </div>
                   </div>
                   {f.present ? <Pill tone="ok">{t("network.geoOk")}</Pill> : <Pill tone="off">{t("network.geoMissing")}</Pill>}
