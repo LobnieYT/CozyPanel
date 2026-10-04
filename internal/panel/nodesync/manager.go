@@ -337,6 +337,17 @@ func (m *Manager) DNSResolve(ctx context.Context, id int64, req nodeapi.DNSResol
 	return v.DNSResolve(ctx, req)
 }
 
+// EgressDial walks the node's DIRECT path for a domain.
+func (m *Manager) EgressDial(ctx context.Context, id int64, req nodeapi.EgressDialRequest) (nodeapi.EgressDialResult, error) {
+	v, err := clientOf[interface {
+		EgressDial(context.Context, nodeapi.EgressDialRequest) (nodeapi.EgressDialResult, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.EgressDialResult{}, err
+	}
+	return v.EgressDial(ctx, req)
+}
+
 // GeoStatus lists the node's geodata files.
 func (m *Manager) GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error) {
 	v, err := clientOf[interface {

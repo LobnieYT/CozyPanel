@@ -156,6 +156,13 @@ func (c *Client) DNSResolve(ctx context.Context, req DNSResolveRequest) (DNSReso
 	return r, err
 }
 
+// EgressDial walks the node's DIRECT path for a domain.
+func (c *Client) EgressDial(ctx context.Context, req EgressDialRequest) (EgressDialResult, error) {
+	var r EgressDialResult
+	err := c.do(ctx, http.MethodPost, "/v1/egress/dial", req, &r, 60*time.Second)
+	return r, err
+}
+
 // GeoStatus lists the node's geodata files.
 func (c *Client) GeoStatus(ctx context.Context) (GeoStatus, error) {
 	var r GeoStatus

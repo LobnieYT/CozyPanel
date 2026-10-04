@@ -5,7 +5,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/metacubex/mihomo/hub/executor"
+
 	"cozy/internal/nodeapi"
+	"cozy/internal/proto"
 )
 
 func TestDNSSection(t *testing.T) {
@@ -62,6 +65,32 @@ func TestDNSSection(t *testing.T) {
 	}
 	if needsGeo(nodeapi.DesiredState{}) {
 		t.Fatal("empty needs geo")
+	}
+}
+
+// The node sniffs TLS/HTTP/QUIC on every inbound and lets the SNI replace an
+// IP destination, so clients resolving outside the VPN DNS still match domain
+// rules and the DNS policy (the 3x-ui behavior for the same clients).
+func TestSnifferSection(t *testing.T) {
+	raw, _, err := buildConfig(nodeapi.DesiredState{}, proto.Cert{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Sniffer struct {
+			Enable       bool     `json:"enable"`
+			Sniffing     []string `json:"sniffing"`
+			OverrideDest bool     `json:"override-destination"`
+		} `json:"sniffer"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Sniffer.Enable || !cfg.Sniffer.OverrideDest || len(cfg.Sniffer.Sniffing) != 3 {
+		t.Fatalf("sniffer: %+v", cfg.Sniffer)
+	}
+	if _, err := executor.ParseWithBytes(raw); err != nil {
+		t.Fatalf("mihomo refuses the sniffer section: %v", err)
 	}
 }
 

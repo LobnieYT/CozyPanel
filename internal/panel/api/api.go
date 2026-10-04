@@ -112,6 +112,8 @@ type NodeRuntime interface {
 	DNSMatch(ctx context.Context, id int64, req nodeapi.DNSMatchRequest) (nodeapi.DNSMatchResult, error)
 	// DNSResolve asks the node to resolve a domain with each effective server.
 	DNSResolve(ctx context.Context, id int64, req nodeapi.DNSResolveRequest) (nodeapi.DNSResolveResult, error)
+	// EgressDial walks the node's DIRECT path for a domain.
+	EgressDial(ctx context.Context, id int64, req nodeapi.EgressDialRequest) (nodeapi.EgressDialResult, error)
 	// SyncError is why the node's state last failed to apply, "" when current.
 	SyncError(ctx context.Context, id int64) string
 	// GeoStatus lists the node's geodata files; UpdateGeo re-downloads them.

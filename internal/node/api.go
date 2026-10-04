@@ -97,6 +97,20 @@ func Handler(e *Engine, log *slog.Logger) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, res)
 	})
+	mux.HandleFunc("POST /v1/egress/dial", func(w http.ResponseWriter, r *http.Request) {
+		var req nodeapi.EgressDialRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+		defer cancel()
+		res, err := e.EgressDial(ctx, req)
+		if err != nil {
+			fail(w, log, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
 	mux.HandleFunc("GET /v1/geo", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, e.GeoStatus())
 	})

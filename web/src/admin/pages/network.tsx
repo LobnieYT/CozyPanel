@@ -239,6 +239,12 @@ export function DNSEditor({
     for (const s of fresh) next.push({ address: s.address, port: "", tag: "", domains: (s.domains ?? []).join(", ") });
     setServers(next);
     toast.ok(t("network.presetAdded", { n: fresh.length }));
+    // A policy-only list is refused on save (mihomo needs a default resolver):
+    // repair it right away instead of failing later.
+    if (!next.some((s) => !s.domains.trim())) {
+      setServers([...next, { address: "1.1.1.1", port: "", tag: "", domains: "" }]);
+      toast.ok(t("network.presetDefaultAdded"));
+    }
   };
   return (
     <>
@@ -583,6 +589,7 @@ function GlobalDNSCard({ doc }: { doc: string }) {
           </div>
         </div>
         <DNSEditor form={form} onForm={set} hostRows={hostRows} onHostRows={setHostRows} />
+        <p className="mb-3 text-xs text-[var(--ink-500)]">{t("network.dnsPlanes")}</p>
         {fieldPrefix(errors, "node_dns") ? (
           <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
             {fieldPrefix(errors, "node_dns")}

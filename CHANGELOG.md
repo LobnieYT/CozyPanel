@@ -3,6 +3,19 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.5
+### en
+- The panel accepts custom DNS: `no_default` has a human text, the xbox preset repairs a policy-only list with a default server, and the editor explains default/race/fallback.
+- SNI sniffing (TLS/HTTP/QUIC) on every inbound: connections arriving by IP recover the domain, so domain rules and the DNS policy engage like in 3x-ui.
+- Egress dial test on the node's card: resolve through the DIRECT resolver, TCP connect, TLS handshake with SNI — where the traffic actually goes.
+- Refused node states surface on the node card; GEO matcher load failures error out instead of quietly defaulting.
+
+### ru
+- Панель принимает кастомный DNS: у `no_default` человеческий текст, пресет xbox чинит policy-only список сервером по умолчанию, редактор объясняет default/гонку/fallback.
+- SNI-сниффинг (TLS/HTTP/QUIC) на всех инбаундах: соединения, пришедшие по IP, восстанавливают домен — срабатывают доменные правила и DNS-политика, как в 3x-ui.
+- Тест выхода на карточке ноды: резолв DIRECT-резолвером, TCP-коннект, TLS-handshake с SNI — куда трафик реально уходит.
+- Отклонённые стейты ноды видны на её карточке; ошибки загрузки GEO-матчеров — вслух, а не тихий default.
+
 ## 1.1.4
 ### en
 - The route/DNS tester accepts a pasted URL: the host is extracted before matching and resolving, so `https://gemini.google.com/app` tests `gemini.google.com` instead of answering "default / NXDOMAIN" to garbage.

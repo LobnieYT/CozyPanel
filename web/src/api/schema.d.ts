@@ -420,6 +420,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/egress-dial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить выход: куда уйдёт DIRECT */
+        post: operations["test-node-egress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/geo": {
         parameters: {
             query?: never;
@@ -1465,6 +1482,20 @@ export interface components {
             dry: components["schemas"]["DnsMatch"];
             /** @description Матчинг матчером mihomo ноды; null — нода недоступна */
             live?: components["schemas"]["DnsMatch"];
+        };
+        EgressDialInputBody: {
+            domain: string;
+            /** Format: int64 */
+            port?: number;
+        };
+        EgressDialResult: {
+            error?: string;
+            ip?: string;
+            /** Format: int64 */
+            port?: number;
+            /** Format: int64 */
+            rtt_ms?: number;
+            tls_ok?: boolean;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -3583,6 +3614,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DnsMatchOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "test-node-egress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EgressDialInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EgressDialResult"];
                 };
             };
             /** @description Error */

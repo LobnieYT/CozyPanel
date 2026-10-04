@@ -149,6 +149,43 @@ func (h *handlers) testNodeDNS(ctx context.Context, in *dnsMatchInput) (*dnsMatc
 	return out, nil
 }
 
+type egressDialInput struct {
+	ID   int64 `path:"id" minimum:"1"`
+	Body struct {
+		Domain string `json:"domain" minLength:"1" maxLength:"253"`
+		Port   int    `json:"port,omitempty" minimum:"0" maximum:"65535"`
+	}
+}
+
+type egressDialOutput struct {
+	Body nodeapi.EgressDialResult
+}
+
+func (h *handlers) testNodeEgress(ctx context.Context, in *egressDialInput) (*egressDialOutput, error) {
+	n, err := h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	domain := nodeapi.NormalizeDomain(in.Body.Domain)
+	if domain == "" {
+		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body", Message: "domain"})
+	}
+	if in.Body.Port < 0 || in.Body.Port > 65535 {
+		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.port", Message: "bad_port"})
+	}
+	if h.d.Nodes == nil {
+		return nil, huma.Error409Conflict("nodes_disabled")
+	}
+	res, err := h.d.Nodes.EgressDial(ctx, n.ID, nodeapi.EgressDialRequest{Domain: domain, Port: in.Body.Port})
+	if err != nil {
+		if errors.Is(err, nodeapi.ErrUnavailable) {
+			return nil, huma.Error409Conflict("nodes_disabled")
+		}
+		return nil, err
+	}
+	return &egressDialOutput{Body: res}, nil
+}
+
 type probeInput struct {
 	ID   int64 `path:"id" minimum:"1"`
 	Body struct {
@@ -175,6 +212,7 @@ func (h *handlers) registerNetwork() {
 	huma.Register(h.api, huma.Operation{OperationID: "update-node-network", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPatch, Path: "/api/v1/nodes/{id}/network", Summary: "Изменить сеть ноды", Tags: []string{"node"}}, h.updateNodeNetwork)
 	huma.Register(h.api, huma.Operation{OperationID: "test-node-route", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/route-test", Summary: "Проверить маршрут: сухое и живое", Tags: []string{"node"}}, h.testNodeRoute)
 	huma.Register(h.api, huma.Operation{OperationID: "test-node-dns", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/dns-match", Summary: "Проверить DNS: какой сервер ответит", Tags: []string{"node"}}, h.testNodeDNS)
+	huma.Register(h.api, huma.Operation{OperationID: "test-node-egress", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/egress-dial", Summary: "Проверить выход: куда уйдёт DIRECT", Tags: []string{"node"}}, h.testNodeEgress)
 	huma.Register(h.api, huma.Operation{OperationID: "probe-node-outbound", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/probe", Summary: "Проверить исходящее ноды", Tags: []string{"node"}}, h.probeNodeOutbound)
 	huma.Register(h.api, huma.Operation{OperationID: "import-node-outbound", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/outbounds/import", Summary: "Импорт исходящего из WireGuard .conf", Tags: []string{"node"}}, h.importNodeOutbound)
 	huma.Register(h.api, huma.Operation{OperationID: "node-geo", Method: http.MethodGet, Path: "/api/v1/nodes/{id}/geo", Summary: "Геоданные ноды", Tags: []string{"node"}}, h.nodeGeo)

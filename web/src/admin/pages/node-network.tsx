@@ -382,9 +382,11 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
   const [inbound, setInbound] = useState("");
   const [res, setRes] = useState<Schemas["RouteTestOutputBody"] | null>(null);
   const [dns, setDns] = useState<Schemas["DnsMatchOutputBody"] | null>(null);
+  const [egress, setEgress] = useState<Schemas["EgressDialResult"] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dnsBusy, setDnsBusy] = useState(false);
+  const [egressBusy, setEgressBusy] = useState(false);
   const run = () => {
     setBusy(true);
     setError("");
@@ -426,6 +428,26 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
       },
     );
   };
+  const runEgress = () => {
+    setEgressBusy(true);
+    setError("");
+    setEgress(null);
+    void unwrap(
+      api.POST("/api/v1/nodes/{id}/egress-dial", {
+        params: { path: { id: nodeId } },
+        body: { domain: cleanDomain(domain), port: Number(port) || undefined },
+      }),
+    ).then(
+      (v) => {
+        setEgress(v);
+        setEgressBusy(false);
+      },
+      (e: unknown) => {
+        setError(errorText(e));
+        setEgressBusy(false);
+      },
+    );
+  };
   return (
     <div>
       <p className="mb-3 text-[13px] text-[var(--ink-500)]">{t("network.testerSub")}</p>
@@ -459,6 +481,9 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
         <Button variant="glass" disabled={!cleanDomain(domain) || dnsBusy} loading={dnsBusy} onClick={runDns}>
           {t("network.tDnsRun")}
         </Button>
+        <Button variant="glass" disabled={!cleanDomain(domain) || egressBusy} loading={egressBusy} onClick={runEgress}>
+          {t("network.tEgressRun")}
+        </Button>
       </div>
       {error ? (
         <p className="mt-3 text-xs text-[var(--berry-600)]" role="alert">
@@ -490,6 +515,21 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
                 ))}
               </ul>
             </div>
+          ) : null}
+        </div>
+      ) : null}
+      {egress ? (
+        <div className="panel-soft mt-3 p-3">
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+            {t("network.tEgress")}
+            {egress.error ? <Pill tone="bad">{t("network.tNoMatch")}</Pill> : <Pill tone="ok">{t("network.tMatched")}</Pill>}
+          </div>
+          <div className="mono break-all text-xs text-[var(--ink-600)]">
+            {egress.ip ? `${egress.ip}:${egress.port ?? ""}` : null} {egress.rtt_ms != null ? `· ${egress.rtt_ms} ms` : null}{" "}
+            {egress.tls_ok ? <Pill tone="ok">{t("network.tEgressTLS")}</Pill> : null}
+          </div>
+          {egress.error ? (
+            <div className="mt-1 text-xs text-[var(--berry-600)]">{egress.error}</div>
           ) : null}
         </div>
       ) : null}

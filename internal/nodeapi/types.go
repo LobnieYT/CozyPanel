@@ -418,6 +418,24 @@ type DNSResolveResult struct {
 	Answers []DNSServerAnswer `json:"answers"`
 }
 
+// EgressDialRequest asks the node to walk the DIRECT path for a domain: resolve
+// through its policy-aware resolver, open TCP, shake TLS hands with the domain.
+type EgressDialRequest struct {
+	Domain string `json:"domain"`
+	// Port dials 443 when unset.
+	Port int `json:"port,omitempty"`
+}
+
+// EgressDialResult is where the walk ended: the resolved IP, the TCP time, and
+// whether TLS shook hands. Error says which step failed.
+type EgressDialResult struct {
+	IP    string `json:"ip,omitempty"`
+	Port  int    `json:"port,omitempty"`
+	RTTMs int64  `json:"rtt_ms,omitempty"`
+	TLS   bool   `json:"tls_ok,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
 // DNSMatchResult names the matched policy key ("default" when none claimed the
 // domain) and the servers that would race for the answer. Enabled and Keys say
 // what DNS the node actually runs, so a stale state is told apart from a miss:

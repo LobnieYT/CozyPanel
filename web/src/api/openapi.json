@@ -994,6 +994,49 @@
         ],
         "type": "object"
       },
+      "EgressDialInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 253,
+            "minLength": 1,
+            "type": "string"
+          },
+          "port": {
+            "format": "int64",
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "EgressDialResult": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "port": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "rtt_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tls_ok": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -5464,6 +5507,59 @@
           }
         },
         "summary": "Проверить DNS: какой сервер ответит",
+        "tags": [
+          "node"
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/egress-dial": {
+      "post": {
+        "operationId": "test-node-egress",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EgressDialInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EgressDialResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить выход: куда уйдёт DIRECT",
         "tags": [
           "node"
         ]

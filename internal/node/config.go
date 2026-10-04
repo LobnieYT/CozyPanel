@@ -125,10 +125,18 @@ func buildConfig(st nodeapi.DesiredState, cert proto.Cert, allowPrivate bool) (r
 		"mixed-port":        0,
 		"find-process-mode": "off",
 		"profile":           map[string]any{"store-selected": false, "store-fake-ip": false},
-		"dns":               dnsSection(st),
-		"proxies":           proxies,
-		"rules":             rules(st, allowPrivate),
-		"listeners":         listeners,
+		// Sniffing recovers the domain from TLS/HTTP/QUIC handshakes of
+		// connections that arrive by IP (apps resolving outside the VPN DNS):
+		// the SNI replaces the destination, so rules and the DNS policy see
+		// the domain and the egress dial resolves through them. The 3x-ui
+		// behavior for the same clients.
+		"sniffer": map[string]any{
+			"enable": true, "sniffing": []string{"tls", "http", "quic"}, "override-destination": true,
+		},
+		"dns":       dnsSection(st),
+		"proxies":   proxies,
+		"rules":     rules(st, allowPrivate),
+		"listeners": listeners,
 	}
 	if hosts := dnsHosts(st); len(hosts) > 0 {
 		cfg["hosts"] = hosts
