@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -264,8 +266,13 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 	}
 	dns := map[string]any{
 		"enable": true, "ipv6": false, "enhanced-mode": "fake-ip", "fake-ip-range": "198.18.0.1/16",
-		"default-nameserver": []string{"1.1.1.1", "8.8.8.8"},
-		"nameserver":         []string{"https://1.1.1.1/dns-query", "https://dns.google/dns-query"},
+		// Yandex first: from Russia it answers directly while foreign plain DNS is
+		// poisoned or throttled; elsewhere it is a correct anycast recursive.
+		"default-nameserver": []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"},
+		// Local names must resolve for real: a fake IP for a LAN host or
+		// localhost breaks it while the VPN is on.
+		"fake-ip-filter": []string{"+.lan", "+.local", "+.home", "+.internal", "+.intranet", "+.localdomain", "localhost"},
+		"nameserver":     []string{"https://1.1.1.1/dns-query", "https://dns.google/dns-query"},
 	}
 	// The panel and the nodes stay out of the tunnel whatever the admin's rules say.
 	rules := append(directRules(p.Direct), "GEOIP,LAN,DIRECT,no-resolve")
@@ -296,22 +303,61 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 	return json.MarshalIndent(cfg, "", "  ")
 }
 
+// profileBootstrapDNS is the direct plain DNS the app resolves proxy server
+// names (the node it connects to) with. It must stay direct and plain: direct
+// DoH stalls under TSPU throttling, and resolving the node through the tunnel
+// it has not established yet deadlocks the connection.
+var profileBootstrapDNS = []string{"77.88.8.8", "1.1.1.1"}
+
+// profileViaTunnel says whether a default resolver must answer through the
+// tunnel in ru_direct mode. Encrypted transports stall directly under TSPU
+// throttling, and plain UDP to foreign resolvers is poisoned (a wrong IP for a
+// domain whose traffic still enters the tunnel breaks the site). Yandex stays
+// direct (Russian answers need no VPN), and local names and addresses must
+// never enter the tunnel.
+func profileViaTunnel(s string) bool {
+	if strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") ||
+		strings.HasPrefix(s, "tls://") || strings.HasPrefix(s, "quic://") {
+		return true
+	}
+	host := s
+	if u, err := url.Parse(s); err == nil && u.Host != "" {
+		host = u.Hostname() // udp://, tcp://, dhcp://...
+	} else if h, _, err := net.SplitHostPort(s); err == nil {
+		host = h
+	}
+	if addr, err := netip.ParseAddr(host); err == nil {
+		if addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() {
+			return false
+		}
+		return host != "77.88.8.8" && host != "77.88.8.1"
+	}
+	return false // a bare name is a local resolver
+}
+
 // applyProfileDNS puts the admin's subscription DNS into the profile's dns section.
-// Nil doc keeps the built-in one: DoH through the tunnel in ru_direct mode (GEOIP,ru
-// makes the app resolve every domain itself, and DoH straight from Russia stalls),
-// plain DoH otherwise.
+// Nil doc keeps the built-in one: through the tunnel in both modes (GEOIP,ru makes
+// the app resolve every domain itself, direct DoH stalls under TSPU throttling, and
+// direct DNS leaks browsing while the traffic goes through the VPN). Russian domains
+// resolve with Yandex DNS directly and keep working without the VPN. The alias group
+// has a fixed name: "&" or "=" in a renamed group would break the "#group" suffix.
 func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 	if doc == nil {
-		if !ruDirect {
-			return
+		ns := []string{"https://1.1.1.1/dns-query", "https://dns.google/dns-query"}
+		for i, s := range ns {
+			ns[i] = s + "#" + AliasGroup
 		}
-		// GEOIP,ru makes the app resolve every domain itself. DoH straight from Russia
-		// stalls under TSPU throttling, so it goes through the tunnel (the alias group has
-		// a fixed name: "&" or "=" in a renamed group would break the "#group" suffix).
-		// Russian domains resolve with Yandex DNS directly and keep working without the VPN.
-		dns["nameserver"] = []string{"https://1.1.1.1/dns-query#" + AliasGroup, "https://8.8.8.8/dns-query#" + AliasGroup}
-		dns["proxy-server-nameserver"] = []string{"https://1.1.1.1/dns-query", "https://dns.google/dns-query"}
-		dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}
+		dns["nameserver"] = ns
+		if len(ns) == 0 {
+			// mihomo seeds foreign DoH as the default resolvers when the list is
+			// absent: an explicit empty list keeps policy-only DNS on its policy
+			// and fallback instead of leaking queries.
+			dns["nameserver"] = []string{}
+		}
+		dns["proxy-server-nameserver"] = append([]string{}, profileBootstrapDNS...)
+		if ruDirect {
+			dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}
+		}
 		return
 	}
 	dns["ipv6"] = doc.IPv6
@@ -323,7 +369,7 @@ func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 	ns := defaults
 	if ruDirect {
 		for i, s := range ns {
-			if strings.HasPrefix(s, "https://") {
+			if !strings.Contains(s, "#") && profileViaTunnel(s) {
 				ns[i] = s + "#" + AliasGroup
 			}
 		}
@@ -331,19 +377,25 @@ func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 	dns["nameserver"] = ns
 	if len(doc.Proxy) > 0 {
 		dns["proxy-server-nameserver"] = append([]string{}, doc.Proxy...)
+	} else if tunneled := func() bool {
+		for _, s := range ns {
+			if strings.Contains(s, "#") {
+				return true
+			}
+		}
+		return false
+	}(); ruDirect && tunneled {
+		// The node is reached by name: with every resolver going through the
+		// tunnel and none direct, resolving it deadlocks. Keep the bootstrap.
+		dns["proxy-server-nameserver"] = append([]string{}, profileBootstrapDNS...)
 	} else {
 		delete(dns, "proxy-server-nameserver")
 	}
 	if len(doc.Fallback) > 0 {
 		dns["fallback"] = append([]string{}, doc.Fallback...)
+		dns["fallback-filter"] = nodeapi.FallbackFilterSection(doc.FallbackFilter)
 	} else {
 		delete(dns, "fallback")
-	}
-	if f := doc.FallbackFilter; len(f.GeoIP)+len(f.Geosite)+len(f.IPCIDR)+len(f.Domain) > 0 {
-		dns["fallback-filter"] = map[string]any{
-			"geoip": f.GeoIP, "geosite": f.Geosite, "ipcidr": f.IPCIDR, "domain": f.Domain,
-		}
-	} else {
 		delete(dns, "fallback-filter")
 	}
 	if len(policy) > 0 {

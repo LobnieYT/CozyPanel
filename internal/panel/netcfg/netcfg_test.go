@@ -223,3 +223,45 @@ func TestAdBlock(t *testing.T) {
 		t.Fatal("bad name parsed")
 	}
 }
+
+func TestParseNodeRoutesCheckedTargets(t *testing.T) {
+	ob := []nodeapi.NodeOutbound{{Name: "office"}}
+	known := RouteTargetKnown(ob)
+	if _, err := ParseNodeRoutesChecked("DOMAIN,example.com,office\n# default: office", known); err != nil {
+		t.Fatalf("own outbound: %v", err)
+	}
+	if _, err := ParseNodeRoutesChecked("GEOIP,ru,WARP", known); err != nil {
+		t.Fatalf("warp by shape: %v", err)
+	}
+	if _, err := ParseNodeRoutesChecked("DOMAIN,example.com,NOWHERE", known); err == nil {
+		t.Fatal("unknown target accepted")
+	} else if f, _, line := Detail(err); line != 1 {
+		t.Fatalf("bad_target must point at line 1: %v %q", line, f)
+	}
+	if _, err := ParseNodeRoutesChecked("# default: NOWHERE", known); err == nil {
+		t.Fatal("unknown default accepted")
+	}
+	if _, err := ParseNodeRoutes("DOMAIN,example.com,NOWHERE"); err != nil {
+		t.Fatalf("plain parse stays structural: %v", err)
+	}
+}
+
+func TestCheckFallbackFilterSingleGeoIP(t *testing.T) {
+	if err := checkFallbackFilter(&nodeapi.DNSFallbackFilter{GeoIP: []string{"CN"}}); err != nil {
+		t.Fatalf("single code: %v", err)
+	}
+	if err := checkFallbackFilter(&nodeapi.DNSFallbackFilter{GeoIP: []string{"CN", "RU"}}); err == nil {
+		t.Fatal("mihomo filters one GEOIP code: more must be refused")
+	}
+}
+
+func TestNodeDNSRequiresDefault(t *testing.T) {
+	// mihomo refuses an enabled DNS with an empty nameserver even when a
+	// fallback exists, so the panel must require a default server up front.
+	raw := `{"enable":true,"servers":[{"address":"https://xbox-dns.ru/dns-query","domains":["geosite:google"]}],"fallback":["8.8.8.8"]}`
+	if _, err := ParseNodeDNS(raw); err == nil {
+		t.Fatal("policy-only DNS accepted")
+	} else if f, code, _ := Detail(err); code != "no_default" {
+		t.Fatalf("want no_default, got %v %q", f, code)
+	}
+}

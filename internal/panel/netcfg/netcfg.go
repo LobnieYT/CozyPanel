@@ -145,7 +145,9 @@ func checkNodeDNS(d *nodeapi.NodeDNS) error {
 			def = true
 		}
 	}
-	if !def && len(d.Fallback) == 0 {
+	// mihomo refuses an enabled DNS with an empty nameserver even when a
+	// fallback exists: what nothing else claims must go to a default server.
+	if !def {
 		return &fieldErr{Field: "servers", Code: "no_default"}
 	}
 	for _, s := range d.ProxyServers {
@@ -202,7 +204,9 @@ func checkDNSServer(s *nodeapi.DNSServer) error {
 	return nil
 }
 
-// checkFallbackFilter validates poisoning-protection lists.
+// checkFallbackFilter validates poisoning-protection lists. mihomo filters a
+// single GEOIP country code, so at most one travels (the node renders it as
+// geoip-code); more would silently not apply.
 func checkFallbackFilter(f *nodeapi.DNSFallbackFilter) error {
 	count := 0
 	for _, v := range f.GeoIP {
@@ -210,6 +214,9 @@ func checkFallbackFilter(f *nodeapi.DNSFallbackFilter) error {
 			return &fieldErr{Field: "fallback_filter", Code: "bad_key"}
 		}
 		count++
+	}
+	if len(f.GeoIP) > 1 {
+		return &fieldErr{Field: "fallback_filter", Code: "too_many_rules"}
 	}
 	for _, v := range f.Geosite {
 		if !validGeoName(v) {
@@ -255,6 +262,28 @@ func validGeoName(v string) bool {
 // "# default: NAME" sets the MATCH target). The type is stored uppercase,
 // as mihomo parses it.
 func ParseNodeRoutes(raw string) (nodeapi.NodeRoutes, error) {
+	return ParseNodeRoutesChecked(raw, nil)
+}
+
+// RouteTargetKnown allows rule targets naming the builtins, the WARP and
+// NODE-<id> exits by shape, or one of the outbounds. The panel checks without
+// the node's state, so WARP and exits pass by shape; the node re-checks
+// exactly. A nil known skips the target check.
+func RouteTargetKnown(outbounds []nodeapi.NodeOutbound) func(string) bool {
+	allow := map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true, "WARP": true}
+	for _, o := range outbounds {
+		allow[o.Name] = true
+	}
+	return func(name string) bool {
+		return allow[name] || strings.HasPrefix(name, "NODE-")
+	}
+}
+
+// ParseNodeRoutesChecked parses like ParseNodeRoutes and additionally refuses
+// targets known does not allow, with the offending line. mihomo resolves
+// target names lazily, so a typo would pass its parser and kill the matching
+// traffic at runtime instead of failing the save.
+func ParseNodeRoutesChecked(raw string, known func(string) bool) (nodeapi.NodeRoutes, error) {
 	out := nodeapi.NodeRoutes{}
 	for i, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
@@ -284,6 +313,9 @@ func ParseNodeRoutes(raw string) (nodeapi.NodeRoutes, error) {
 		if target == "" || strings.ContainsAny(target, " \t,") {
 			return out, &fieldErr{"routes", "bad_target", i + 1}
 		}
+		if known != nil && !known(target) {
+			return out, &fieldErr{"routes", "bad_target", i + 1}
+		}
 		rule := typ + "," + value + "," + target
 		if flag {
 			rule += ",no-resolve"
@@ -292,6 +324,9 @@ func ParseNodeRoutes(raw string) (nodeapi.NodeRoutes, error) {
 		if len(out.Rules) > MaxRoutes {
 			return out, &fieldErr{Field: "routes", Code: "too_many_rules"}
 		}
+	}
+	if known != nil && out.Default != "" && !known(out.Default) {
+		return out, &fieldErr{Field: "routes", Code: "bad_default"}
 	}
 	return out, nil
 }
@@ -471,7 +506,9 @@ func ParseSubDNS(raw string) (*SubDNS, error) {
 			def = true
 		}
 	}
-	if !def && len(d.Fallback) == 0 {
+	// mihomo refuses an enabled DNS with an empty nameserver even when a
+	// fallback exists: what nothing else claims must go to a default server.
+	if !def {
 		return nil, &fieldErr{Field: "servers", Code: "no_default"}
 	}
 	for _, s := range append(append([]string{}, d.Proxy...), d.Fallback...) {

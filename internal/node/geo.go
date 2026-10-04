@@ -64,7 +64,7 @@ func (e *Engine) UpdateGeoData() error {
 func (e *Engine) ensureGeoData(ctx context.Context) error {
 	_ = ctx
 	geodata.SetGeodataMode(true)
-	geodata.SetGeoIpUrl(geox.URL["mmdb"])
+	geodata.SetGeoIpUrl(geox.URL["geoip"])
 	geodata.SetGeoSiteUrl(geox.URL["geosite"])
 	geodata.SetASNUrl(geox.URL["asn"])
 	if err := geodata.InitGeoIP(); err != nil {

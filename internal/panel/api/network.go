@@ -161,6 +161,29 @@ func (h *handlers) updateNetwork(ctx context.Context, in *patchNetworkInput) (*n
 	if details := checkNetworkDocs(b.NodeDNS, b.NodeRoutes, b.NodeOutbounds, b.SubDNS, b.NodeAdBlock, b.SubAdBlock); len(details) > 0 {
 		return nil, huma.Error422UnprocessableEntity("validation", details...)
 	}
+	// Cross-check routes against the effective outbounds: mihomo resolves rule
+	// targets lazily, so a typo would pass its parser and kill the matching
+	// traffic at runtime instead of failing the save.
+	if b.NodeRoutes != nil || b.NodeOutbounds != nil {
+		glob, err := h.readNetwork(ctx)
+		if err != nil {
+			return nil, err
+		}
+		rawOut := glob.NodeOutbounds
+		if b.NodeOutbounds != nil {
+			rawOut = *b.NodeOutbounds
+		}
+		rawRoutes := glob.NodeRoutes
+		if b.NodeRoutes != nil {
+			rawRoutes = *b.NodeRoutes
+		}
+		outDoc, err := netcfg.ParseNodeOutbounds(rawOut)
+		if err == nil {
+			if _, err := netcfg.ParseNodeRoutesChecked(rawRoutes, netcfg.RouteTargetKnown(outDoc)); err != nil {
+				return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.node_routes", err))
+			}
+		}
+	}
 	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		set := settings.New(q)
 		for key, v := range map[string]*string{settings.KeyNodeDNS: b.NodeDNS, settings.KeyNodeRoutes: b.NodeRoutes, settings.KeyNodeOutbounds: b.NodeOutbounds, settings.KeySubDNS: b.SubDNS, settings.KeyNodeAdBlock: b.NodeAdBlock, settings.KeySubAdBlock: b.SubAdBlock} {
@@ -316,13 +339,16 @@ func (h *handlers) updateNodeNetwork(ctx context.Context, in *patchNodeNetworkIn
 	if err != nil {
 		return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.dns_override", err))
 	}
-	routesDoc, err := netcfg.ParseNodeRoutes(eff(routes, glob.NodeRoutes))
-	if err != nil {
-		return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.routes_override", err))
-	}
 	outDoc, err := netcfg.ParseNodeOutbounds(eff(outbounds, glob.NodeOutbounds))
 	if err != nil {
 		return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.outbounds_override", err))
+	}
+	// Targets naming no proxy would pass mihomo's parser and kill the matching
+	// traffic at runtime: refuse them before the node roundtrip (which an offline
+	// node skips), with the offending line.
+	routesDoc, err := netcfg.ParseNodeRoutesChecked(eff(routes, glob.NodeRoutes), netcfg.RouteTargetKnown(outDoc))
+	if err != nil {
+		return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.routes_override", err))
 	}
 	if h.d.Nodes != nil {
 		req := nodeapi.ValidateNetRequest{DNS: dnsDoc, Routes: routesDoc, Outbounds: outDoc}
@@ -469,7 +495,7 @@ func (h *handlers) importNodeOutbound(ctx context.Context, in *importOutboundInp
 		return nil, huma.Error422UnprocessableEntity("validation", netDetail("body.conf", err))
 	}
 	if h.d.Nodes != nil {
-		req := nodeapi.ValidateNetRequest{Outbounds: append(append([]nodeapi.NodeOutbound{}, res.Outbounds...), ob)}
+		req := nodeapi.ValidateNetRequest{DNS: res.DNS, Routes: res.Routes, Outbounds: append(append([]nodeapi.NodeOutbound{}, res.Outbounds...), ob)}
 		if verr := h.d.Nodes.ValidateNet(ctx, n.ID, req); verr != nil && !errors.Is(verr, nodeapi.ErrUnavailable) {
 			return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.conf", Message: verr.Error()})
 		}

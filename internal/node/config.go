@@ -2,6 +2,9 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
+	"net"
+	"strconv"
 	"strings"
 
 	"github.com/metacubex/mihomo/listener"
@@ -174,6 +177,47 @@ func needsGeo(st nodeapi.DesiredState) bool {
 	return false
 }
 
+// checkRuleTargets refuses rules (and the MATCH default) that name no proxy.
+// mihomo resolves target names lazily, so a typo would pass its parser and
+// kill the matching traffic at runtime instead of failing the save: refuse it
+// here, before it replaces a working config. exact lists WARP and the exits
+// only when the full state is known (ValidateNet, Apply); the panel allows the
+// WARP and NODE-<id> shapes when it checks without the node's state.
+func checkRuleTargets(st nodeapi.DesiredState, exact bool) error {
+	allow := map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true}
+	if !exact || st.Warp != nil {
+		allow[warpProxy] = true
+	}
+	for _, x := range st.Exits {
+		allow[x.Name] = true
+	}
+	for _, o := range st.Outbounds {
+		allow[o.Name] = true
+	}
+	known := func(name string) bool {
+		if allow[name] {
+			return true
+		}
+		return !exact && (name == warpProxy || strings.HasPrefix(name, "NODE-"))
+	}
+	if d := st.Routes.Default; d != "" && !known(d) {
+		return errors.New("unknown default target " + strconv.Quote(d))
+	}
+	if st.Routes.Default != "" {
+		allow[st.Routes.Default] = true
+	}
+	for _, r := range st.Routes.Rules {
+		_, _, target, _, ok := splitNodeRule(r.Rule)
+		if !ok {
+			return errors.New("bad rule " + strconv.Quote(r.Rule))
+		}
+		if !known(target) && !allow[target] {
+			return errors.New("unknown target " + strconv.Quote(target) + " in " + strconv.Quote(r.Rule))
+		}
+	}
+	return nil
+}
+
 // dnsSection renders the mihomo dns section. Without an enabled admin DNS the
 // resolver stays off and the system resolver answers, as before. What no other
 // server claims goes to the servers without matchers: the default DNS.
@@ -192,7 +236,31 @@ func dnsSection(st nodeapi.DesiredState) map[string]any {
 	}
 	if len(defaults) > 0 {
 		out["nameserver"] = defaults
+	} else {
+		// mihomo seeds foreign DoH as the default resolvers when the list is
+		// absent: an explicit empty list keeps policy-only DNS on its policy
+		// and fallback instead of leaking queries.
+		out["nameserver"] = []string{}
 	}
+	// DoH endpoints resolve through these plain servers first: without them a
+	// DNS made only of hostnames cannot bootstrap itself.
+	plain := []string{}
+	for _, s := range append(append([]string{}, defaults...), d.Fallback...) {
+		if host, _, err := net.SplitHostPort(s); err == nil {
+			s = host
+		}
+		if ip := net.ParseIP(s); ip != nil && !ip.IsLoopback() {
+			plain = append(plain, ip.String())
+		}
+	}
+	if len(plain) == 0 {
+		// Yandex first: from Russia it answers directly while 1.1.1.1/8.8.8.8
+		// are throttled or poisoned, and elsewhere it is a correct anycast
+		// recursive. A poisoned answer fails closed (DoH TLS mismatch) and the
+		// next server is tried.
+		plain = []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"}
+	}
+	out["default-nameserver"] = plain
 	if len(d.ProxyServers) > 0 {
 		out["proxy-server-nameserver"] = d.ProxyServers
 	}
@@ -201,11 +269,7 @@ func dnsSection(st nodeapi.DesiredState) map[string]any {
 	}
 	if len(d.Fallback) > 0 {
 		out["fallback"] = d.Fallback
-	}
-	if f := d.FallbackFilter; len(f.GeoIP)+len(f.Geosite)+len(f.IPCIDR)+len(f.Domain) > 0 {
-		out["fallback-filter"] = map[string]any{
-			"geoip": f.GeoIP, "geosite": f.Geosite, "ipcidr": f.IPCIDR, "domain": f.Domain,
-		}
+		out["fallback-filter"] = nodeapi.FallbackFilterSection(d.FallbackFilter)
 	}
 	return out
 }

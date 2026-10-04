@@ -129,9 +129,9 @@ func (c *Client) Validate(ctx context.Context, req ValidateRequest) error {
 }
 
 // ValidateNet returns *Error{Code: "invalid_config"} when mihomo refuses the
-// candidate network sections.
+// candidate network sections. GEO data downloads as needed: allow a minute.
 func (c *Client) ValidateNet(ctx context.Context, req ValidateNetRequest) error {
-	return c.do(ctx, http.MethodPost, "/v1/net/validate", req, nil, 15*time.Second)
+	return c.do(ctx, http.MethodPost, "/v1/net/validate", req, nil, 60*time.Second)
 }
 
 // RouteTest asks the node which rule a connection would hit, without traffic.

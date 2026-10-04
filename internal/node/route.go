@@ -31,9 +31,12 @@ func (e *Engine) RouteTest(ctx context.Context, req nodeapi.RouteTestRequest) (n
 		return nodeapi.RouteTestResult{}, err
 	}
 	for _, line := range rules(st, allowPrivate) {
-		typ, value, target, params := splitNodeRule(line)
-		if typ == "" {
+		typ, value, target, params, ok := splitNodeRule(line)
+		if !ok {
 			continue
+		}
+		if typ == "MATCH" {
+			return nodeapi.RouteTestResult{Matched: true, Rule: line, Target: target}, nil
 		}
 		rule, err := mrules.ParseRule(typ, value, target, params, nil)
 		if err != nil {

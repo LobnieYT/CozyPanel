@@ -252,13 +252,100 @@ func TestRouting(t *testing.T) {
 			t.Errorf("all mode needs no geodata: %v", all.Rules)
 		}
 	}
-	if all.GeoxURL != nil || len(all.DNS.Policy) != 0 || strings.Contains(strings.Join(all.DNS.Nameserver, ""), "#") {
-		t.Errorf("all mode keeps plain DNS: %+v %v", all.DNS, all.GeoxURL)
+	if all.GeoxURL != nil || len(all.DNS.Policy) != 0 {
+		t.Errorf("all mode needs no geodata: %+v %v", all.DNS, all.GeoxURL)
+	}
+	// All mode resolves through the tunnel too (direct DNS leaks browsing and its
+	// geolocation disagrees with the exit's, which breaks sites); only the proxy
+	// bootstrap stays direct.
+	for _, ns := range all.DNS.Nameserver {
+		if !strings.HasSuffix(ns, "#PROXY") {
+			t.Errorf("all mode nameserver %q must go through the tunnel", ns)
+		}
+	}
+	if len(all.DNS.ProxyServer) == 0 || strings.Contains(strings.Join(all.DNS.ProxyServer, ""), "#") ||
+		strings.Contains(strings.Join(all.DNS.ProxyServer, ""), "://") {
+		t.Errorf("all mode proxy-server-nameserver must be direct plain DNS: %v", all.DNS.ProxyServer)
 	}
 
 	for in, want := range map[string]Routing{"": RoutingRUDirect, "all": RoutingAll, "ru_direct": RoutingRUDirect, "blocked": RoutingRUDirect} {
 		if got := ParseRouting(in); got != want {
 			t.Errorf("ParseRouting(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestProfileDNSHardening(t *testing.T) {
+	type dns struct {
+		Default     []string `json:"default-nameserver"`
+		Nameserver  []string `json:"nameserver"`
+		ProxyServer []string `json:"proxy-server-nameserver"`
+		Filter      []string `json:"fake-ip-filter"`
+	}
+	render := func(p Profile, r Routing) dns {
+		t.Helper()
+		raw, err := Mihomo(p, Groups{}, r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			DNS dns `json:"dns"`
+		}
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		return cfg.DNS
+	}
+
+	// LAN names must resolve for real, and the bootstrap resolvers stay plain.
+	base := render(profile(t, ""), RoutingRUDirect)
+	if len(base.Default) == 0 || base.Default[0] != "77.88.8.8" {
+		t.Errorf("default-nameserver: %v", base.Default)
+	}
+	for _, want := range []string{"+.lan", "+.local", "localhost"} {
+		found := false
+		for _, f := range base.Filter {
+			found = found || f == want
+		}
+		if !found {
+			t.Errorf("fake-ip-filter misses %q: %v", want, base.Filter)
+		}
+	}
+
+	// A DoH-only custom DNS in ru_direct without proxy_servers must not resolve
+	// the node through the tunnel it has not established yet: the bootstrap is
+	// added back, plain and direct.
+	p := profile(t, "")
+	p.DNS = &netcfg.SubDNS{Servers: []nodeapi.DNSServer{{Address: "https://dns.google/dns-query"}}, FakeIP: true}
+	guarded := render(p, RoutingRUDirect)
+	if len(guarded.Nameserver) != 1 || !strings.HasSuffix(guarded.Nameserver[0], "#PROXY") {
+		t.Errorf("custom DoH must ride the tunnel: %v", guarded.Nameserver)
+	}
+	if len(guarded.ProxyServer) == 0 {
+		t.Fatalf("bootstrap resolver missing: %+v", guarded)
+	}
+	for _, s := range guarded.ProxyServer {
+		if strings.Contains(s, "#") || strings.Contains(s, "://") {
+			t.Errorf("bootstrap must be direct plain DNS: %q", s)
+		}
+	}
+
+	// Yandex and LAN resolvers stay direct; foreign plain and DoT ride the tunnel.
+	p.DNS = &netcfg.SubDNS{Servers: []nodeapi.DNSServer{
+		{Address: "77.88.8.8"},
+		{Address: "8.8.8.8"},
+		{Address: "tls://8.8.8.8"},
+		{Address: "192.168.1.1"},
+	}, FakeIP: true}
+	mixed := render(p, RoutingRUDirect)
+	want := map[string]bool{"77.88.8.8": false, "8.8.8.8#PROXY": true, "tls://8.8.8.8#PROXY": true, "192.168.1.1": false}
+	if len(mixed.Nameserver) != len(want) {
+		t.Fatalf("nameserver: %v", mixed.Nameserver)
+	}
+	for _, ns := range mixed.Nameserver {
+		tunneled := strings.HasSuffix(ns, "#PROXY")
+		if want[ns] != tunneled {
+			t.Errorf("nameserver %q tunneled=%v", ns, tunneled)
 		}
 	}
 }

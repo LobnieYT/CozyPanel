@@ -3,6 +3,19 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 0.5.0
+### en
+- DNS that does not break the VPN: resolvers that stall or get poisoned from Russia now answer through the tunnel, Yandex stays direct, and the node bootstrap uses plain DNS that always resolves.
+- Flexible DNS with per-server matchers (geosite, domain, networks), fallback with poisoning protection, hosts, AdBlock and geodata updates, all validated by mihomo itself before anything is applied.
+- Rule targets that name no proxy are refused on save: a typo can no longer kill matching traffic at runtime.
+- One-line install on Ubuntu 22.04+: `curl -fsSL https://github.com/LobnieYT/CozyPanel/releases/latest/download/install.sh | sudo bash`.
+
+### ru
+- DNS, который не ломает VPN: резолверы, которые виснут или отравляются из России, теперь отвечают через туннель, Яндекс — напрямую, а бутстрап ноды идёт через обычный DNS, который всегда резолвится.
+- Гибкий DNS с матчерами на каждый сервер (geosite, domain, сети), fallback с защитой от отравления, hosts, AdBlock и обновление геодаты — всё проверяется самим mihomo до применения.
+- Таргеты правил, указывающие в никуда, отклоняются при сохранении: опечатка больше не убьёт трафик в рантайме.
+- Установка одной командой на Ubuntu 22.04+: `curl -fsSL https://github.com/LobnieYT/CozyPanel/releases/latest/download/install.sh | sudo bash`.
+
 ## 0.4.5
 ### en
 - Prepares the move to 0.5: the panel and the mikan command understand versions with four numbers (0.5.0.0), and the command updates itself before the panel when a release needs a newer one. Nothing else changes; the database stays as it is.

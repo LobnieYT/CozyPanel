@@ -22,7 +22,7 @@ BASE="https://github.com/$REPO/releases/latest/download"
 # The public half of the key that signs every release's manifest.json: the same key as
 # internal/release.PublicKey (installer/src/release.rs checks that this text matches it).
 PUBKEY='-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAZ3wSIPBSaJxh5CsGO8eINI0aM0kyrQ46EcJSNeH85W8=
+MCowBQYDK2VwAyEA07oWuIWxgwid9uuXCONXsPIuR0ToV6FpRRt++1Ui638=
 -----END PUBLIC KEY-----'
 
 fail() {

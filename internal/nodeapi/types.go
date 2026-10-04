@@ -137,7 +137,7 @@ type ValidateRequest struct {
 
 // ValidateNetRequest asks the node to parse candidate network sections with mihomo
 // without applying them: the DNS section as mihomo reads it, custom outbounds as
-// proxies, and custom rules (GEO ones need the node's geodata and are skipped).
+// proxies, and custom rules. GEO data downloads as needed, like at apply.
 type ValidateNetRequest struct {
 	DNS       *NodeDNS       `json:"dns,omitempty"`
 	Routes    NodeRoutes     `json:"routes,omitempty"`

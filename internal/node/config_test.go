@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -36,6 +37,23 @@ func TestDNSSection(t *testing.T) {
 	if _, ok := got["fallback"]; !ok {
 		t.Fatalf("no fallback: %v", got)
 	}
+	ff, _ := got["fallback-filter"].(map[string]any)
+	if ff["geoip"] != false {
+		t.Fatalf("geoip must ride explicitly off, or mihomo seeds a CN filter: %v", ff)
+	}
+	// Policy-only DNS keeps an explicit empty default list (mihomo would seed
+	// foreign DoH otherwise) and maps the single GEOIP code.
+	policyOnly := nodeapi.DesiredState{DNS: &nodeapi.NodeDNS{Enable: true,
+		Servers:  []nodeapi.DNSServer{{Address: "https://xbox-dns.ru/dns-query", Domains: []string{"geosite:google"}}},
+		Fallback: []string{"8.8.8.8"}, FallbackFilter: nodeapi.DNSFallbackFilter{GeoIP: []string{"CN"}}}}
+	got = dnsSection(policyOnly)
+	if ns, _ := got["nameserver"].([]string); ns == nil || len(ns) != 0 {
+		t.Fatalf("policy-only nameserver: %v", got["nameserver"])
+	}
+	ff, _ = got["fallback-filter"].(map[string]any)
+	if ff["geoip"] != true || ff["geoip-code"] != "CN" {
+		t.Fatalf("single GEOIP code: %v", ff)
+	}
 	if hosts := dnsHosts(st); hosts["internal.example"] != "10.1.2.3" {
 		t.Fatalf("hosts: %v", hosts)
 	}
@@ -44,5 +62,32 @@ func TestDNSSection(t *testing.T) {
 	}
 	if needsGeo(nodeapi.DesiredState{}) {
 		t.Fatal("empty needs geo")
+	}
+}
+
+func TestValidateNet(t *testing.T) {
+	e := &Engine{}
+	good := nodeapi.ValidateNetRequest{
+		DNS: &nodeapi.NodeDNS{Enable: true,
+			Servers:  []nodeapi.DNSServer{{Address: "1.1.1.1"}, {Address: "https://dns.google/dns-query", Domains: []string{"domain:example.com"}}},
+			Fallback: []string{"8.8.8.8"}},
+		Routes:    nodeapi.NodeRoutes{Rules: []nodeapi.NodeRoute{{Rule: "DOMAIN-SUFFIX,example.com,DIRECT"}}},
+		Outbounds: []nodeapi.NodeOutbound{{Name: "office", Config: json.RawMessage(`{"type":"socks5","server":"127.0.0.1","port":1080}`)}},
+	}
+	if err := e.ValidateNet(good); err != nil {
+		t.Fatalf("good: %v", err)
+	}
+	badProxy := good
+	badProxy.Outbounds = []nodeapi.NodeOutbound{{Name: "office", Config: json.RawMessage(`{"type":"socks5"}`)}}
+	if err := e.ValidateNet(badProxy); err == nil {
+		t.Fatal("bad proxy accepted")
+	}
+	badRule := good
+	badRule.Routes = nodeapi.NodeRoutes{Rules: []nodeapi.NodeRoute{{Rule: "DOMAIN-SUFFIX,example.com,NOWHERE"}}}
+	if err := e.ValidateNet(badRule); err == nil {
+		t.Fatal("unknown target accepted")
+	}
+	if err := e.ValidateNet(nodeapi.ValidateNetRequest{}); err != nil {
+		t.Fatalf("empty: %v", err)
 	}
 }

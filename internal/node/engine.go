@@ -21,16 +21,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener"
 	mlog "github.com/metacubex/mihomo/log"
-	mrules "github.com/metacubex/mihomo/rules"
 	"github.com/metacubex/mihomo/tunnel"
 
 	"cozy/internal/fsutil"
+	"cozy/internal/geox"
 	"cozy/internal/nodeapi"
 	"cozy/internal/proto"
 	"cozy/internal/scan"
@@ -192,6 +190,11 @@ func (e *Engine) Apply(st nodeapi.DesiredState) (nodeapi.ApplyResult, error) {
 		}
 	}
 	e.cert = cert
+	// Targets naming no proxy would pass mihomo's parser and kill the matching
+	// traffic at runtime: refuse the whole state before it replaces the working one.
+	if err := checkRuleTargets(st, true); err != nil {
+		return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
+	}
 	raw, rejected, err := buildConfig(st, cert, e.allowPrivate)
 	if err != nil {
 		return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
@@ -291,52 +294,66 @@ func (e *Engine) Validate(req nodeapi.ValidateRequest) error {
 	return err
 }
 
-// ValidateNet parses candidate network sections with mihomo's own parsers without
-// applying them, so the panel can refuse them before they replace a working config.
-// GEO rules need the node's geodata and are checked when it is ensured, at apply.
+// ValidateNet runs candidate network sections through mihomo's own config parser
+// without applying them, so the panel can refuse them before they replace a
+// working config. GEO data downloads as needed, like at apply. The parser is
+// the same one Apply uses (executor.ParseWithBytes), so validation accepts
+// exactly what application accepts: rule targets are checked exactly on top,
+// because mihomo resolves them lazily, and a typo would pass its parser only
+// to kill the matching traffic at runtime.
 func (e *Engine) ValidateNet(req nodeapi.ValidateNetRequest) error {
-	if req.DNS != nil && req.DNS.Enable {
-		// Hosts live outside the dns section and are already checked by the panel.
-		section := dnsSection(nodeapi.DesiredState{DNS: req.DNS})
-		raw, err := json.Marshal(section)
-		if err != nil {
-			return err
-		}
-		var dns config.RawDNS
-		if err := json.Unmarshal(raw, &dns); err != nil {
-			return err
-		}
+	// WARP and the exits are not part of the editable triple; the node's own
+	// ones are the context a candidate route targeting them is checked against.
+	e.mu.Lock()
+	warp, exits := e.applied.Warp, e.applied.Exits
+	e.mu.Unlock()
+	st := nodeapi.DesiredState{DNS: req.DNS, Routes: req.Routes, Outbounds: req.Outbounds, Warp: warp, Exits: exits}
+	if err := checkRuleTargets(st, true); err != nil {
+		return err
 	}
-	for _, o := range req.Outbounds {
-		var m map[string]any
-		if err := json.Unmarshal(o.Config, &m); err != nil {
-			return err
-		}
-		m["name"] = o.Name
-		if _, err := adapter.ParseProxy(m); err != nil {
-			return err
-		}
+	proxies, err := outbounds(st)
+	if err != nil {
+		return err
 	}
-	for _, r := range req.Routes.Rules {
-		typ, value, target, params := splitNodeRule(r.Rule)
-		if typ == "GEOIP" || typ == "GEOSITE" || typ == "SRC-GEOIP" {
-			continue
-		}
-		if _, err := mrules.ParseRule(typ, value, target, params, nil); err != nil {
-			return err
-		}
+	cfg := map[string]any{
+		"mode":      "rule",
+		"log-level": "warning",
+		"dns":       dnsSection(st),
+		"proxies":   proxies,
+		"rules":     append(rules(st, true), "MATCH,DIRECT"),
 	}
-	return nil
+	if hosts := dnsHosts(st); len(hosts) > 0 {
+		cfg["hosts"] = hosts
+	}
+	if needsGeo(st) {
+		cfg["geodata-mode"] = true
+		cfg["geo-auto-update"] = false
+		cfg["geox-url"] = geox.URL
+	}
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	_, err = executor.ParseWithBytes(raw)
+	return err
 }
 
-// splitNodeRule splits a validated "TYPE,VALUE,TARGET[,no-resolve]" rule for mihomo.
-func splitNodeRule(rule string) (typ, value, target string, params []string) {
+// splitNodeRule splits a "TYPE,VALUE,TARGET[,no-resolve]" rule for mihomo. A
+// 2-part "MATCH,target" matches everything. Anything else malformed reports
+// ok=false instead of panicking: validation and tests must never kill a request.
+func splitNodeRule(rule string) (typ, value, target string, params []string, ok bool) {
 	parts := strings.Split(rule, ",")
+	if len(parts) == 2 && strings.ToUpper(strings.TrimSpace(parts[0])) == "MATCH" {
+		return "MATCH", "", strings.TrimSpace(parts[1]), nil, true
+	}
+	if len(parts) < 3 || len(parts) > 4 {
+		return "", "", "", nil, false
+	}
 	typ, value, target = parts[0], parts[1], parts[2]
 	if len(parts) == 4 {
 		params = []string{strings.TrimSpace(parts[3])}
 	}
-	return typ, value, target, params
+	return typ, value, target, params, true
 }
 
 // TargetAllowed says whether the node may test dest as a REALITY target for the panel:
