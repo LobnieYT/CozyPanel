@@ -564,7 +564,7 @@ function GlobalDNSCard({ doc }: { doc: string }) {
     e.preventDefault();
     save.mutate({ node_dns: dnsToJson(form, hostRows) });
   };
-  const set = (k: keyof DnsDoc) => (v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof DnsDoc, v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <section className="card glass max-w-4xl">
       <form onSubmit={submit} noValidate>
@@ -883,7 +883,7 @@ function SubDNSCard({ doc }: { doc: string }) {
     if (form.ipv6) out.ipv6 = true;
     save.mutate({ sub_dns: JSON.stringify(out) });
   };
-  const set = (k: keyof DnsDoc) => (v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof DnsDoc, v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <section className="card glass max-w-4xl">
       <form onSubmit={submit} noValidate>

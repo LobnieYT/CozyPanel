@@ -113,7 +113,7 @@ export function NodeDNSSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
     e.preventDefault();
     save.mutate({ dns_override: inherit ? "" : dnsToJson(form, hostRows) });
   };
-  const set = (k: keyof DnsDoc) => (v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof DnsDoc, v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <form onSubmit={submit} noValidate>
       <InheritRow on={inherit} onChange={setInherit} />
