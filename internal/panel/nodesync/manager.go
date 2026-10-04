@@ -303,6 +303,18 @@ func (m *Manager) RouteTest(ctx context.Context, id int64, req nodeapi.RouteTest
 	return v.RouteTest(ctx, req)
 }
 
+// DNSMatch asks the node which of its effective DNS servers a domain would be
+// asked of, without resolving anything.
+func (m *Manager) DNSMatch(ctx context.Context, id int64, req nodeapi.DNSMatchRequest) (nodeapi.DNSMatchResult, error) {
+	v, err := clientOf[interface {
+		DNSMatch(context.Context, nodeapi.DNSMatchRequest) (nodeapi.DNSMatchResult, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.DNSMatchResult{}, err
+	}
+	return v.DNSMatch(ctx, req)
+}
+
 // GeoStatus lists the node's geodata files.
 func (m *Manager) GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error) {
 	v, err := clientOf[interface {

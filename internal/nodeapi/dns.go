@@ -53,6 +53,15 @@ func FallbackFilterSection(f DNSFallbackFilter) map[string]any {
 	return out
 }
 
+// PolicyMatcher normalizes a DNS policy key the way mihomo reads it: a
+// "domain:" prefix is how the panel writes a plain suffix, and mihomo only
+// knows plain suffixes (its trie would file "domain:example.com" under a label
+// no real query ever has). IP networks never match a domain query either and
+// are refused by validation, so they never reach here.
+func PolicyMatcher(k string) string {
+	return strings.TrimPrefix(k, "domain:")
+}
+
 // SplitServers divides servers into the default addresses and the policy map
 // (matcher → server addresses), the way mihomo reads them: what nothing else
 // claims goes to the defaults.
@@ -65,7 +74,8 @@ func SplitServers(servers []DNSServer) (defaults []string, policy map[string][]s
 			continue
 		}
 		for _, k := range s.Domains {
-			policy[k] = append(policy[k], addr)
+			m := PolicyMatcher(k)
+			policy[m] = append(policy[m], addr)
 		}
 	}
 	return defaults, policy

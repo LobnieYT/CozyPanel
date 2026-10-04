@@ -360,8 +360,10 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
   const [network, setNetwork] = useState<"tcp" | "udp">("tcp");
   const [inbound, setInbound] = useState("");
   const [res, setRes] = useState<Schemas["RouteTestOutputBody"] | null>(null);
+  const [dns, setDns] = useState<Schemas["DnsMatchOutputBody"] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dnsBusy, setDnsBusy] = useState(false);
   const run = () => {
     setBusy(true);
     setError("");
@@ -379,6 +381,26 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
       (e: unknown) => {
         setError(errorText(e));
         setBusy(false);
+      },
+    );
+  };
+  const runDns = () => {
+    setDnsBusy(true);
+    setError("");
+    setDns(null);
+    void unwrap(
+      api.POST("/api/v1/nodes/{id}/dns-match", {
+        params: { path: { id: nodeId } },
+        body: { domain: domain.trim() },
+      }),
+    ).then(
+      (v) => {
+        setDns(v);
+        setDnsBusy(false);
+      },
+      (e: unknown) => {
+        setError(errorText(e));
+        setDnsBusy(false);
       },
     );
   };
@@ -408,9 +430,14 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
       <Field label={t("network.tInbound")}>
         <input className="input" value={inbound} onChange={(e) => setInbound(e.target.value)} placeholder="" />
       </Field>
-      <Button variant="primary" disabled={(!domain.trim() && !ip.trim()) || busy} loading={busy} onClick={run}>
-        {t("network.tRun")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" disabled={(!domain.trim() && !ip.trim()) || busy} loading={busy} onClick={run}>
+          {t("network.tRun")}
+        </Button>
+        <Button variant="glass" disabled={!domain.trim() || dnsBusy} loading={dnsBusy} onClick={runDns}>
+          {t("network.tDnsRun")}
+        </Button>
+      </div>
       {error ? (
         <p className="mt-3 text-xs text-[var(--berry-600)]" role="alert">
           {error}
@@ -424,6 +451,12 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
           ) : (
             <p className="text-xs text-[var(--ink-500)]">{t("network.tOffline")}</p>
           )}
+        </div>
+      ) : null}
+      {dns ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <DNSCard title={t("network.tDry")} m={dns.dry} />
+          {dns.live ? <DNSCard title={t("network.tLive")} m={dns.live} /> : <p className="text-xs text-[var(--ink-500)]">{t("network.tOffline")}</p>}
         </div>
       ) : null}
     </div>
@@ -443,6 +476,28 @@ function MatchCard({ title, m }: { title: string; m: { matched: boolean; rule?: 
             {t("network.tTarget")}: <b className="mono">{m.target}</b>
           </div>
           <div className="mono mt-1 break-all">{m.rule}</div>
+        </div>
+      ) : null}
+      {m.geo_skipped ? <div className="mt-1 text-xs text-[var(--honey-600)]">{t("network.tGeo")}</div> : null}
+    </div>
+  );
+}
+
+function DNSCard({ title, m }: { title: string; m: { matched: boolean; key?: string; servers?: string[]; geo_skipped?: boolean } }) {
+  return (
+    <div className="panel-soft p-3">
+      <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold">
+        {title} · {t("network.tDns")}
+        {m.matched ? <Pill tone="ok">{t("network.tMatched")}</Pill> : <Pill tone="off">{t("network.tDnsDefault")}</Pill>}
+      </div>
+      {m.matched ? (
+        <div className="text-xs text-[var(--ink-600)]">
+          <div>
+            {t("network.tDnsKey")}: <b className="mono">{m.key}</b>
+          </div>
+          <div className="mono mt-1 break-all">
+            {t("network.tDnsServers")}: {(m.servers ?? []).join(", ")}
+          </div>
         </div>
       ) : null}
       {m.geo_skipped ? <div className="mt-1 text-xs text-[var(--honey-600)]">{t("network.tGeo")}</div> : null}

@@ -894,6 +894,63 @@
         ],
         "type": "object"
       },
+      "DnsMatch": {
+        "additionalProperties": false,
+        "properties": {
+          "geo_skipped": {
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Совпавший матчер или default",
+            "type": "string"
+          },
+          "matched": {
+            "type": "boolean"
+          },
+          "servers": {
+            "description": "Серверы, которые наперегонки спросят ответ",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "matched"
+        ],
+        "type": "object"
+      },
+      "DnsMatchInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "maxLength": 253,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "DnsMatchOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dry": {
+            "$ref": "#/components/schemas/DnsMatch",
+            "description": "Сухая проверка в панели, без ноды"
+          },
+          "live": {
+            "$ref": "#/components/schemas/DnsMatch",
+            "description": "Матчинг матчером mihomo ноды; null — нода недоступна"
+          }
+        },
+        "required": [
+          "dry"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -5310,6 +5367,59 @@
           "node"
         ],
         "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/dns-match": {
+      "post": {
+        "operationId": "test-node-dns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DnsMatchInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DnsMatchOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить DNS: какой сервер ответит",
+        "tags": [
+          "node"
+        ]
       }
     },
     "/api/v1/nodes/{id}/geo": {

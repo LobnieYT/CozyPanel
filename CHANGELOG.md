@@ -3,6 +3,21 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.2
+### en
+- Subscription app icons actually load: the server serves the bundled icons instead of answering 404, so the letter placeholders are gone.
+- DNS policies that could never match are fixed: `domain:` matchers now resolve as plain suffixes, and IP addresses/networks are refused at save with an explanation instead of silently never matching.
+- New DNS check on the node's card: which server a domain would be asked of, dry in the panel and live through the node's own matcher — no more guessing why the default answers.
+- The node fetches geodata before applying a GEO configuration, so a policy never compiles against missing data.
+- The DNS editor says it outright: servers under one matcher race (first answer wins); ordered fallback goes through fallback + fallback-filter.
+
+### ru
+- Иконки приложений в подписках реально грузятся: сервер отдаёт встроенные иконки вместо 404, букв-заглушек больше нет.
+- Починены DNS-политики, которые не могли сработать никогда: матчеры `domain:` теперь резолвятся как обычные суффиксы, а IP-адреса и сети отклоняются при сохранении с объяснением, а не молча не матчатся.
+- Новая проверка DNS на карточке ноды: какой сервер спросят за домен — сухо в панели и живо матчером самой ноды. Больше не надо гадать, почему отвечает default.
+- Нода докачивает геодату до применения GEO-конфигурации: политика не собирается по отсутствующим данным.
+- Редактор DNS говорит прямо: серверы одного условия опрашиваются наперегонки (побеждает первый ответивший); порядок — через fallback + fallback-filter.
+
 ## 1.1.1
 ### en
 - Subscription page: bundled app icons (Happ, Streisand, v2RayTun, INCY, Hiddify, Koala Clash) and the Cozy logo, a "Welcome, {name}!" greeting, and a green unlimited ring.

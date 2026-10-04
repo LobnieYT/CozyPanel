@@ -90,6 +90,58 @@ type routeTestOutput struct {
 	}
 }
 
+type dnsMatchInput struct {
+	ID   int64 `path:"id" minimum:"1"`
+	Body struct {
+		Domain string `json:"domain" minLength:"1" maxLength:"253"`
+	}
+}
+
+type dnsMatch struct {
+	Matched bool     `json:"matched"`
+	Key     string   `json:"key,omitempty" doc:"Совпавший матчер или default"`
+	Servers []string `json:"servers,omitempty" doc:"Серверы, которые наперегонки спросят ответ"`
+	// GeoSkipped: GEO-матчер пропущен без геодаты (сухая проверка),
+	// живой тест на ноде точнее.
+	GeoSkipped bool `json:"geo_skipped,omitempty"`
+}
+
+type dnsMatchOutput struct {
+	Body struct {
+		Dry  dnsMatch  `json:"dry" doc:"Сухая проверка в панели, без ноды"`
+		Live *dnsMatch `json:"live,omitempty" doc:"Матчинг матчером mihomo ноды; null — нода недоступна"`
+	}
+}
+
+func (h *handlers) testNodeDNS(ctx context.Context, in *dnsMatchInput) (*dnsMatchOutput, error) {
+	n, err := h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	domain := strings.TrimSpace(in.Body.Domain)
+	if domain == "" {
+		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body", Message: "domain"})
+	}
+	res, err := netcfg.Resolve(ctx, h.d.Store.Q, h.d.Settings, n)
+	if err != nil {
+		return nil, err
+	}
+	out := &dnsMatchOutput{}
+	var servers []nodeapi.DNSServer
+	if res.DNS != nil && res.DNS.Enable {
+		servers = res.DNS.Servers
+	}
+	key, addrs, matched, geo := netcfg.MatchDNSPolicy(servers, domain)
+	out.Body.Dry = dnsMatch{Matched: matched, Key: key, Servers: addrs, GeoSkipped: geo}
+	if h.d.Nodes != nil {
+		live, lerr := h.d.Nodes.DNSMatch(ctx, n.ID, nodeapi.DNSMatchRequest{Domain: domain})
+		if lerr == nil {
+			out.Body.Live = &dnsMatch{Matched: live.Matched, Key: live.Key, Servers: live.Servers}
+		}
+	}
+	return out, nil
+}
+
 type probeInput struct {
 	ID   int64 `path:"id" minimum:"1"`
 	Body struct {
@@ -115,6 +167,7 @@ func (h *handlers) registerNetwork() {
 	huma.Register(h.api, huma.Operation{OperationID: "get-node-network", Method: http.MethodGet, Path: "/api/v1/nodes/{id}/network", Summary: "Сеть ноды: оверрайды и итог", Tags: []string{"node"}}, h.getNodeNetwork)
 	huma.Register(h.api, huma.Operation{OperationID: "update-node-network", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPatch, Path: "/api/v1/nodes/{id}/network", Summary: "Изменить сеть ноды", Tags: []string{"node"}}, h.updateNodeNetwork)
 	huma.Register(h.api, huma.Operation{OperationID: "test-node-route", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/route-test", Summary: "Проверить маршрут: сухое и живое", Tags: []string{"node"}}, h.testNodeRoute)
+	huma.Register(h.api, huma.Operation{OperationID: "test-node-dns", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/dns-match", Summary: "Проверить DNS: какой сервер ответит", Tags: []string{"node"}}, h.testNodeDNS)
 	huma.Register(h.api, huma.Operation{OperationID: "probe-node-outbound", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/probe", Summary: "Проверить исходящее ноды", Tags: []string{"node"}}, h.probeNodeOutbound)
 	huma.Register(h.api, huma.Operation{OperationID: "import-node-outbound", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/outbounds/import", Summary: "Импорт исходящего из WireGuard .conf", Tags: []string{"node"}}, h.importNodeOutbound)
 	huma.Register(h.api, huma.Operation{OperationID: "node-geo", Method: http.MethodGet, Path: "/api/v1/nodes/{id}/geo", Summary: "Геоданные ноды", Tags: []string{"node"}}, h.nodeGeo)

@@ -403,6 +403,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/dns-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить DNS: какой сервер ответит */
+        post: operations["test-node-dns"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/geo": {
         parameters: {
             query?: never;
@@ -1418,6 +1435,23 @@ export interface components {
             /** Format: date-time */
             last_seen: string;
             online: boolean;
+        };
+        DnsMatch: {
+            geo_skipped?: boolean;
+            /** @description Совпавший матчер или default */
+            key?: string;
+            matched: boolean;
+            /** @description Серверы, которые наперегонки спросят ответ */
+            servers?: string[];
+        };
+        DnsMatchInputBody: {
+            domain: string;
+        };
+        DnsMatchOutputBody: {
+            /** @description Сухая проверка в панели, без ноды */
+            dry: components["schemas"]["DnsMatch"];
+            /** @description Матчинг матчером mihomo ноды; null — нода недоступна */
+            live?: components["schemas"]["DnsMatch"];
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -3500,6 +3534,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "test-node-dns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DnsMatchInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DnsMatchOutputBody"];
+                };
             };
             /** @description Error */
             default: {

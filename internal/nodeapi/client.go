@@ -141,6 +141,14 @@ func (c *Client) RouteTest(ctx context.Context, req RouteTestRequest) (RouteTest
 	return r, err
 }
 
+// DNSMatch asks the node which of its effective DNS servers a domain would be
+// asked of, without resolving anything.
+func (c *Client) DNSMatch(ctx context.Context, req DNSMatchRequest) (DNSMatchResult, error) {
+	var r DNSMatchResult
+	err := c.do(ctx, http.MethodPost, "/v1/dns/match", req, &r, 25*time.Second)
+	return r, err
+}
+
 // GeoStatus lists the node's geodata files.
 func (c *Client) GeoStatus(ctx context.Context) (GeoStatus, error) {
 	var r GeoStatus

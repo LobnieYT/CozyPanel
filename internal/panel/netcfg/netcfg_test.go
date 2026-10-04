@@ -265,3 +265,40 @@ func TestNodeDNSRequiresDefault(t *testing.T) {
 		t.Fatalf("want no_default, got %v %q", f, code)
 	}
 }
+
+func TestPolicyKeys(t *testing.T) {
+	for _, ok := range []string{"geosite:google-gemini", "domain:example.com", "example.com", ".example.com"} {
+		if err := checkPolicyKey(ok); err != nil {
+			t.Errorf("%q refused: %v", ok, err)
+		}
+	}
+	// IPs and networks never match a domain query in mihomo: refuse them loudly
+	// instead of rendering a policy that silently never matches.
+	for _, bad := range []string{"10.0.0.0/8", "1.2.3.4", "bogus!", "domain:not a domain"} {
+		if err := checkPolicyKey(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
+
+func TestMatchDNSPolicy(t *testing.T) {
+	servers := []nodeapi.DNSServer{
+		{Address: "1.1.1.1"},
+		{Address: "https://xbox-dns.ru/dns-query", Domains: []string{"geosite:google-gemini"}},
+		{Address: "77.88.8.8", Domains: []string{"domain:yandex.ru"}},
+	}
+	key, addrs, matched, geo := MatchDNSPolicy(servers, "mail.yandex.ru")
+	// The geosite key sorts first and is skipped dry: geo says a live test
+	// may still judge otherwise, like with routes.
+	if !matched || key != "yandex.ru" || len(addrs) != 1 || !geo {
+		t.Fatalf("suffix: %q %v %v %v", key, addrs, matched, geo)
+	}
+	key, _, matched, geo = MatchDNSPolicy(servers, "gemini.google.com")
+	if matched || !geo || key != "" {
+		t.Fatalf("geosite must skip dry: %q %v %v", key, matched, geo)
+	}
+	key, addrs, matched, _ = MatchDNSPolicy(servers, "example.com")
+	if matched || key != "" || addrs != nil {
+		t.Fatalf("unclaimed: %q %v %v", key, addrs, matched)
+	}
+}

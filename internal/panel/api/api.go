@@ -107,6 +107,9 @@ type NodeRuntime interface {
 	ValidateNet(ctx context.Context, id int64, req nodeapi.ValidateNetRequest) error
 	// RouteTest asks the node which rule a connection would hit, without traffic.
 	RouteTest(ctx context.Context, id int64, req nodeapi.RouteTestRequest) (nodeapi.RouteTestResult, error)
+	// DNSMatch asks the node which of its effective DNS servers a domain would
+	// be asked of, without resolving anything.
+	DNSMatch(ctx context.Context, id int64, req nodeapi.DNSMatchRequest) (nodeapi.DNSMatchResult, error)
 	// GeoStatus lists the node's geodata files; UpdateGeo re-downloads them.
 	GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error)
 	UpdateGeo(ctx context.Context, id int64) (nodeapi.GeoStatus, error)

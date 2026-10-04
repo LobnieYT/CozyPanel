@@ -2,11 +2,14 @@ package node
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/netip"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/metacubex/mihomo/component/geodata"
 	C "github.com/metacubex/mihomo/constant"
 	mrules "github.com/metacubex/mihomo/rules"
 
@@ -63,6 +66,55 @@ func (e *Engine) RouteTest(ctx context.Context, req nodeapi.RouteTestRequest) (n
 		}
 	}
 	return nodeapi.RouteTestResult{}, nil
+}
+
+// DNSMatch says which of the node's effective DNS servers a domain would be
+// asked of: the first policy whose matcher claims it, or the defaults when
+// none does. Keys run sorted, the order mihomo reads them in (the policy map
+// marshals sorted and mihomo keeps the order). GEO matchers read the node's
+// geodata, fetched first like RouteTest does.
+func (e *Engine) DNSMatch(ctx context.Context, req nodeapi.DNSMatchRequest) (nodeapi.DNSMatchResult, error) {
+	e.mu.Lock()
+	st := e.applied
+	e.mu.Unlock()
+	if st.DNS == nil || !st.DNS.Enable {
+		return nodeapi.DNSMatchResult{}, nil
+	}
+	domain := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(req.Domain), "."))
+	if domain == "" {
+		return nodeapi.DNSMatchResult{}, errors.New("empty domain")
+	}
+	if needsGeo(st) {
+		if err := e.ensureGeoData(ctx); err != nil {
+			return nodeapi.DNSMatchResult{}, err
+		}
+	}
+	defaults, policy := nodeapi.SplitServers(st.DNS.Servers)
+	keys := make([]string, 0, len(policy))
+	for k := range policy {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if name, ok := strings.CutPrefix(k, "geosite:"); ok {
+			m, err := geodata.LoadGeoSiteMatcher(name)
+			if err != nil {
+				continue
+			}
+			if m.ApplyDomain(domain) {
+				return nodeapi.DNSMatchResult{Matched: true, Key: k, Servers: policy[k]}, nil
+			}
+			continue
+		}
+		suffix := strings.ToLower(strings.TrimPrefix(k, "."))
+		if suffix != "" && (domain == suffix || strings.HasSuffix(domain, "."+suffix)) {
+			return nodeapi.DNSMatchResult{Matched: true, Key: k, Servers: policy[k]}, nil
+		}
+	}
+	if len(defaults) == 0 {
+		return nodeapi.DNSMatchResult{}, nil
+	}
+	return nodeapi.DNSMatchResult{Matched: true, Key: "default", Servers: defaults}, nil
 }
 
 // testMetadata builds the metadata a connection to (domain or ip):(port) would

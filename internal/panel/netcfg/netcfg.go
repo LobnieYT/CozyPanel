@@ -12,6 +12,7 @@ import (
 	"net/netip"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -584,7 +585,11 @@ func checkServer(s string) error {
 	return errors.New("bad scheme")
 }
 
-// checkPolicyKey accepts "geosite:<name>", "domain:<suffix>" or an IP network.
+// checkPolicyKey accepts "geosite:<name>", a plain suffix ("example.com", with
+// an optional leading dot) or the panel's "domain:<suffix>" spelling, which the
+// renderer strips to the plain suffix. IP addresses and networks are refused:
+// mihomo files them under labels no domain query ever has, so such a policy
+// would silently never match.
 func checkPolicyKey(k string) error {
 	if rest, ok := strings.CutPrefix(k, "geosite:"); ok {
 		if rest == "" || len(rest) > 64 {
@@ -597,19 +602,12 @@ func checkPolicyKey(k string) error {
 		}
 		return nil
 	}
-	if rest, ok := strings.CutPrefix(k, "domain:"); ok {
-		if !hostname.Valid(strings.TrimPrefix(rest, ".")) {
-			return errors.New("bad domain")
-		}
-		return nil
+	rest := strings.TrimPrefix(k, "domain:")
+	rest = strings.TrimPrefix(rest, ".")
+	if !hostname.Name(rest) {
+		return errors.New("bad key")
 	}
-	if _, err := netip.ParsePrefix(k); err == nil {
-		return nil
-	}
-	if net.ParseIP(k) != nil {
-		return nil
-	}
-	return errors.New("bad key")
+	return nil
 }
 
 // splitRule splits "TYPE,VALUE,TARGET[,no-resolve]".
@@ -775,6 +773,35 @@ type RouteInput struct {
 	Port    int
 	Network string // tcp (default) or udp
 	Inbound string
+}
+
+// MatchDNSPolicy returns the first DNS policy claiming domain, like mihomo
+// would: GEO matchers cannot be matched dryly and are skipped (geoSkipped says
+// a live test on the node is needed for a verdict), plain suffixes match the
+// name and its subdomains. Keys run sorted: the policy map marshals that way,
+// and mihomo keeps the order.
+func MatchDNSPolicy(servers []nodeapi.DNSServer, domain string) (key string, addrs []string, matched, geoSkipped bool) {
+	_, policy := nodeapi.SplitServers(servers)
+	domain = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(domain), "."))
+	keys := make([]string, 0, len(policy))
+	for k := range policy {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if strings.HasPrefix(strings.ToLower(k), "geosite:") {
+			geoSkipped = true
+			continue
+		}
+		suffix := strings.ToLower(strings.TrimPrefix(k, "."))
+		if suffix == "" {
+			continue
+		}
+		if domain == suffix || strings.HasSuffix(domain, "."+suffix) {
+			return k, policy[k], true, geoSkipped
+		}
+	}
+	return "", nil, false, geoSkipped
 }
 
 // MatchRoute returns the first rule matching in, like mihomo would. GEO and

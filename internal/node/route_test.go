@@ -1,6 +1,11 @@
 package node
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"cozy/internal/nodeapi"
+)
 
 // splitNodeRule never panics, whatever the state carries: a 2-part MATCH
 // matches everything, anything else malformed reports ok=false.
@@ -17,5 +22,30 @@ func TestSplitNodeRule(t *testing.T) {
 		if _, _, _, _, ok := splitNodeRule(bad); ok {
 			t.Fatalf("%q: parsed", bad)
 		}
+	}
+}
+
+// DNSMatch answers from the effective state without traffic: the first policy
+// claiming the domain, or the defaults. No GEO here, so no downloads.
+func TestDNSMatch(t *testing.T) {
+	e := &Engine{applied: nodeapi.DesiredState{DNS: &nodeapi.NodeDNS{Enable: true,
+		Servers: []nodeapi.DNSServer{
+			{Address: "1.1.1.1"},
+			{Address: "77.88.8.8", Domains: []string{"domain:yandex.ru"}},
+		}}}}
+	r, err := e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{Domain: "mail.yandex.ru"})
+	if err != nil || !r.Matched || r.Key != "yandex.ru" || len(r.Servers) != 1 {
+		t.Fatalf("suffix: %+v %v", r, err)
+	}
+	r, err = e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{Domain: "example.com"})
+	if err != nil || !r.Matched || r.Key != "default" || len(r.Servers) != 1 {
+		t.Fatalf("default: %+v %v", r, err)
+	}
+	if _, err := e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{}); err == nil {
+		t.Fatal("empty domain accepted")
+	}
+	e.applied.DNS.Enable = false
+	if r, err := e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{Domain: "example.com"}); err != nil || r.Matched {
+		t.Fatalf("disabled: %+v %v", r, err)
 	}
 }

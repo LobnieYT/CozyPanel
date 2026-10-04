@@ -2,6 +2,22 @@ package nodeapi
 
 import "testing"
 
+func TestPolicyMatcher(t *testing.T) {
+	if got := PolicyMatcher("domain:example.com"); got != "example.com" {
+		t.Fatalf("strip: %q", got)
+	}
+	if got := PolicyMatcher("geosite:google"); got != "geosite:google" {
+		t.Fatalf("geosite: %q", got)
+	}
+	def, policy := SplitServers([]DNSServer{
+		{Address: "1.1.1.1"},
+		{Address: "77.88.8.8", Domains: []string{"domain:yandex.ru"}},
+	})
+	if len(def) != 1 || len(policy["yandex.ru"]) != 1 || len(policy) != 1 {
+		t.Fatalf("split: %v %v", def, policy)
+	}
+}
+
 func TestRenderAddress(t *testing.T) {
 	for _, tc := range []struct {
 		in   DNSServer

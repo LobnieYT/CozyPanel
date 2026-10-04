@@ -389,6 +389,23 @@ type RouteTestResult struct {
 	Target  string `json:"target,omitempty"`
 }
 
+// DNSMatchRequest asks which of the effective DNS servers a domain would be
+// asked of: the first policy whose matcher claims it, or the defaults.
+type DNSMatchRequest struct {
+	Domain string `json:"domain"`
+}
+
+// DNSMatchResult names the matched policy key ("default" when none claimed the
+// domain) and the servers that would race for the answer. GeoSkipped says a
+// GEO matcher was skipped for lack of geodata (dry only): a live test on the
+// node may still judge otherwise.
+type DNSMatchResult struct {
+	Matched    bool     `json:"matched"`
+	Key        string   `json:"key,omitempty"`
+	Servers    []string `json:"servers,omitempty"`
+	GeoSkipped bool     `json:"geo_skipped,omitempty"`
+}
+
 // PoolQuota is what is left of one traffic pool for a slot, as of the policy's BaseSeq.
 type PoolQuota struct {
 	Pool      string `json:"pool"`

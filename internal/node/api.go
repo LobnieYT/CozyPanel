@@ -70,6 +70,20 @@ func Handler(e *Engine, log *slog.Logger) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, res)
 	})
+	mux.HandleFunc("POST /v1/dns/match", func(w http.ResponseWriter, r *http.Request) {
+		var req nodeapi.DNSMatchRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		defer cancel()
+		res, err := e.DNSMatch(ctx, req)
+		if err != nil {
+			fail(w, log, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
 	mux.HandleFunc("GET /v1/geo", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, e.GeoStatus())
 	})

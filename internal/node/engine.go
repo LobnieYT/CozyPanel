@@ -195,6 +195,14 @@ func (e *Engine) Apply(st nodeapi.DesiredState) (nodeapi.ApplyResult, error) {
 	if err := checkRuleTargets(st, true); err != nil {
 		return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
 	}
+	// GEO rules and policies read the node's geodata files: fetch them before
+	// mihomo parses the config, or a policy would compile against missing data
+	// and the state would fail closed here instead of applying half-blind.
+	if needsGeo(st) {
+		if err := e.ensureGeoData(context.Background()); err != nil {
+			return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
+		}
+	}
 	raw, rejected, err := buildConfig(st, cert, e.allowPrivate)
 	if err != nil {
 		return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
