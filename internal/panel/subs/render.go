@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"cozy/internal/geox"
+	"cozy/internal/nodeapi"
 	"cozy/internal/panel/domain"
 	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/store/db"
@@ -130,6 +131,8 @@ type Profile struct {
 	Rules []string
 	// DNS is the admin's subscription DNS (sub_dns); nil: the built-in profile DNS.
 	DNS *netcfg.SubDNS
+	// AdBlock is connection-level ad blocking (sub_adblock); nil: off.
+	AdBlock *nodeapi.AdBlock
 }
 
 type proxy struct {
@@ -267,6 +270,9 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 	// The panel and the nodes stay out of the tunnel whatever the admin's rules say.
 	rules := append(directRules(p.Direct), "GEOIP,LAN,DIRECT,no-resolve")
 	rules = append(rules, p.Rules...)
+	// AdBlock after the admin's rules: explicit routes win over the automatic
+	// block, and blocked ads never leave through the tunnel.
+	rules = append(rules, nodeapi.AdBlockRules(p.AdBlock)...)
 	cfg := map[string]any{
 		"mixed-port": 7890, "allow-lan": false, "mode": "rule", "log-level": "warning",
 		// The node has no IPv6 on most VPS: with it on, apps first try IPv6 through the
@@ -313,7 +319,8 @@ func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 		delete(dns, "enhanced-mode")
 		delete(dns, "fake-ip-range")
 	}
-	ns := append([]string{}, doc.Nameservers...)
+	defaults, policy := nodeapi.SplitServers(doc.Servers)
+	ns := defaults
 	if ruDirect {
 		for i, s := range ns {
 			if strings.HasPrefix(s, "https://") {
@@ -327,17 +334,29 @@ func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 	} else {
 		delete(dns, "proxy-server-nameserver")
 	}
-	if len(doc.Policy) > 0 {
-		policy := map[string]any{}
-		for k, vs := range doc.Policy {
-			policy[k] = append([]string{}, vs...)
+	if len(doc.Fallback) > 0 {
+		dns["fallback"] = append([]string{}, doc.Fallback...)
+	} else {
+		delete(dns, "fallback")
+	}
+	if f := doc.FallbackFilter; len(f.GeoIP)+len(f.Geosite)+len(f.IPCIDR)+len(f.Domain) > 0 {
+		dns["fallback-filter"] = map[string]any{
+			"geoip": f.GeoIP, "geosite": f.Geosite, "ipcidr": f.IPCIDR, "domain": f.Domain,
+		}
+	} else {
+		delete(dns, "fallback-filter")
+	}
+	if len(policy) > 0 {
+		out := map[string]any{}
+		for k, vs := range policy {
+			out[k] = append([]string{}, vs...)
 		}
 		if ruDirect {
-			if _, ok := policy["geosite:category-ru"]; !ok {
-				policy["geosite:category-ru"] = []string{"77.88.8.8", "77.88.8.1"}
+			if _, ok := out["geosite:category-ru"]; !ok {
+				out["geosite:category-ru"] = []string{"77.88.8.8", "77.88.8.1"}
 			}
 		}
-		dns["nameserver-policy"] = policy
+		dns["nameserver-policy"] = out
 	} else if ruDirect {
 		dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}
 	} else {
@@ -361,10 +380,15 @@ func needsProfileGeo(rules []string, doc *netcfg.SubDNS) bool {
 		}
 	}
 	if doc != nil {
-		for k := range doc.Policy {
-			if strings.HasPrefix(strings.ToLower(k), "geosite:") {
-				return true
+		for _, s := range doc.Servers {
+			for _, k := range s.Domains {
+				if strings.HasPrefix(strings.ToLower(k), "geosite:") {
+					return true
+				}
 			}
+		}
+		if len(doc.FallbackFilter.Geosite) > 0 || len(doc.FallbackFilter.GeoIP) > 0 {
+			return true
 		}
 	}
 	return false

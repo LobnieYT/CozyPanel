@@ -22,15 +22,17 @@ import (
 )
 
 const (
-	MaxDNSServers  = 8
+	MaxDNSServers  = 16
 	MaxDNSPolicy   = 64
 	MaxDNSHosts    = 512
 	MaxRoutes      = 500
 	MaxOutbounds   = 32
-	MaxSubServers  = 4
+	MaxSubServers  = 8
 	MaxSubPolicy   = 32
 	maxRouteLine   = 512
 	maxOutboundDoc = 8192
+	maxServerTag   = 32
+	maxFilterItems = 128
 )
 
 // fieldErr is a validation failure naming its field, like the API reports it.
@@ -53,61 +55,199 @@ func Detail(err error) (field, code string, line int) {
 	return "", "invalid", 0
 }
 
-// ParseNodeDNS parses a node_dns document; empty means DNS stays off.
+// ParseNodeDNS parses a node_dns document; empty means DNS stays off. The flat
+// legacy shape (nameservers[] + policy{}) converts to named servers on the fly.
 func ParseNodeDNS(raw string) (*nodeapi.NodeDNS, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
 	}
-	var d nodeapi.NodeDNS
-	if err := json.Unmarshal([]byte(raw), &d); err != nil {
+	var keys map[string]any
+	if err := json.Unmarshal([]byte(raw), &keys); err != nil {
 		return nil, &fieldErr{Field: "dns", Code: "bad_json"}
+	}
+	var d nodeapi.NodeDNS
+	if _, isNew := keys["servers"]; isNew || !hasLegacyDNSKeys(keys) {
+		if err := json.Unmarshal([]byte(raw), &d); err != nil {
+			return nil, &fieldErr{Field: "dns", Code: "bad_json"}
+		}
+	} else {
+		var old nodeDNSLegacy
+		if err := json.Unmarshal([]byte(raw), &old); err != nil {
+			return nil, &fieldErr{Field: "dns", Code: "bad_json"}
+		}
+		d = old.convert()
 	}
 	if !d.Enable {
 		return &nodeapi.NodeDNS{}, nil
 	}
-	for _, s := range d.Nameservers {
-		if err := checkServer(s); err != nil {
-			return nil, &fieldErr{Field: "nameservers", Code: "bad_server"}
+	if err := checkNodeDNS(&d); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// nodeDNSLegacy is the flat pre-servers shape, converted on parse.
+type nodeDNSLegacy struct {
+	Enable       bool                `json:"enable"`
+	IPv6         bool                `json:"ipv6"`
+	Nameservers  []string            `json:"nameservers"`
+	ProxyServers []string            `json:"proxy_servers"`
+	Policy       map[string][]string `json:"policy"`
+	Hosts        map[string][]string `json:"hosts"`
+}
+
+// hasLegacyDNSKeys says the document uses the flat shape.
+func hasLegacyDNSKeys(keys map[string]any) bool {
+	for _, k := range []string{"nameservers", "policy"} {
+		if _, ok := keys[k]; ok {
+			return true
 		}
+	}
+	return false
+}
+
+// convert turns flat servers + policy into named servers: policy keys attach to
+// the servers named by their values, unknown values become servers of their own.
+func (old nodeDNSLegacy) convert() nodeapi.NodeDNS {
+	d := nodeapi.NodeDNS{Enable: old.Enable, IPv6: old.IPv6, ProxyServers: old.ProxyServers, Hosts: old.Hosts}
+	at := map[string]int{}
+	for _, s := range old.Nameservers {
+		at[s] = len(d.Servers)
+		d.Servers = append(d.Servers, nodeapi.DNSServer{Address: s})
+	}
+	for key, vs := range old.Policy {
+		for _, s := range vs {
+			if i, ok := at[s]; ok {
+				d.Servers[i].Domains = append(d.Servers[i].Domains, key)
+				continue
+			}
+			at[s] = len(d.Servers)
+			d.Servers = append(d.Servers, nodeapi.DNSServer{Address: s, Domains: []string{key}})
+		}
+	}
+	return d
+}
+
+// checkNodeDNS validates an enabled node DNS document.
+func checkNodeDNS(d *nodeapi.NodeDNS) error {
+	if len(d.Servers) == 0 {
+		return &fieldErr{Field: "servers", Code: "no_servers"}
+	}
+	if len(d.Servers) > MaxDNSServers {
+		return &fieldErr{Field: "servers", Code: "too_many_servers"}
+	}
+	def := false
+	for i := range d.Servers {
+		if err := checkDNSServer(&d.Servers[i]); err != nil {
+			return err
+		}
+		if len(d.Servers[i].Domains) == 0 {
+			def = true
+		}
+	}
+	if !def && len(d.Fallback) == 0 {
+		return &fieldErr{Field: "servers", Code: "no_default"}
 	}
 	for _, s := range d.ProxyServers {
 		if err := checkServer(s); err != nil {
-			return nil, &fieldErr{Field: "proxy_servers", Code: "bad_server"}
+			return &fieldErr{Field: "proxy_servers", Code: "bad_server"}
 		}
 	}
-	if len(d.Nameservers) == 0 {
-		return nil, &fieldErr{Field: "nameservers", Code: "no_servers"}
+	if len(d.ProxyServers) > MaxDNSServers {
+		return &fieldErr{Field: "proxy_servers", Code: "too_many_servers"}
 	}
-	if len(d.Nameservers) > MaxDNSServers || len(d.ProxyServers) > MaxDNSServers {
-		return nil, &fieldErr{Field: "nameservers", Code: "too_many_servers"}
-	}
-	if len(d.Policy) > MaxDNSPolicy {
-		return nil, &fieldErr{Field: "policy", Code: "too_many_rules"}
-	}
-	for k, vs := range d.Policy {
-		if err := checkPolicyKey(k); err != nil {
-			return nil, &fieldErr{Field: "policy", Code: "bad_key"}
+	for _, s := range d.Fallback {
+		if err := checkServer(s); err != nil {
+			return &fieldErr{Field: "fallback", Code: "bad_server"}
 		}
-		for _, s := range vs {
-			if err := checkServer(s); err != nil {
-				return nil, &fieldErr{Field: "policy", Code: "bad_server"}
-			}
-		}
+	}
+	if err := checkFallbackFilter(&d.FallbackFilter); err != nil {
+		return err
 	}
 	if len(d.Hosts) > MaxDNSHosts {
-		return nil, &fieldErr{Field: "hosts", Code: "too_many_hosts"}
+		return &fieldErr{Field: "hosts", Code: "too_many_hosts"}
 	}
 	for k, vs := range d.Hosts {
 		if !hostname.Valid(k) {
-			return nil, &fieldErr{Field: "hosts", Code: "bad_name"}
+			return &fieldErr{Field: "hosts", Code: "bad_name"}
 		}
 		for _, s := range vs {
 			if net.ParseIP(s) == nil {
-				return nil, &fieldErr{Field: "hosts", Code: "bad_address"}
+				return &fieldErr{Field: "hosts", Code: "bad_address"}
 			}
 		}
 	}
-	return &d, nil
+	return nil
+}
+
+// checkDNSServer validates one named resolver.
+func checkDNSServer(s *nodeapi.DNSServer) error {
+	if err := checkServer(s.Address); err != nil {
+		return &fieldErr{Field: "servers", Code: "bad_server"}
+	}
+	if s.Port < 0 || s.Port > 65535 {
+		return &fieldErr{Field: "servers", Code: "bad_port"}
+	}
+	if s.Tag != "" && (len(s.Tag) > maxServerTag || strings.ContainsAny(s.Tag, ",\n\r")) {
+		return &fieldErr{Field: "servers", Code: "bad_tag"}
+	}
+	if len(s.Domains) > MaxDNSPolicy {
+		return &fieldErr{Field: "servers", Code: "too_many_rules"}
+	}
+	for _, k := range s.Domains {
+		if err := checkPolicyKey(k); err != nil {
+			return &fieldErr{Field: "servers", Code: "bad_key"}
+		}
+	}
+	return nil
+}
+
+// checkFallbackFilter validates poisoning-protection lists.
+func checkFallbackFilter(f *nodeapi.DNSFallbackFilter) error {
+	count := 0
+	for _, v := range f.GeoIP {
+		if !validGeoName(v) {
+			return &fieldErr{Field: "fallback_filter", Code: "bad_key"}
+		}
+		count++
+	}
+	for _, v := range f.Geosite {
+		if !validGeoName(v) {
+			return &fieldErr{Field: "fallback_filter", Code: "bad_key"}
+		}
+		count++
+	}
+	for _, v := range f.IPCIDR {
+		if _, err := netip.ParsePrefix(v); err != nil {
+			if net.ParseIP(v) == nil {
+				return &fieldErr{Field: "fallback_filter", Code: "bad_key"}
+			}
+		}
+		count++
+	}
+	for _, v := range f.Domain {
+		if !hostname.Valid(strings.TrimPrefix(v, "+.")) {
+			return &fieldErr{Field: "fallback_filter", Code: "bad_key"}
+		}
+		count++
+	}
+	if count > maxFilterItems {
+		return &fieldErr{Field: "fallback_filter", Code: "too_many_rules"}
+	}
+	return nil
+}
+
+// validGeoName accepts geoip/geosite category names.
+func validGeoName(v string) bool {
+	if v == "" || len(v) > 64 {
+		return false
+	}
+	for _, r := range v {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 // ParseNodeRoutes parses a node_routes document: one mihomo rule per line,
@@ -286,50 +426,105 @@ func WireGuardConf(name, conf string) (nodeapi.NodeOutbound, error) {
 
 // SubDNS is subscription DNS: what the panel puts into client profiles.
 type SubDNS struct {
-	Nameservers []string            `json:"nameservers,omitempty"`
-	Proxy       []string            `json:"proxy_servers,omitempty"`
-	Policy      map[string][]string `json:"policy,omitempty"`
-	FakeIP      bool                `json:"fake_ip"`
-	IPv6        bool                `json:"ipv6,omitempty"`
+	Servers        []nodeapi.DNSServer       `json:"servers,omitempty"`
+	Proxy          []string                  `json:"proxy_servers,omitempty"`
+	Fallback       []string                  `json:"fallback,omitempty"`
+	FallbackFilter nodeapi.DNSFallbackFilter `json:"fallback_filter,omitempty"`
+	FakeIP         bool                      `json:"fake_ip"`
+	IPv6           bool                      `json:"ipv6,omitempty"`
 }
 
 // ParseSubDNS parses a sub_dns document; empty means the built-in profile DNS.
+// The legacy flat shape converts like node DNS.
 func ParseSubDNS(raw string) (*SubDNS, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
 	}
-	var d SubDNS
-	if err := json.Unmarshal([]byte(raw), &d); err != nil {
+	var keys map[string]any
+	if err := json.Unmarshal([]byte(raw), &keys); err != nil {
 		return nil, &fieldErr{Field: "dns", Code: "bad_json"}
 	}
-	if len(d.Nameservers) == 0 {
-		return nil, &fieldErr{Field: "nameservers", Code: "no_servers"}
+	var d SubDNS
+	if _, isNew := keys["servers"]; isNew || !hasSubLegacyKeys(keys) {
+		if err := json.Unmarshal([]byte(raw), &d); err != nil {
+			return nil, &fieldErr{Field: "dns", Code: "bad_json"}
+		}
+	} else {
+		var old subDNSLegacy
+		if err := json.Unmarshal([]byte(raw), &old); err != nil {
+			return nil, &fieldErr{Field: "dns", Code: "bad_json"}
+		}
+		d = old.convert()
 	}
-	if len(d.Nameservers) > MaxSubServers || len(d.Proxy) > MaxSubServers {
-		return nil, &fieldErr{Field: "nameservers", Code: "too_many_servers"}
+	if len(d.Servers) == 0 {
+		return nil, &fieldErr{Field: "servers", Code: "no_servers"}
 	}
-	for _, s := range append(append([]string{}, d.Nameservers...), d.Proxy...) {
+	if len(d.Servers) > MaxSubServers {
+		return nil, &fieldErr{Field: "servers", Code: "too_many_servers"}
+	}
+	def := false
+	for i := range d.Servers {
+		if err := checkDNSServer(&d.Servers[i]); err != nil {
+			return nil, err
+		}
+		if len(d.Servers[i].Domains) == 0 {
+			def = true
+		}
+	}
+	if !def && len(d.Fallback) == 0 {
+		return nil, &fieldErr{Field: "servers", Code: "no_default"}
+	}
+	for _, s := range append(append([]string{}, d.Proxy...), d.Fallback...) {
 		if err := checkServer(s); err != nil {
-			return nil, &fieldErr{Field: "nameservers", Code: "bad_server"}
+			return nil, &fieldErr{Field: "servers", Code: "bad_server"}
 		}
 	}
-	if len(d.Policy) > MaxSubPolicy {
-		return nil, &fieldErr{Field: "policy", Code: "too_many_rules"}
-	}
-	for k, vs := range d.Policy {
-		if err := checkPolicyKey(k); err != nil {
-			return nil, &fieldErr{Field: "policy", Code: "bad_key"}
-		}
-		for _, s := range vs {
-			if net.ParseIP(s) == nil {
-				return nil, &fieldErr{Field: "policy", Code: "bad_server"}
-			}
-		}
+	if err := checkFallbackFilter(&d.FallbackFilter); err != nil {
+		return nil, err
 	}
 	return &d, nil
 }
 
-// checkServer accepts a plain IP or an encrypted DNS endpoint.
+// subDNSLegacy is the flat pre-servers shape, converted on parse.
+type subDNSLegacy struct {
+	Nameservers []string            `json:"nameservers"`
+	Proxy       []string            `json:"proxy_servers"`
+	Policy      map[string][]string `json:"policy"`
+	FakeIP      bool                `json:"fake_ip"`
+	IPv6        bool                `json:"ipv6"`
+}
+
+func hasSubLegacyKeys(keys map[string]any) bool {
+	for _, k := range []string{"nameservers", "policy"} {
+		if _, ok := keys[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (old subDNSLegacy) convert() SubDNS {
+	d := SubDNS{Proxy: old.Proxy, FakeIP: old.FakeIP, IPv6: old.IPv6}
+	at := map[string]int{}
+	for _, s := range old.Nameservers {
+		at[s] = len(d.Servers)
+		d.Servers = append(d.Servers, nodeapi.DNSServer{Address: s})
+	}
+	for key, vs := range old.Policy {
+		for _, s := range vs {
+			if i, ok := at[s]; ok {
+				d.Servers[i].Domains = append(d.Servers[i].Domains, key)
+				continue
+			}
+			at[s] = len(d.Servers)
+			d.Servers = append(d.Servers, nodeapi.DNSServer{Address: s, Domains: []string{key}})
+		}
+	}
+	return d
+}
+
+// checkServer accepts a plain IP or a DNS endpoint mihomo parses: udp/tcp,
+// tls, http(s), quic, dhcp or system.
 func checkServer(s string) error {
 	if net.ParseIP(s) != nil {
 		return nil
@@ -339,8 +534,11 @@ func checkServer(s string) error {
 		return errors.New("bad server")
 	}
 	switch strings.ToLower(u.Scheme) {
-	case "https", "tls", "h2c", "https+local", "h2c+local", "quic+local":
+	case "udp", "tcp", "tls", "https", "http", "quic", "dhcp", "system":
 		host := u.Hostname()
+		if u.Scheme == "system" || u.Scheme == "dhcp" {
+			return nil
+		}
 		if host == "" || (!hostname.Valid(host) && net.ParseIP(host) == nil) {
 			return errors.New("bad host")
 		}
@@ -469,12 +667,27 @@ func checkRegexp(value string) error {
 	return nil
 }
 
-// Effective picks the node's override when set, else the global document.
-func Effective(overrideOK bool, override, global string) string {
-	if overrideOK && strings.TrimSpace(override) != "" {
-		return override
+// ParseAdBlock parses a node_adblock/sub_adblock document.
+func ParseAdBlock(raw string) (*nodeapi.AdBlock, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
 	}
-	return global
+	var d nodeapi.AdBlock
+	if err := json.Unmarshal([]byte(raw), &d); err != nil {
+		return nil, &fieldErr{Field: "adblock", Code: "bad_json"}
+	}
+	if !d.Enabled {
+		return &nodeapi.AdBlock{}, nil
+	}
+	if len(d.Exceptions) > MaxDNSHosts || len(d.Extra) > MaxDNSHosts {
+		return nil, &fieldErr{Field: "adblock", Code: "too_many_hosts"}
+	}
+	for _, s := range append(append([]string{}, d.Exceptions...), d.Extra...) {
+		if !hostname.Valid(strings.TrimPrefix(strings.TrimSpace(s), ".")) || strings.TrimSpace(s) == "" {
+			return nil, &fieldErr{Field: "adblock", Code: "bad_name"}
+		}
+	}
+	return &d, nil
 }
 
 // Resolved is a node's effective network setup: overrides win over globals.

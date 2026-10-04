@@ -31,7 +31,7 @@ import {
 type NodeNet = Schemas["NodeNetworkView"];
 type Probe = Schemas["ProbeView"];
 
-const TABS = ["dns", "routes", "outbounds", "tester"] as const;
+const TABS = ["dns", "routes", "outbounds", "tester", "geo"] as const;
 type Tab = (typeof TABS)[number];
 
 function useNodeNet(id: number | null) {
@@ -54,7 +54,7 @@ export function NodeNetworkDrawer({ node, onClose }: { node: { id: number; name:
               <Tabs
                 id="node-network"
                 label={t("network.title")}
-                tabs={TABS.map((id) => ({ id, label: t(`network.${id === "tester" ? "tester" : id}`) }))}
+                tabs={TABS.map((id) => ({ id, label: t(`network.${id}`) }))}
                 value={tab}
                 onChange={setTab}
               >
@@ -64,8 +64,10 @@ export function NodeNetworkDrawer({ node, onClose }: { node: { id: number; name:
                   <NodeRoutes key="routes" nodeId={node!.id} n={n} />
                 ) : tab === "outbounds" ? (
                   <NodeOutbounds key="outbounds" nodeId={node!.id} n={n} />
-                ) : (
+                ) : tab === "tester" ? (
                   <NodeTester key="tester" nodeId={node!.id} />
+                ) : (
+                  <NodeGeo key="geo" nodeId={node!.id} />
                 )}
               </Tabs>
             </>
@@ -109,19 +111,18 @@ function NodeDNS({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const [inherit, setInherit] = useState(!n.dns_override.trim());
   const initial = parseDnsDoc(n.dns_override);
   const [form, setForm] = useState<DnsDoc>(initial.form);
-  const [polRows, setPolRows] = useState<KVRow[]>(initial.polRows);
   const [hostRows, setHostRows] = useState<KVRow[]>(initial.hostRows);
   const errors = fieldErrors(save.error);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    save.mutate({ dns_override: inherit ? "" : dnsToJson(form, polRows, hostRows) });
+    save.mutate({ dns_override: inherit ? "" : dnsToJson(form, hostRows) });
   };
   const set = (k: keyof DnsDoc) => (v: DnsDoc[keyof DnsDoc]) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <form onSubmit={submit} noValidate>
       <InheritRow on={inherit} onChange={setInherit} />
       {!inherit ? (
-        <DNSEditor form={form} onForm={set} polRows={polRows} onPolRows={setPolRows} hostRows={hostRows} onHostRows={setHostRows} />
+        <DNSEditor form={form} onForm={set} hostRows={hostRows} onHostRows={setHostRows} />
       ) : (
         <EffectiveDNS n={n} />
       )}
@@ -146,14 +147,11 @@ function EffectiveDNS({ n }: { n: NodeNet }) {
         <Pill tone="ok">{t("network.enable")}</Pill>
         {d.ipv6 ? <Pill tone="off">IPv6</Pill> : null}
       </div>
-      {(d.nameservers ?? []).map((s) => (
-        <div key={s} className="mono text-xs text-[var(--ink-600)]">
-          {s}
-        </div>
-      ))}
-      {Object.entries(d.policy ?? {}).map(([k, v]) => (
-        <div key={k} className="mono text-xs text-[var(--ink-600)]">
-          {k} → {v.join(", ")}
+      {(d.servers ?? []).map((s, i) => (
+        <div key={i} className="mono text-xs text-[var(--ink-600)]">
+          {s.address}
+          {s.tag ? ` (${s.tag})` : ""}
+          {(s.domains ?? []).length ? ` → ${(s.domains ?? []).join(", ")}` : ""}
         </div>
       ))}
     </div>
@@ -453,5 +451,51 @@ function MatchCard({ title, m }: { title: string; m: { matched: boolean; rule?: 
       ) : null}
       {m.geo_skipped ? <div className="mt-1 text-xs text-[var(--honey-600)]">{t("network.tGeo")}</div> : null}
     </div>
+  );
+}
+
+function NodeGeo({ nodeId }: { nodeId: number }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const geo = useQuery({
+    queryKey: ["node-geo", nodeId],
+    queryFn: ({ signal }) => unwrap(api.GET("/api/v1/nodes/{id}/geo", { params: { path: { id: nodeId } }, signal })),
+  });
+  const update = useMutation({
+    mutationFn: () => unwrap(api.POST("/api/v1/nodes/{id}/geo/update", { params: { path: { id: nodeId } } })),
+    onSuccess: (data) => {
+      qc.setQueryData(["node-geo", nodeId], data);
+      toast.ok(t("settings.saved"));
+    },
+    onError: (e) => toast.error(errorText(e)),
+  });
+  return (
+    <QueryBoundary query={geo} pending={<Skeleton style={{ height: 120, borderRadius: 16 }} />}>
+      {(g) => (
+        <>
+          <p className="mb-3 text-[13px] text-[var(--ink-500)]">{t("network.geoSub")}</p>
+          {(g.files ?? []).length === 0 ? (
+            <p className="mb-3 text-[13px] text-[var(--ink-500)]">{t("network.empty")}</p>
+          ) : (
+            <ul className="row-list mb-3">
+              {(g.files ?? []).map((f) => (
+                <li key={f.name} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold">{f.name}</div>
+                    <div className="text-xs text-[var(--ink-500)]">
+                      {f.present ? `${Math.round((f.size ?? 0) / 1024)} KB` : t("network.geoMissing")}
+                    </div>
+                  </div>
+                  {f.present ? <Pill tone="ok">{t("network.geoOk")}</Pill> : <Pill tone="off">{t("network.geoMissing")}</Pill>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button variant="primary" loading={update.isPending} onClick={() => update.mutate()}>
+            {t("network.geoUpdate")}
+          </Button>
+        </>
+      )}
+    </QueryBoundary>
   );
 }

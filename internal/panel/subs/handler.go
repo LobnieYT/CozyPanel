@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"cozy/internal/nodeapi"
 	"cozy/internal/panel/domain"
 	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/server"
@@ -38,6 +39,8 @@ type Config struct {
 	Fingerprint string
 	// DNS is the admin's subscription DNS; nil: the built-in profile DNS.
 	DNS *netcfg.SubDNS
+	// AdBlock is connection-level ad blocking in profiles; nil: off.
+	AdBlock *nodeapi.AdBlock
 	// Binding gives every device that sends its id keys of its own (domain.Devices);
 	// RequireHWID refuses apps that send none instead of seating them together.
 	Binding     bool
@@ -295,7 +298,7 @@ func (h *Handler) slotFor(r *http.Request, u db.User, cfg Config) (db.Slot, erro
 
 // profile lists what the user may use; slot is whose keys go in (zero for the page).
 func (h *Handler) profile(ctx context.Context, u db.User, cfg Config, slot db.Slot) (Profile, error) {
-	prof := Profile{Nodes: cfg.Nodes, Direct: cfg.Direct, Slot: slot, Fingerprint: cfg.Fingerprint, DNS: cfg.DNS}
+	prof := Profile{Nodes: cfg.Nodes, Direct: cfg.Direct, Slot: slot, Fingerprint: cfg.Fingerprint, DNS: cfg.DNS, AdBlock: cfg.AdBlock}
 	all, err := h.st.Q.ListInbounds(ctx)
 	if err != nil {
 		return prof, err

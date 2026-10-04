@@ -54,6 +54,10 @@ const (
 	KeyNodeRoutes    = "node_routes"
 	KeyNodeOutbounds = "node_outbounds"
 	KeySubDNS        = "sub_dns"
+	// AdBlock without DNS: connection-level ad blocking (GEOSITE,category-ads-all
+	// plus custom domains) on nodes and in subscription profiles.
+	KeyNodeAdBlock = "node_adblock"
+	KeySubAdBlock  = "sub_adblock"
 	// KeyQuietHour is the UTC hour the slot pool is refilled, which reconnects QUIC clients.
 	KeyQuietHour = "quiet_hour_utc"
 )

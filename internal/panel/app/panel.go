@@ -229,6 +229,13 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		} else if cfg.DNS, err = netcfg.ParseSubDNS(dnsRaw); err != nil {
 			return subs.Config{}, err
 		}
+		if abRaw, err := set.String(ctx, settings.KeySubAdBlock); err != nil {
+			return subs.Config{}, err
+		} else if ab, err := netcfg.ParseAdBlock(abRaw); err != nil {
+			return subs.Config{}, err
+		} else {
+			cfg.AdBlock = ab
+		}
 		if cfg.Binding, err = set.On(ctx, settings.DeviceBinding); err != nil {
 			return subs.Config{}, err
 		}

@@ -70,6 +70,17 @@ func Handler(e *Engine, log *slog.Logger) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, res)
 	})
+	mux.HandleFunc("GET /v1/geo", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, e.GeoStatus())
+	})
+	mux.HandleFunc("POST /v1/geo/update", func(w http.ResponseWriter, r *http.Request) {
+		// Bounded by the caller's timeout (the panel allows five minutes).
+		if err := e.UpdateGeoData(); err != nil {
+			fail(w, log, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, e.GeoStatus())
+	})
 	mux.HandleFunc("PUT /v1/policies", func(w http.ResponseWriter, r *http.Request) {
 		var req nodeapi.PoliciesRequest
 		if !decode(w, r, &req) {

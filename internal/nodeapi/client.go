@@ -141,6 +141,20 @@ func (c *Client) RouteTest(ctx context.Context, req RouteTestRequest) (RouteTest
 	return r, err
 }
 
+// GeoStatus lists the node's geodata files.
+func (c *Client) GeoStatus(ctx context.Context) (GeoStatus, error) {
+	var r GeoStatus
+	err := c.do(ctx, http.MethodGet, "/v1/geo", nil, &r, 10*time.Second)
+	return r, err
+}
+
+// UpdateGeo re-downloads the node's geodata files, even present ones.
+func (c *Client) UpdateGeo(ctx context.Context) (GeoStatus, error) {
+	var r GeoStatus
+	err := c.do(ctx, http.MethodPost, "/v1/geo/update", nil, &r, 5*time.Minute)
+	return r, err
+}
+
 func (c *Client) SetPolicies(ctx context.Context, epoch string, p []Policy) error {
 	return c.do(ctx, http.MethodPut, "/v1/policies", PoliciesRequest{Epoch: epoch, Policies: p}, nil, 30*time.Second)
 }

@@ -5,14 +5,11 @@ import (
 	"net"
 	"net/netip"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/geodata"
 	C "github.com/metacubex/mihomo/constant"
 	mrules "github.com/metacubex/mihomo/rules"
 
-	"cozy/internal/geox"
 	"cozy/internal/nodeapi"
 )
 
@@ -94,22 +91,4 @@ func testMetadata(ctx context.Context, req nodeapi.RouteTestRequest) (*C.Metadat
 	return md, nil
 }
 
-var geoMu sync.Mutex
-
-// ensureGeoData downloads the geodata the node's GEO rules and policies read,
-// once per process; mihomo keeps it in its home afterwards.
-func (e *Engine) ensureGeoData(ctx context.Context) error {
-	geoMu.Lock()
-	defer geoMu.Unlock()
-	geodata.SetGeodataMode(true)
-	geodata.SetGeoIpUrl(geox.URL["mmdb"])
-	geodata.SetGeoSiteUrl(geox.URL["geosite"])
-	geodata.SetASNUrl(geox.URL["asn"])
-	if err := geodata.InitGeoIP(); err != nil {
-		return err
-	}
-	if err := geodata.InitGeoSite(); err != nil {
-		return err
-	}
-	return geodata.InitASN()
-}
+// ensureGeoData lives in geo.go (shared with the manual update).

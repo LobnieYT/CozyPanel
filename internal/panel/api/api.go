@@ -107,6 +107,9 @@ type NodeRuntime interface {
 	ValidateNet(ctx context.Context, id int64, req nodeapi.ValidateNetRequest) error
 	// RouteTest asks the node which rule a connection would hit, without traffic.
 	RouteTest(ctx context.Context, id int64, req nodeapi.RouteTestRequest) (nodeapi.RouteTestResult, error)
+	// GeoStatus lists the node's geodata files; UpdateGeo re-downloads them.
+	GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error)
+	UpdateGeo(ctx context.Context, id int64) (nodeapi.GeoStatus, error)
 }
 
 type ctxKey int

@@ -42,6 +42,9 @@ func rules(st nodeapi.DesiredState, allowPrivate bool) []string {
 	for _, route := range st.Routes.Rules {
 		r = append(r, route.Rule)
 	}
+	// AdBlock after the admin's rules: explicit routes win over the automatic
+	// block, and blocked ads never reach the exits or WARP below.
+	r = append(r, nodeapi.AdBlockRules(st.AdBlock)...)
 	match := "DIRECT"
 	if d := st.Routes.Default; d != "" {
 		match = d
@@ -138,8 +141,9 @@ func buildConfig(st nodeapi.DesiredState, cert proto.Cert, allowPrivate bool) (r
 	return raw, rejected, err
 }
 
-// needsGeo says whether the state references GEO data: GEO rules or a DNS policy
-// on a geosite. GEOIP,LAN is built in and needs no files.
+// needsGeo says whether the state references GEO data: GEO rules, a DNS policy
+// on a geosite, or a fallback filter on GEO lists. GEOIP,LAN is built in and
+// needs no files.
 func needsGeo(st nodeapi.DesiredState) bool {
 	for _, r := range st.Routes.Rules {
 		up := strings.ToUpper(strings.TrimSpace(r.Rule))
@@ -153,31 +157,55 @@ func needsGeo(st nodeapi.DesiredState) bool {
 		}
 	}
 	if st.DNS != nil {
-		for k := range st.DNS.Policy {
-			if strings.HasPrefix(strings.ToLower(k), "geosite:") {
-				return true
+		for _, s := range st.DNS.Servers {
+			for _, k := range s.Domains {
+				if strings.HasPrefix(strings.ToLower(k), "geosite:") {
+					return true
+				}
 			}
 		}
+		if len(st.DNS.FallbackFilter.Geosite) > 0 || len(st.DNS.FallbackFilter.GeoIP) > 0 {
+			return true
+		}
+	}
+	if st.AdBlock != nil && st.AdBlock.Enabled {
+		return true
 	}
 	return false
 }
 
 // dnsSection renders the mihomo dns section. Without an enabled admin DNS the
-// resolver stays off and the system resolver answers, as before.
+// resolver stays off and the system resolver answers, as before. What no other
+// server claims goes to the servers without matchers: the default DNS.
 func dnsSection(st nodeapi.DesiredState) map[string]any {
 	d := st.DNS
 	if d == nil || !d.Enable {
 		return map[string]any{"enable": false}
 	}
+	defaults, policy := nodeapi.SplitServers(d.Servers)
 	out := map[string]any{"enable": true, "ipv6": d.IPv6}
-	if len(d.Nameservers) > 0 {
-		out["nameserver"] = d.Nameservers
+	if d.PreferH3 {
+		out["prefer-h3"] = true
+	}
+	if d.UseSystemHosts {
+		out["use-system-hosts"] = true
+	}
+	if len(defaults) > 0 {
+		out["nameserver"] = defaults
 	}
 	if len(d.ProxyServers) > 0 {
 		out["proxy-server-nameserver"] = d.ProxyServers
 	}
-	if len(d.Policy) > 0 {
-		out["nameserver-policy"] = d.Policy
+	if len(policy) > 0 {
+		out["nameserver-policy"] = policy
+	}
+	if len(d.Fallback) > 0 {
+		out["fallback"] = d.Fallback
+	}
+	if f := d.FallbackFilter; len(f.GeoIP)+len(f.Geosite)+len(f.IPCIDR)+len(f.Domain) > 0 {
+		out["fallback-filter"] = map[string]any{
+			"geoip": f.GeoIP, "geosite": f.Geosite, "ipcidr": f.IPCIDR, "domain": f.Domain,
+		}
 	}
 	return out
 }

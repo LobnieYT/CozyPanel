@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"cozy/internal/nodeapi"
 )
 
 func TestParseNodeDNS(t *testing.T) {
@@ -13,23 +15,38 @@ func TestParseNodeDNS(t *testing.T) {
 	if d, err := ParseNodeDNS(`{"enable":false}`); err != nil || d == nil || d.Enable {
 		t.Fatalf("disabled: %+v %v", d, err)
 	}
-	good := `{"enable":true,"ipv6":true,"nameservers":["1.1.1.1","https://dns.google/dns-query","tls://8.8.8.8"],
-		"proxy_servers":["https://1.1.1.1/dns-query"],"policy":{"geosite:cn":["223.5.5.5"],"domain:example.com":["1.1.1.1"],"10.0.0.0/8":["10.0.0.1"]},
+	good := `{"enable":true,"ipv6":true,"prefer_h3":true,
+		"servers":[{"address":"1.1.1.1"},{"address":"https://xbox-dns.ru/dns-query","domains":["geosite:google"],"tag":"xbox"}],
+		"proxy_servers":["https://1.1.1.1/dns-query"],
+		"fallback":["8.8.8.8"],"fallback_filter":{"geosite":["cn"],"ipcidr":["10.0.0.0/8"]},
 		"hosts":{"internal.example":["10.1.2.3"]}}`
 	d, err := ParseNodeDNS(good)
-	if err != nil || len(d.Nameservers) != 3 || len(d.Policy) != 3 || d.Hosts["internal.example"][0] != "10.1.2.3" {
+	if err != nil || len(d.Servers) != 2 || len(d.Servers[1].Domains) != 1 || d.Servers[1].Tag != "xbox" || !d.PreferH3 {
 		t.Fatalf("good: %+v %v", d, err)
+	}
+	def, policy := nodeapi.SplitServers(d.Servers)
+	if len(def) != 1 || def[0] != "1.1.1.1" || len(policy["geosite:google"]) != 1 {
+		t.Fatalf("split: %v %v", def, policy)
+	}
+	// Legacy flat documents convert: plain servers stay default, policy keys
+	// attach to the servers named by their values.
+	legacy := `{"enable":true,"nameservers":["1.1.1.1","https://dns.google/dns-query"],
+		"policy":{"geosite:cn":["223.5.5.5"],"domain:example.com":["1.1.1.1"]}}`
+	d, err = ParseNodeDNS(legacy)
+	if err != nil || len(d.Servers) != 3 {
+		t.Fatalf("legacy: %+v %v", d, err)
 	}
 	for _, c := range []struct {
 		doc   string
 		field string
 	}{
-		{`{"enable":true}`, "nameservers"},
-		{`{"enable":true,"nameservers":["ftp://x/"]}`, "nameservers"},
-		{`{"enable":true,"nameservers":["1.1.1.1"],"policy":{"bogus!":[]}}`, "policy"},
-		{`{"enable":true,"nameservers":["1.1.1.1"],"policy":{"geosite:cn":["notaip"]}}`, "policy"},
-		{`{"enable":true,"nameservers":["1.1.1.1"],"hosts":{"bad..name":["1.1.1.1"]}}`, "hosts"},
-		{`{"enable":true,"nameservers":["1.1.1.1"],"hosts":{"x.example":["notip"]}}`, "hosts"},
+		{`{"enable":true,"servers":[]}`, "servers"},
+		{`{"enable":true,"servers":[{"address":"ftp://x/"}]}`, "servers"},
+		{`{"enable":true,"servers":[{"address":"1.1.1.1","domains":["bogus!"]}]}`, "servers"},
+		{`{"enable":true,"servers":[{"address":"1.1.1.1","port":99999}]}`, "servers"},
+		{`{"enable":true,"servers":[{"address":"tls://8.8.8.8","domains":["geosite:cn"]}]}`, "servers"},
+		{`{"enable":true,"servers":[{"address":"1.1.1.1"}],"fallback_filter":{"geoip":["bad!code"]}}`, "fallback_filter"},
+		{`{"enable":true,"servers":[{"address":"1.1.1.1"}],"hosts":{"x.example":["notip"]}}`, "hosts"},
 		{`not json`, "dns"},
 	} {
 		if _, err := ParseNodeDNS(c.doc); err == nil {
@@ -37,6 +54,10 @@ func TestParseNodeDNS(t *testing.T) {
 		} else if fe, ok := err.(*fieldErr); !ok || fe.Field != c.field {
 			t.Fatalf("%s: %v, want field %s", c.doc, err, c.field)
 		}
+	}
+	// Policy-only servers are no default without a fallback.
+	if _, err := ParseNodeDNS(`{"enable":true,"servers":[{"address":"1.1.1.1","domains":["geosite:cn"]}]}`); err == nil {
+		t.Fatal("no default parsed")
 	}
 }
 
@@ -105,15 +126,20 @@ func TestParseSubDNS(t *testing.T) {
 	if d, err := ParseSubDNS(""); err != nil || d != nil {
 		t.Fatalf("empty: %+v %v", d, err)
 	}
-	d, err := ParseSubDNS(`{"nameservers":["https://1.1.1.1/dns-query"],"proxy_servers":["https://dns.google/dns-query"],"policy":{"geosite:category-ru":["77.88.8.8"]},"fake_ip":true}`)
-	if err != nil || !d.FakeIP || d.Policy["geosite:category-ru"][0] != "77.88.8.8" {
+	d, err := ParseSubDNS(`{"servers":[{"address":"https://1.1.1.1/dns-query"},{"address":"https://xbox-dns.ru/dns-query","domains":["geosite:google"]}],"proxy_servers":["https://dns.google/dns-query"],"fake_ip":true}`)
+	if err != nil || !d.FakeIP || len(d.Servers) != 2 || len(d.Servers[1].Domains) != 1 {
 		t.Fatalf("good: %+v %v", d, err)
 	}
-	if _, err := ParseSubDNS(`{"nameservers":[]}`); err == nil {
+	// Legacy flat documents convert too.
+	d, err = ParseSubDNS(`{"nameservers":["https://1.1.1.1/dns-query"],"proxy_servers":["https://dns.google/dns-query"],"policy":{"geosite:category-ru":["77.88.8.8"]},"fake_ip":true}`)
+	if err != nil || !d.FakeIP || len(d.Servers) != 2 {
+		t.Fatalf("legacy: %+v %v", d, err)
+	}
+	if _, err := ParseSubDNS(`{"servers":[]}`); err == nil {
 		t.Fatal("no servers parsed")
 	}
-	if _, err := ParseSubDNS(`{"nameservers":["https://1.1.1.1/dns-query"],"policy":{"geosite:cn":["https://x/"]}}`); err == nil {
-		t.Fatal("DoH in policy parsed")
+	if _, err := ParseSubDNS(`{"servers":[{"address":"1.1.1.1","domains":["bogus!"]}]}`); err == nil {
+		t.Fatal("bad matcher parsed")
 	}
 }
 
@@ -173,5 +199,27 @@ func TestWireGuardConf(t *testing.T) {
 		if _, err := WireGuardConf("x", bad); err == nil {
 			t.Fatalf("%q: parsed", bad)
 		}
+	}
+}
+
+func TestAdBlock(t *testing.T) {
+	if d, err := ParseAdBlock(""); err != nil || d != nil {
+		t.Fatalf("empty: %+v %v", d, err)
+	}
+	d, err := ParseAdBlock(`{"enabled":true,"exceptions":["corp.example"],"extra":["ads.example"]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := nodeapi.AdBlockRules(d)
+	want := []string{"DOMAIN-SUFFIX,corp.example,DIRECT", "DOMAIN-SUFFIX,ads.example,REJECT", "GEOSITE,category-ads-all,REJECT"}
+	if strings.Join(rules, "|") != strings.Join(want, "|") {
+		t.Fatalf("rules: %v", rules)
+	}
+	d.Drop = true
+	if rules := nodeapi.AdBlockRules(d); rules[1] != "DOMAIN-SUFFIX,ads.example,REJECT-DROP" || rules[2] != "GEOSITE,category-ads-all,REJECT-DROP" {
+		t.Fatalf("drop: %v", rules)
+	}
+	if _, err := ParseAdBlock(`{"enabled":true,"extra":["bad..name"]}`); err == nil {
+		t.Fatal("bad name parsed")
 	}
 }

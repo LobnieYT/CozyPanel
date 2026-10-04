@@ -303,6 +303,28 @@ func (m *Manager) RouteTest(ctx context.Context, id int64, req nodeapi.RouteTest
 	return v.RouteTest(ctx, req)
 }
 
+// GeoStatus lists the node's geodata files.
+func (m *Manager) GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error) {
+	v, err := clientOf[interface {
+		GeoStatus(context.Context) (nodeapi.GeoStatus, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.GeoStatus{}, err
+	}
+	return v.GeoStatus(ctx)
+}
+
+// UpdateGeo re-downloads the node's geodata files, even present ones.
+func (m *Manager) UpdateGeo(ctx context.Context, id int64) (nodeapi.GeoStatus, error) {
+	v, err := clientOf[interface {
+		UpdateGeo(context.Context) (nodeapi.GeoStatus, error)
+	}](m, id)
+	if err != nil {
+		return nodeapi.GeoStatus{}, err
+	}
+	return v.UpdateGeo(ctx)
+}
+
 // Activity reports which inbounds of a node each device reached lately.
 func (m *Manager) Activity(ctx context.Context, id int64) (nodeapi.Activity, error) {
 	c, err := clientOf[interface {

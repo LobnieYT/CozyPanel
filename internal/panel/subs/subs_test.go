@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"cozy/internal/nodeapi"
+	"cozy/internal/panel/netcfg"
 	"cozy/internal/panel/presets"
 	"cozy/internal/panel/store/db"
 	"cozy/internal/proto"
@@ -413,5 +415,41 @@ func TestDefaultFingerprint(t *testing.T) {
 		if got != want[name] {
 			t.Errorf("%s: client-fingerprint=%q, want %q", name, got, want[name])
 		}
+	}
+}
+
+func TestCustomSubDNS(t *testing.T) {
+	p := profile(t, "")
+	p.DNS = &netcfg.SubDNS{
+		Servers: []nodeapi.DNSServer{
+			{Address: "https://1.1.1.1/dns-query"},
+			{Address: "https://xbox-dns.ru/dns-query", Domains: []string{"geosite:google"}},
+		},
+		Proxy:  []string{"https://dns.google/dns-query"},
+		FakeIP: true,
+	}
+	raw, err := Mihomo(p, Groups{}, RoutingAll)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		DNS struct {
+			Nameserver  []string            `json:"nameserver"`
+			ProxyServer []string            `json:"proxy-server-nameserver"`
+			Policy      map[string][]string `json:"nameserver-policy"`
+		} `json:"dns"`
+		GeoxURL map[string]string `json:"geox-url"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.DNS.Nameserver) != 1 || cfg.DNS.Nameserver[0] != "https://1.1.1.1/dns-query" {
+		t.Fatalf("nameserver: %v", cfg.DNS.Nameserver)
+	}
+	if len(cfg.DNS.Policy["geosite:google"]) != 1 || len(cfg.DNS.ProxyServer) != 1 {
+		t.Fatalf("policy/proxy: %+v", cfg.DNS)
+	}
+	if cfg.GeoxURL == nil {
+		t.Fatal("geosite policy needs geodata")
 	}
 }

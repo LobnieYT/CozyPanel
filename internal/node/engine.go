@@ -90,7 +90,8 @@ func routesKey(st nodeapi.DesiredState, allowPrivate bool) string {
 		D *nodeapi.NodeDNS
 		C nodeapi.NodeRoutes
 		O []nodeapi.NodeOutbound
-	}{st.Warp, st.Exits, rules(st, allowPrivate), st.DNS, st.Routes, st.Outbounds})
+		A *nodeapi.AdBlock
+	}{st.Warp, st.Exits, rules(st, allowPrivate), st.DNS, st.Routes, st.Outbounds, st.AdBlock})
 	return string(raw)
 }
 

@@ -178,6 +178,9 @@ func (s *Syncer) desired(ctx context.Context) (nodeapi.DesiredState, error) {
 	if st.DNS, st.Routes, st.Outbounds, err = s.net(ctx, n); err != nil {
 		return st, err
 	}
+	if st.AdBlock, err = s.adblock(ctx); err != nil {
+		return st, err
+	}
 	if s.local {
 		// The panel runs next to its own node, so its HTTPS port is the self-steal REALITY target.
 		if st.SelfStealPort, _, err = settings.Get[int](ctx, s.m.set, settings.KeyPanelPort); err != nil {
@@ -680,7 +683,8 @@ func stateKey(st nodeapi.DesiredState) string {
 		D  *nodeapi.NodeDNS
 		Rt nodeapi.NodeRoutes
 		O  []nodeapi.NodeOutbound
-	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds})
+		A  *nodeapi.AdBlock
+	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds, st.AdBlock})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
@@ -785,6 +789,15 @@ func (s *Syncer) noteBadNet(bad []string) {
 			s.log.Error("route left out of the node's state", "route", b)
 		}
 	}
+}
+
+// adblock is the node's connection-level ad blocking; empty when off.
+func (s *Syncer) adblock(ctx context.Context) (*nodeapi.AdBlock, error) {
+	raw, _, err := settings.Get[string](ctx, s.m.set, settings.KeyNodeAdBlock)
+	if err != nil {
+		return nil, err
+	}
+	return netcfg.ParseAdBlock(raw)
 }
 
 // Warp asks the node how it reaches the internet through WARP.

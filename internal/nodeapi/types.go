@@ -42,21 +42,46 @@ type DesiredState struct {
 	// names the MATCH target for unmatched traffic (DIRECT when empty); Rules
 	// carry "TYPE,VALUE,TARGET" with targets naming DIRECT, REJECT or proxies.
 	Routes NodeRoutes `json:"routes,omitempty"`
+	// AdBlock is connection-level ad blocking (no DNS involved): allowlisted
+	// exceptions leave directly, the rest of the ads list is rejected.
+	AdBlock *AdBlock `json:"adblock,omitempty"`
 	// Outbounds are the admin's own proxies besides WARP and cascade exits.
 	Outbounds []NodeOutbound `json:"outbounds,omitempty"`
 }
 
-// NodeDNS is a mihomo dns section. Nameservers are plain IPs ("1.1.1.1") or
-// encrypted endpoints ("https://1.1.1.1/dns-query", "tls://8.8.8.8"). Policy keys
-// are "geosite:<name>", "domain:<suffix>" or an IP network in CIDR notation;
-// Hosts maps a domain to addresses, like a hosts file.
+// DNSServer is one resolver: an address (a plain IP, "udp://"/"tcp://" host,
+// "tls://", "https://" DoH, "dhcp://..." or "system") with an optional port for
+// plain and udp/tcp ones, a tag for the UI, and the matchers it answers
+// ("geosite:<name>", "domain:<suffix>" or an IP network). A server without
+// matchers answers everything nothing else claims: the default DNS.
+type DNSServer struct {
+	Address string   `json:"address"`
+	Port    int      `json:"port,omitempty"`
+	Domains []string `json:"domains,omitempty"`
+	Tag     string   `json:"tag,omitempty"`
+}
+
+// DNSFallbackFilter is poisoning protection: answers matching it are dropped
+// and the fallback chain is asked instead.
+type DNSFallbackFilter struct {
+	GeoIP   []string `json:"geoip,omitempty"`
+	Geosite []string `json:"geosite,omitempty"`
+	IPCIDR  []string `json:"ipcidr,omitempty"`
+	Domain  []string `json:"domain,omitempty"`
+}
+
+// NodeDNS is a mihomo dns section. Hosts maps a domain to addresses, like a
+// hosts file.
 type NodeDNS struct {
-	Enable       bool                `json:"enable"`
-	IPv6         bool                `json:"ipv6,omitempty"`
-	Nameservers  []string            `json:"nameservers,omitempty"`
-	ProxyServers []string            `json:"proxy_servers,omitempty"`
-	Policy       map[string][]string `json:"policy,omitempty"`
-	Hosts        map[string][]string `json:"hosts,omitempty"`
+	Enable         bool                `json:"enable"`
+	IPv6           bool                `json:"ipv6,omitempty"`
+	PreferH3       bool                `json:"prefer_h3,omitempty"`
+	UseSystemHosts bool                `json:"use_system_hosts,omitempty"`
+	Servers        []DNSServer         `json:"servers,omitempty"`
+	ProxyServers   []string            `json:"proxy_servers,omitempty"`
+	Fallback       []string            `json:"fallback,omitempty"`
+	FallbackFilter DNSFallbackFilter   `json:"fallback_filter,omitempty"`
+	Hosts          map[string][]string `json:"hosts,omitempty"`
 }
 
 // NodeRoutes is a node's routing: the MATCH target and the custom rules.
@@ -73,10 +98,19 @@ type NodeRoute struct {
 
 // NodeOutbound is one mihomo proxy: the map mihomo parses, with "name" and "type"
 // required (e.g. {"name":"office","type":"wireguard",...}). Names must not clash
-// with DIRECT, REJECT, WARP or NODE-<id>.
+// with DIRECT, REJECT or the panel's own WARP and NODE-<id> proxies.
 type NodeOutbound struct {
 	Name   string          `json:"name"`
 	Config json.RawMessage `json:"config"`
+}
+
+// AdBlock is connection-level ad blocking: exceptions leave directly, the ads
+// list (plus custom domains) is rejected. No DNS is involved.
+type AdBlock struct {
+	Enabled    bool     `json:"enabled"`
+	Drop       bool     `json:"drop,omitempty"`
+	Exceptions []string `json:"exceptions,omitempty"`
+	Extra      []string `json:"extra,omitempty"`
 }
 
 type Inbound struct {
@@ -323,6 +357,20 @@ func ExitName(id int64) string { return "NODE-" + strconv.FormatInt(id, 10) }
 
 // ProbeResult is the internet as seen through one outbound of the node.
 type ProbeResult = WarpStatus
+
+// GeoFile is one geodata file on the node.
+type GeoFile struct {
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Present   bool      `json:"present"`
+	Size      int64     `json:"size,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+}
+
+// GeoStatus lists the node's geodata files.
+type GeoStatus struct {
+	Files []GeoFile `json:"files"`
+}
 
 // RouteTestRequest asks the node which of its effective rules a connection would
 // hit: the same matcher mihomo runs, on synthetic metadata, without any traffic.

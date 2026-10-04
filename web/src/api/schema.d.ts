@@ -403,6 +403,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/geo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Геоданные ноды */
+        get: operations["node-geo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{id}/geo/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Обновить геоданные ноды */
+        post: operations["update-node-geo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/key": {
         parameters: {
             query?: never;
@@ -1364,6 +1398,19 @@ export interface components {
             /** Format: int64 */
             tariff_id: number;
         };
+        DNSFallbackFilter: {
+            domain?: string[];
+            geoip?: string[];
+            geosite?: string[];
+            ipcidr?: string[];
+        };
+        DNSServer: {
+            address: string;
+            domains?: string[];
+            /** Format: int64 */
+            port?: number;
+            tag?: string;
+        };
         DeviceView: {
             /** Format: date-time */
             first_seen: string;
@@ -1421,6 +1468,18 @@ export interface components {
              * @description Месяцами: до дня оплаты или того же числа
              */
             months?: number;
+        };
+        GeoFile: {
+            name: string;
+            present: boolean;
+            /** Format: int64 */
+            size?: number;
+            /** Format: date-time */
+            updated_at?: string;
+            url: string;
+        };
+        GeoStatus: {
+            files: components["schemas"]["GeoFile"][];
         };
         GrantInputBody: {
             /**
@@ -1598,12 +1657,16 @@ export interface components {
             url?: string;
         };
         NetworkView: {
+            /** @description Антиреклама нод: JSON AdBlock; пусто — выключена */
+            node_adblock: string;
             /** @description DNS нод: JSON NodeDNS; пусто — резолвер mihomo выключен */
             node_dns: string;
             /** @description Исходящие нод: JSON-массив прокси mihomo */
             node_outbounds: string;
             /** @description Маршруты нод: по правилу mihomo на строку */
             node_routes: string;
+            /** @description Антиреклама подписок: JSON AdBlock; пусто — выключена */
+            sub_adblock: string;
             /** @description DNS подписок: JSON SubDNS; пусто — встроенный DNS профилей */
             sub_dns: string;
         };
@@ -1626,15 +1689,16 @@ export interface components {
         };
         NodeDNS: {
             enable: boolean;
+            fallback?: string[];
+            fallback_filter?: components["schemas"]["DNSFallbackFilter"];
             hosts?: {
                 [key: string]: string[];
             };
             ipv6?: boolean;
-            nameservers?: string[];
-            policy?: {
-                [key: string]: string[];
-            };
+            prefer_h3?: boolean;
             proxy_servers?: string[];
+            servers?: components["schemas"]["DNSServer"][];
+            use_system_hosts?: boolean;
         };
         NodeInfo: {
             /** @description host:port API ноды; пусто у своей ноды */
@@ -1834,9 +1898,11 @@ export interface components {
             server_name?: string;
         };
         PatchNetworkInputBody: {
+            node_adblock?: string;
             node_dns?: string;
             node_outbounds?: string;
             node_routes?: string;
+            sub_adblock?: string;
             sub_dns?: string;
         };
         PatchNodeInputBody: {
@@ -3434,6 +3500,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "node-geo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeoStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-node-geo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeoStatus"];
+                };
             };
             /** @description Error */
             default: {

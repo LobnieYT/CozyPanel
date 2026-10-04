@@ -24,6 +24,8 @@ type NetworkView struct {
 	NodeRoutes    string `json:"node_routes" doc:"Маршруты нод: по правилу mihomo на строку"`
 	NodeOutbounds string `json:"node_outbounds" doc:"Исходящие нод: JSON-массив прокси mihomo"`
 	SubDNS        string `json:"sub_dns" doc:"DNS подписок: JSON SubDNS; пусто — встроенный DNS профилей"`
+	NodeAdBlock   string `json:"node_adblock" doc:"Антиреклама нод: JSON AdBlock; пусто — выключена"`
+	SubAdBlock    string `json:"sub_adblock" doc:"Антиреклама подписок: JSON AdBlock; пусто — выключена"`
 }
 
 type networkOutput struct{ Body NetworkView }
@@ -34,6 +36,8 @@ type patchNetworkInput struct {
 		NodeRoutes    *string `json:"node_routes,omitempty"`
 		NodeOutbounds *string `json:"node_outbounds,omitempty"`
 		SubDNS        *string `json:"sub_dns,omitempty"`
+		NodeAdBlock   *string `json:"node_adblock,omitempty"`
+		SubAdBlock    *string `json:"sub_adblock,omitempty"`
 	}
 }
 
@@ -113,6 +117,8 @@ func (h *handlers) registerNetwork() {
 	huma.Register(h.api, huma.Operation{OperationID: "test-node-route", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/route-test", Summary: "Проверить маршрут: сухое и живое", Tags: []string{"node"}}, h.testNodeRoute)
 	huma.Register(h.api, huma.Operation{OperationID: "probe-node-outbound", Method: http.MethodPost, Path: "/api/v1/nodes/{id}/probe", Summary: "Проверить исходящее ноды", Tags: []string{"node"}}, h.probeNodeOutbound)
 	huma.Register(h.api, huma.Operation{OperationID: "import-node-outbound", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/outbounds/import", Summary: "Импорт исходящего из WireGuard .conf", Tags: []string{"node"}}, h.importNodeOutbound)
+	huma.Register(h.api, huma.Operation{OperationID: "node-geo", Method: http.MethodGet, Path: "/api/v1/nodes/{id}/geo", Summary: "Геоданные ноды", Tags: []string{"node"}}, h.nodeGeo)
+	huma.Register(h.api, huma.Operation{OperationID: "update-node-geo", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/geo/update", Summary: "Обновить геоданные ноды", Tags: []string{"node"}}, h.updateNodeGeo)
 }
 
 func (h *handlers) getNetwork(ctx context.Context, _ *struct{}) (*networkOutput, error) {
@@ -135,6 +141,8 @@ func (h *handlers) readNetwork(ctx context.Context) (NetworkView, error) {
 	get(settings.KeyNodeRoutes, &v.NodeRoutes)
 	get(settings.KeyNodeOutbounds, &v.NodeOutbounds)
 	get(settings.KeySubDNS, &v.SubDNS)
+	get(settings.KeyNodeAdBlock, &v.NodeAdBlock)
+	get(settings.KeySubAdBlock, &v.SubAdBlock)
 	if err != nil {
 		return v, err
 	}
@@ -143,19 +151,19 @@ func (h *handlers) readNetwork(ctx context.Context) (NetworkView, error) {
 
 func (h *handlers) updateNetwork(ctx context.Context, in *patchNetworkInput) (*networkOutput, error) {
 	b := in.Body
-	for field, touched := range map[string]bool{"node_dns": b.NodeDNS != nil, "node_routes": b.NodeRoutes != nil, "node_outbounds": b.NodeOutbounds != nil, "sub_dns": b.SubDNS != nil} {
+	for field, touched := range map[string]bool{"node_dns": b.NodeDNS != nil, "node_routes": b.NodeRoutes != nil, "node_outbounds": b.NodeOutbounds != nil, "sub_dns": b.SubDNS != nil, "node_adblock": b.NodeAdBlock != nil, "sub_adblock": b.SubAdBlock != nil} {
 		if touched {
 			if err := requireSession(ctx, field); err != nil {
 				return nil, err
 			}
 		}
 	}
-	if details := checkNetworkDocs(b.NodeDNS, b.NodeRoutes, b.NodeOutbounds, b.SubDNS); len(details) > 0 {
+	if details := checkNetworkDocs(b.NodeDNS, b.NodeRoutes, b.NodeOutbounds, b.SubDNS, b.NodeAdBlock, b.SubAdBlock); len(details) > 0 {
 		return nil, huma.Error422UnprocessableEntity("validation", details...)
 	}
 	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		set := settings.New(q)
-		for key, v := range map[string]*string{settings.KeyNodeDNS: b.NodeDNS, settings.KeyNodeRoutes: b.NodeRoutes, settings.KeyNodeOutbounds: b.NodeOutbounds, settings.KeySubDNS: b.SubDNS} {
+		for key, v := range map[string]*string{settings.KeyNodeDNS: b.NodeDNS, settings.KeyNodeRoutes: b.NodeRoutes, settings.KeyNodeOutbounds: b.NodeOutbounds, settings.KeySubDNS: b.SubDNS, settings.KeyNodeAdBlock: b.NodeAdBlock, settings.KeySubAdBlock: b.SubAdBlock} {
 			if v == nil {
 				continue
 			}
@@ -178,7 +186,7 @@ func (h *handlers) updateNetwork(ctx context.Context, in *patchNetworkInput) (*n
 }
 
 // checkNetworkDocs parses the provided documents the way nodesync will.
-func checkNetworkDocs(dns, routes, outbounds, sub *string) []error {
+func checkNetworkDocs(dns, routes, outbounds, sub, nodeAb, subAb *string) []error {
 	var details []error
 	if dns != nil {
 		if _, err := netcfg.ParseNodeDNS(*dns); err != nil {
@@ -198,6 +206,16 @@ func checkNetworkDocs(dns, routes, outbounds, sub *string) []error {
 	if sub != nil {
 		if _, err := netcfg.ParseSubDNS(*sub); err != nil {
 			details = append(details, netDetail("body.sub_dns", err))
+		}
+	}
+	if nodeAb != nil {
+		if _, err := netcfg.ParseAdBlock(*nodeAb); err != nil {
+			details = append(details, netDetail("body.node_adblock", err))
+		}
+	}
+	if subAb != nil {
+		if _, err := netcfg.ParseAdBlock(*subAb); err != nil {
+			details = append(details, netDetail("body.sub_adblock", err))
 		}
 	}
 	return details
@@ -343,7 +361,16 @@ func (h *handlers) testNodeRoute(ctx context.Context, in *routeTestInput) (*rout
 	if err != nil {
 		return nil, err
 	}
-	rule, target, matched, geo := netcfg.MatchRoute(res.Routes.Rules, netcfg.RouteInput{Domain: b.Domain, IP: b.IP, Port: b.Port, Network: b.Network, Inbound: b.Inbound})
+	abRaw, _, err := settings.Get[string](ctx, h.d.Settings, settings.KeyNodeAdBlock)
+	if err != nil {
+		return nil, err
+	}
+	ab, err := netcfg.ParseAdBlock(abRaw)
+	if err != nil {
+		return nil, err
+	}
+	rules := append(append([]nodeapi.NodeRoute{}, res.Routes.Rules...), nodeRouteOf(nodeapi.AdBlockRules(ab))...)
+	rule, target, matched, geo := netcfg.MatchRoute(rules, netcfg.RouteInput{Domain: b.Domain, IP: b.IP, Port: b.Port, Network: b.Network, Inbound: b.Inbound})
 	out.Body.Dry = routeTestMatch{Matched: matched, Rule: rule, Target: target, GeoSkipped: geo}
 	if h.d.Nodes != nil {
 		live, lerr := h.d.Nodes.RouteTest(ctx, n.ID, nodeapi.RouteTestRequest{Domain: b.Domain, IP: b.IP, Port: b.Port, Network: b.Network, Inbound: b.Inbound})
@@ -352,6 +379,15 @@ func (h *handlers) testNodeRoute(ctx context.Context, in *routeTestInput) (*rout
 		}
 	}
 	return out, nil
+}
+
+// nodeRouteOf lifts rendered rule strings into NodeRoute values.
+func nodeRouteOf(rules []string) []nodeapi.NodeRoute {
+	out := make([]nodeapi.NodeRoute, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, nodeapi.NodeRoute{Rule: r})
+	}
+	return out
 }
 
 func (h *handlers) probeNodeOutbound(ctx context.Context, in *probeInput) (*probeOutput, error) {
@@ -445,4 +481,53 @@ func (h *handlers) importNodeOutbound(ctx context.Context, in *importOutboundInp
 		return nil, err
 	}
 	return &nodeNetworkOutput{Body: v}, nil
+}
+
+type geoOutput struct {
+	Body nodeapi.GeoStatus
+}
+
+func (h *handlers) nodeGeo(ctx context.Context, in *userIDInput) (*geoOutput, error) {
+	n, err := h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	if h.d.Nodes == nil {
+		return nil, huma.Error409Conflict("nodes_disabled")
+	}
+	st, err := h.d.Nodes.GeoStatus(ctx, n.ID)
+	if err != nil {
+		if errors.Is(err, nodeapi.ErrUnavailable) {
+			return nil, huma.Error409Conflict("nodes_disabled")
+		}
+		return nil, err
+	}
+	if st.Files == nil {
+		st.Files = []nodeapi.GeoFile{}
+	}
+	return &geoOutput{Body: st}, nil
+}
+
+func (h *handlers) updateNodeGeo(ctx context.Context, in *userIDInput) (*geoOutput, error) {
+	n, err := h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	if h.d.Nodes == nil {
+		return nil, huma.Error409Conflict("nodes_disabled")
+	}
+	st, err := h.d.Nodes.UpdateGeo(ctx, n.ID)
+	if err != nil {
+		if errors.Is(err, nodeapi.ErrUnavailable) {
+			return nil, huma.Error409Conflict("nodes_disabled")
+		}
+		return nil, err
+	}
+	h.audit(ctx, sessionOf(ctx).AdminID, "node.geo.update", "node", strconv.FormatInt(n.ID, 10), nil)
+	// Fresh files, fresh matchers: the node re-reads its rules on the new state.
+	h.d.Changes.SlotsChanged()
+	if st.Files == nil {
+		st.Files = []nodeapi.GeoFile{}
+	}
+	return &geoOutput{Body: st}, nil
 }

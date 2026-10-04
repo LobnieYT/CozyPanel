@@ -813,6 +813,61 @@
         ],
         "type": "object"
       },
+      "DNSFallbackFilter": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "geoip": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "geosite": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ipcidr": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "DNSServer": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "port": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "type": "object"
+      },
       "DeviceView": {
         "additionalProperties": false,
         "properties": {
@@ -925,6 +980,49 @@
             "type": "integer"
           }
         },
+        "type": "object"
+      },
+      "GeoFile": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "present"
+        ],
+        "type": "object"
+      },
+      "GeoStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/GeoFile"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
         "type": "object"
       },
       "GrantInputBody": {
@@ -1446,6 +1544,10 @@
       "NetworkView": {
         "additionalProperties": false,
         "properties": {
+          "node_adblock": {
+            "description": "Антиреклама нод: JSON AdBlock; пусто — выключена",
+            "type": "string"
+          },
           "node_dns": {
             "description": "DNS нод: JSON NodeDNS; пусто — резолвер mihomo выключен",
             "type": "string"
@@ -1458,6 +1560,10 @@
             "description": "Маршруты нод: по правилу mihomo на строку",
             "type": "string"
           },
+          "sub_adblock": {
+            "description": "Антиреклама подписок: JSON AdBlock; пусто — выключена",
+            "type": "string"
+          },
           "sub_dns": {
             "description": "DNS подписок: JSON SubDNS; пусто — встроенный DNS профилей",
             "type": "string"
@@ -1467,7 +1573,9 @@
           "node_dns",
           "node_routes",
           "node_outbounds",
-          "sub_dns"
+          "sub_dns",
+          "node_adblock",
+          "sub_adblock"
         ],
         "type": "object"
       },
@@ -1533,6 +1641,15 @@
           "enable": {
             "type": "boolean"
           },
+          "fallback": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "fallback_filter": {
+            "$ref": "#/components/schemas/DNSFallbackFilter"
+          },
           "hosts": {
             "additionalProperties": {
               "items": {
@@ -1545,26 +1662,23 @@
           "ipv6": {
             "type": "boolean"
           },
-          "nameservers": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "policy": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "type": "object"
+          "prefer_h3": {
+            "type": "boolean"
           },
           "proxy_servers": {
             "items": {
               "type": "string"
             },
             "type": "array"
+          },
+          "servers": {
+            "items": {
+              "$ref": "#/components/schemas/DNSServer"
+            },
+            "type": "array"
+          },
+          "use_system_hosts": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2112,6 +2226,9 @@
       "PatchNetworkInputBody": {
         "additionalProperties": false,
         "properties": {
+          "node_adblock": {
+            "type": "string"
+          },
           "node_dns": {
             "type": "string"
           },
@@ -2119,6 +2236,9 @@
             "type": "string"
           },
           "node_routes": {
+            "type": "string"
+          },
+          "sub_adblock": {
             "type": "string"
           },
           "sub_dns": {
@@ -5186,6 +5306,93 @@
           }
         },
         "summary": "Поставить ноде свой сертификат",
+        "tags": [
+          "node"
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/geo": {
+      "get": {
+        "operationId": "node-geo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeoStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Геоданные ноды",
+        "tags": [
+          "node"
+        ]
+      }
+    },
+    "/api/v1/nodes/{id}/geo/update": {
+      "post": {
+        "operationId": "update-node-geo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeoStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Обновить геоданные ноды",
         "tags": [
           "node"
         ],
