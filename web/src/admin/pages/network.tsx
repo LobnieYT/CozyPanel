@@ -47,7 +47,9 @@ export const DNS_PRESETS: { id: string; label: string; servers: { address: strin
   { id: "google", label: "Google", servers: [{ address: "8.8.8.8" }, { address: "8.8.4.4" }, { address: "https://dns.google/dns-query" }] },
   { id: "quad9", label: "Quad9", servers: [{ address: "9.9.9.9" }, { address: "https://dns.quad9.net/dns-query" }] },
   { id: "opendns", label: "OpenDNS", servers: [{ address: "208.67.222.222" }, { address: "https://doh.opendns.com/dns-query" }] },
-  { id: "xbox", label: "xbox-dns.ru", servers: [{ address: "https://xbox-dns.ru/dns-query" }] },
+  // xbox-dns.ru answers for Google: the matcher scopes it to google domains,
+  // everything else keeps going to the default servers.
+  { id: "xbox", label: "xbox-dns", servers: [{ address: "https://xbox-dns.ru/dns-query", domains: ["geosite:google"] }] },
 ];
 
 const TABS = ["dns", "routes", "outbounds", "subdns", "adblock"] as const;
@@ -220,6 +222,7 @@ export function DNSEditor({
 }) {
   const servers = form.servers ?? [];
   const setServers = (v: DnsServerRow[]) => onForm("servers", v);
+  const toast = useToast();
   const filter = form.fallback_filter ?? {};
   const setFilter = (k: keyof NonNullable<DnsDoc["fallback_filter"]>, v: string) =>
     onForm("fallback_filter", { ...filter, [k]: v.split(/[,\s]+/).filter(Boolean) });
@@ -227,11 +230,15 @@ export function DNSEditor({
     const p = DNS_PRESETS.find((x) => x.id === id);
     if (!p) return;
     const have = new Set(servers.map((s) => s.address));
-    const next = [...servers];
-    for (const s of p.servers) {
-      if (!have.has(s.address)) next.push({ address: s.address, port: "", tag: "", domains: (s.domains ?? []).join(", ") });
+    const fresh = p.servers.filter((s) => !have.has(s.address));
+    if (fresh.length === 0) {
+      toast.ok(t("network.presetExists"));
+      return;
     }
+    const next = [...servers];
+    for (const s of fresh) next.push({ address: s.address, port: "", tag: "", domains: (s.domains ?? []).join(", ") });
     setServers(next);
+    toast.ok(t("network.presetAdded", { n: fresh.length }));
   };
   return (
     <>

@@ -1478,6 +1478,8 @@
     "serverDomains": "Domains and geo",
     "serverDomainsHint": "What this server resolves: geosite:google, domain:example.com, 10.0.0.0/8. Empty — everything else.",
     "presets": "Presets",
+    "presetAdded": "Servers added: {n}",
+    "presetExists": "Everything from the preset is already added",
     "fallback": "Fallback",
     "fallbackHint": "Who to ask on poisoning or timeout",
     "filterGeoip": "GeoIP",

@@ -1478,6 +1478,8 @@
     "serverDomains": "Домены и гео",
     "serverDomainsHint": "Что резолвит этот сервер: geosite:google, domain:example.com, 10.0.0.0/8. Пусто — всё остальное.",
     "presets": "Пресеты",
+    "presetAdded": "Добавлено серверов: {n}",
+    "presetExists": "Всё из пресета уже добавлено",
     "fallback": "Fallback",
     "fallbackHint": "Куда спрашивать при отравлении или таймауте",
     "filterGeoip": "GeoIP",
