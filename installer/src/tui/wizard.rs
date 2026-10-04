@@ -160,7 +160,8 @@ impl Wizard {
 
     fn start_checks(&mut self) {
         let node = self.node();
-        self.checks = Task::start(move || system::checks(node));
+        let skip_ports = self.plan.skip_port_check;
+        self.checks = Task::start(move || system::checks_for(node, false, skip_ports));
         if !node && self.host.value.is_empty() && !self.detect.running() {
             self.detect = Task::start(net::public_ipv4);
         }

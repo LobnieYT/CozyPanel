@@ -49,6 +49,11 @@ pub struct Options {
     /// Leave the kernel settings alone (BBR, UDP buffers)
     #[arg(long)]
     pub no_tune: bool,
+    /// Ports 443/8443 may stay busy (another VPN panel or a web server holds
+    /// them): for a server that already runs something. New inbounds must
+    /// then avoid the busy ports.
+    #[arg(long)]
+    pub skip_port_check: bool,
     /// Install a node of another panel with the key from its Nodes page. The key holds the
     /// node's private key: COZY_JOIN_KEY keeps it out of the process list.
     #[arg(long, value_name = "KEY", env = "COZY_JOIN_KEY", hide_env_values = true)]
@@ -83,6 +88,8 @@ pub struct Plan {
     pub port: u16,
     pub firewall: bool,
     pub tune: bool,
+    /// Ports 443/8443 may stay busy: the checks warn instead of stopping.
+    pub skip_port_check: bool,
     pub join: Option<String>,
     /// A node: the panel's address, the only one its API port is opened for.
     pub panel_ip: Option<IpAddr>,
@@ -110,6 +117,7 @@ impl Plan {
             port: o.port.unwrap_or_else(free_port),
             firewall: !o.no_firewall,
             tune: !o.no_tune,
+            skip_port_check: o.skip_port_check,
             join: o.join.clone().map(|k| k.trim().to_owned()),
             panel_ip: o.panel_ip,
             image: o.image.clone(),
@@ -658,7 +666,7 @@ fn plain(opts: Options, earlier: Option<EnvFile>) -> Result<()> {
     if let Some(env) = &earlier {
         plan = plan.resumed(env);
     }
-    let checks = system::checks_for(plan.node(), plan.resume);
+    let checks = system::checks_for(plan.node(), plan.resume, plan.skip_port_check);
     for c in &checks {
         crate::out(&format!("{} {:<16} {}", mark(c.level), c.label, c.detail));
     }

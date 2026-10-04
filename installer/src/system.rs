@@ -249,7 +249,7 @@ pub fn docker_to_replace(checks: &[Check]) -> Option<&Check> {
 }
 
 pub fn checks(node: bool) -> Vec<Check> {
-    checks_for(node, false)
+    checks_for(node, false, false)
 }
 
 /// The checks of an install that continues (resume): the VPN ports are held by the
@@ -293,6 +293,12 @@ pub fn checks_for(node: bool, resume: bool) -> Vec<Check> {
     };
     out.push(if taken.is_empty() {
         Check::new("Ports 443, 8443", Level::Ok, "free")
+    } else if skip_ports {
+        Check::new(
+            "Ports 443, 8443",
+            Level::Warn,
+            format!("taken: {}. New inbounds must avoid these ports", taken.join(", ")),
+        )
     } else {
         Check::new(
             "Ports 443, 8443",

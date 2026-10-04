@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 0.5.1
+### en
+- Install next to another VPN panel or a web server: `cozy install --skip-port-check` turns the busy 443/8443 ports from a stop into a warning. New inbounds must avoid those ports.
+
+### ru
+- Установка рядом с другой VPN-панелью или веб-сервером: `cozy install --skip-port-check` превращает занятые порты 443/8443 из остановки в предупреждение. Новые инбаунды должны избегать этих портов.
+
 ## 0.5.0
 ### en
 - DNS that does not break the VPN: resolvers that stall or get poisoned from Russia now answer through the tunnel, Yandex stays direct, and the node bootstrap uses plain DNS that always resolves.
