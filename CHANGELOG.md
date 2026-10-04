@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.6
+### en
+- Fixed DNS never reaching real traffic: Apply now wires mihomo's resolvers, hosts and sniffer like a full config load does. Before, they stayed nil from the DNS-off base config, so every dial fell back to the system resolver while the testers reported green.
+- The egress dial test no longer answers "node not ready" on a running node.
+
+### ru
+- Починен DNS, не доходивший до реального трафика: Apply теперь включает резолверы, hosts и сниффер как полная загрузка конфига. До этого они оставались nil с базового конфига без DNS, и каждый dial уходил на системный резолвер, пока тестеры показывали зелёное.
+- Тест выхода больше не отвечает «node not ready» на работающей ноде.
+
 ## 1.1.5
 ### en
 - The panel accepts custom DNS: `no_default` has a human text, the xbox preset repairs a policy-only list with a default server, and the editor explains default/race/fallback.

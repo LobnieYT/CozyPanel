@@ -211,6 +211,13 @@ func (e *Engine) Apply(st nodeapi.DesiredState) (nodeapi.ApplyResult, error) {
 	if err != nil {
 		return nodeapi.ApplyResult{}, &nodeapi.Error{Code: "invalid_state", Message: err.Error()}
 	}
+	// DNS, hosts and the sniffer live in mihomo globals that only ApplyConfig
+	// touches; our incremental Apply never calls it (it would re-patch every
+	// listener through the stock tunnel). Without this the resolvers stay nil
+	// from Start's DNS-off base: every dial falls back to the system resolver,
+	// the DNS policy never touches real traffic, hosts never apply and
+	// sniffing stays dormant — while the testers keep reporting green.
+	applyNetGlobals(cfg)
 
 	// Listeners are patched below; the way out (WARP and the rules that pick it) is
 	// swapped only when it changed, so open connections keep their outbound otherwise.
