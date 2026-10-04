@@ -10,7 +10,7 @@ import { Tabs } from "../../components/tabs";
 import { useToast } from "../../components/toast";
 import { Button, Field, Pill, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
-import { fieldErrors } from "../../lib/fields";
+import { fieldErrors, fieldPrefix } from "../../lib/fields";
 import {
   DeleteConfirm,
   DNSEditor,
@@ -122,9 +122,9 @@ export function NodeDNSSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
       ) : (
         <EffectiveDNS n={n} />
       )}
-      {errors.dns_override ? (
+      {fieldPrefix(errors, "dns_override") ? (
         <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-          {errors.dns_override}
+          {fieldPrefix(errors, "dns_override")}
         </p>
       ) : null}
       <Button type="submit" variant="primary" loading={save.isPending}>
@@ -169,7 +169,7 @@ export function NodeRoutesSection({ nodeId, n }: { nodeId: number; n: NodeNet })
     <form onSubmit={submit} noValidate>
       <InheritRow on={inherit} onChange={setInherit} />
       {!inherit ? (
-        <RoutesEditor def={def} onDef={setDef} text={text} onText={setText} targets={ROUTE_TARGETS} error={errors.routes_override} />
+        <RoutesEditor def={def} onDef={setDef} text={text} onText={setText} targets={ROUTE_TARGETS} error={fieldPrefix(errors, "routes_override")} />
       ) : (
         <div className="mb-3 text-[13px] text-[var(--ink-600)]">
           {n.effective_default ? `# default: ${n.effective_default}` : null}
@@ -246,7 +246,7 @@ export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet
               {t("network.obImport")}
             </Button>
           </div>
-          <Field label={t("network.outbounds")} error={errors.outbounds_override}>
+          <Field label={t("network.outbounds")} error={fieldPrefix(errors, "outbounds_override")}>
             <textarea className="input mono" style={{ minHeight: 140 }} value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} wrap="off" />
           </Field>
         </>
@@ -268,9 +268,9 @@ export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet
           </div>
         </>
       )}
-      {errors.outbounds_override ? (
+      {fieldPrefix(errors, "outbounds_override") ? (
         <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-          {errors.outbounds_override}
+          {fieldPrefix(errors, "outbounds_override")}
         </p>
       ) : null}
       <Button type="submit" variant="primary" loading={save.isPending}>

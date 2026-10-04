@@ -11,7 +11,7 @@ import { Tabs } from "../../components/tabs";
 import { useToast } from "../../components/toast";
 import { Button, Field, PageHeader, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
-import { fieldErrors } from "../../lib/fields";
+import { fieldErrors, fieldPrefix } from "../../lib/fields";
 import { NodeNetworkSections } from "./node-network";
 
 export type DnsServerRow = { address: string; port: string; tag: string; domains: string };
@@ -248,7 +248,16 @@ export function DNSEditor({
             <div className="text-[13px] font-semibold">{t("network.enable")}</div>
             <div className="text-xs text-[var(--ink-500)]">{t("network.enableHint")}</div>
           </div>
-          <Switch checked={form.enable} onChange={(v) => onForm("enable", v)} label={t("network.enable")} />
+          <Switch
+            checked={form.enable}
+            onChange={(v) => {
+              // mihomo refuses an enabled DNS without servers: enabling with an
+              // empty list starts one, so Save works right away.
+              if (v && (form.servers ?? []).length === 0) onForm("servers", [{ address: "1.1.1.1", port: "", tag: "", domains: "" }]);
+              onForm("enable", v);
+            }}
+            label={t("network.enable")}
+          />
         </div>
       ) : null}
       {(!showEnable || form.enable) && (
@@ -545,7 +554,7 @@ function GlobalRoutesCard({ doc }: { doc: string }) {
             <div className="card-sub">{t("network.rulesHint")}</div>
           </div>
         </div>
-        <RoutesEditor def={def} onDef={setDef} text={text} onText={setText} targets={ROUTE_TARGETS} error={errors.node_routes} />
+        <RoutesEditor def={def} onDef={setDef} text={text} onText={setText} targets={ROUTE_TARGETS} error={fieldPrefix(errors, "node_routes")} />
         <Button type="submit" variant="primary" loading={save.isPending}>
           {t("network.save")}
         </Button>
@@ -574,9 +583,9 @@ function GlobalDNSCard({ doc }: { doc: string }) {
           </div>
         </div>
         <DNSEditor form={form} onForm={set} hostRows={hostRows} onHostRows={setHostRows} />
-        {errors.node_dns ? (
+        {fieldPrefix(errors, "node_dns") ? (
           <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-            {errors.node_dns}
+            {fieldPrefix(errors, "node_dns")}
           </p>
         ) : null}
         <Button type="submit" variant="primary" loading={save.isPending}>
@@ -648,7 +657,7 @@ function GlobalOutboundsCard({ doc }: { doc: string }) {
             {t("network.obImport")}
           </Button>
         </div>
-        <Field label={t("network.outbounds")} error={errors.node_outbounds}>
+        <Field label={t("network.outbounds")} error={fieldPrefix(errors, "node_outbounds")}>
           <textarea
             className="input mono"
             style={{ minHeight: 140 }}
@@ -904,9 +913,9 @@ function SubDNSCard({ doc }: { doc: string }) {
             {t("network.subFake")}
           </label>
         </div>
-        {errors.sub_dns ? (
+        {fieldPrefix(errors, "sub_dns") ? (
           <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-            {errors.sub_dns}
+            {fieldPrefix(errors, "sub_dns")}
           </p>
         ) : null}
         <Button type="submit" variant="primary" loading={save.isPending}>
@@ -1031,11 +1040,14 @@ function AdBlockCard({ nodeDoc, subDoc }: { nodeDoc: string; subDoc: string }) {
         <div className="border-t border-[var(--hairline)] pt-4">
           <AdBlockSection title={t("network.adSub")} hint={t("network.adSubHint")} form={sub} onForm={setS} />
         </div>
-        {errors.node_adblock || errors.sub_adblock ? (
-          <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
-            {errors.node_adblock ?? errors.sub_adblock}
-          </p>
-        ) : null}
+        {(() => {
+          const err = fieldPrefix(errors, "node_adblock") ?? fieldPrefix(errors, "sub_adblock");
+          return err ? (
+            <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
+              {err}
+            </p>
+          ) : null;
+        })()}
         <Button type="submit" variant="primary" loading={save.isPending}>
           {t("network.save")}
         </Button>

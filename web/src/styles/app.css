@@ -242,6 +242,7 @@
   .gauge .val { stroke: var(--cozy-500); transition: stroke-dashoffset 0.8s var(--ease-out); }
   .gauge.warn .val { stroke: var(--honey-500); }
   .gauge.bad .val { stroke: var(--berry-600); }
+  .gauge.ok .val { stroke: var(--leaf-500); }
   .gauge-label { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
   .gauge-label b { font: 500 20px/24px var(--font-display-stack); letter-spacing: -0.02em; display: block; }
   .gauge-label span { font-size: 11px; color: var(--ink-500); }

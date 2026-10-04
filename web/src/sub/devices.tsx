@@ -77,7 +77,7 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
             return (
               <li key={d.id} className="py-2">
                 <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--hairline)] bg-white text-[var(--ink-600)]" aria-hidden>
+                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--hairline)] bg-[rgba(148,163,255,0.12)] text-[var(--ink-600)]" aria-hidden>
                     {d.shared ? <Layers size={18} /> : desktopOS.test(d.os) ? <Laptop size={18} /> : <Smartphone size={18} />}
                   </span>
                   <div className="min-w-0">

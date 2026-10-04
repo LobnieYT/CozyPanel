@@ -921,7 +921,7 @@
     "loadFailed": "Could not load the subscription",
     "loadFailedText": "Check your internet and reload the page. If it does not help, contact whoever gave you the link.",
     "status": {
-      "active": "{name}, everything works",
+      "active": "Welcome, {name}!",
       "expiring": "{name}, your subscription ends soon",
       "limited": "Traffic for this period has run out",
       "expired": "The subscription has ended",

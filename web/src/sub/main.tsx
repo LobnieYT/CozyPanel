@@ -2,7 +2,7 @@ import "../styles/app.css";
 import { Check, Copy, LifeBuoy, QrCode, Send } from "lucide-react";
 import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Atmosphere } from "../components/atmosphere";
+import { Atmosphere, Logo } from "../components/atmosphere";
 import { ErrorBoundary } from "../components/error-boundary";
 import { LangSwitch } from "../components/lang";
 import { Bar, Button, Pill, QR, Ring, Skeleton } from "../components/ui";
@@ -196,7 +196,13 @@ function SubPage() {
       </section>
 
       <section className="glass grid grid-cols-[104px_1fr] items-center gap-4 rounded-3xl p-4">
-        <Ring size={104} pct={current.limit != null ? pct : 100} label={leftValue} sub={left != null ? t("sub.left", { unit: leftUnit ?? "" }) : t("sub.unlimited")} />
+        <Ring
+          size={104}
+          pct={current.limit != null ? pct : 100}
+          tone={current.limit != null ? undefined : "ok"}
+          label={leftValue}
+          sub={left != null ? t("sub.left", { unit: leftUnit ?? "" }) : t("sub.unlimited")}
+        />
         <div className="flex flex-col gap-2 text-xs text-[var(--ink-500)]">
           <div>
             {t("sub.used")}
@@ -253,7 +259,7 @@ function SubPage() {
               type="button"
               aria-pressed={platform === k}
               onClick={() => setPlatform(k)}
-              className="h-8 flex-1 rounded-[10px] text-xs font-semibold text-[var(--ink-600)] aria-pressed:bg-white aria-pressed:text-[var(--ink-900)] aria-pressed:shadow-sm"
+              className="h-8 flex-1 rounded-[10px] text-xs font-semibold text-[var(--ink-600)] aria-pressed:bg-[rgba(148,163,255,0.16)] aria-pressed:text-white aria-pressed:shadow-sm"
             >
               {l}
             </button>
@@ -262,9 +268,7 @@ function SubPage() {
         <div className="row-list">
           {APPS[platform].map((a, i) => (
             <div key={a.name} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-2">
-              <span className="font-display grid h-10 w-10 place-items-center rounded-xl border border-[var(--hairline)] bg-white text-sm font-semibold text-[var(--ink-700)]" aria-hidden>
-                {a.name[0]}
-              </span>
+              <AppIcon name={a.name} icon={a.icon} />
               <div className="min-w-0">
                 <div className="text-sm font-semibold">{a.name}</div>
                 <div className="text-xs text-[var(--ink-500)]">
@@ -290,7 +294,7 @@ function SubPage() {
         <ol className="flex flex-col gap-3 text-[13px] text-[var(--ink-600)]">
           {([1, 2, 3] as const).map((n) => (
             <li key={n} className="grid grid-cols-[28px_1fr] items-start gap-3">
-              <span className="font-display grid h-7 w-7 place-items-center rounded-full border border-[var(--hairline)] bg-white text-xs font-semibold">{n}</span>
+              <span className="font-display grid h-7 w-7 place-items-center rounded-full border border-[var(--hairline)] bg-[rgba(148,163,255,0.12)] text-xs font-semibold text-[var(--ink-700)]">{n}</span>
               <div>
                 <b className="block font-semibold text-[var(--ink-900)]">{t(`sub.steps.${n}.title`)}</b>
                 {t(`sub.steps.${n}.text`)}
@@ -332,11 +336,35 @@ function SubPage() {
   );
 }
 
+// The app's bundled icon; a missing or broken file falls back to the first letter.
+function AppIcon({ name, icon }: { name: string; icon: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!icon || broken) {
+    return (
+      <span className="font-display grid h-10 w-10 place-items-center rounded-xl border border-[var(--hairline)] bg-[rgba(148,163,255,0.12)] text-sm font-semibold text-[var(--ink-700)]" aria-hidden>
+        {name[0]}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={icon}
+      alt=""
+      aria-hidden
+      width={40}
+      height={40}
+      loading="lazy"
+      onError={() => setBroken(true)}
+      className="h-10 w-10 rounded-xl border border-[var(--hairline)] object-cover"
+    />
+  );
+}
+
 function Shell({ brand, children }: { brand?: string; children: React.ReactNode }) {
   return (
     <main className="calm-glass mx-auto flex max-w-[440px] flex-col gap-3 px-4 pt-[calc(24px+env(safe-area-inset-top))] pb-[calc(40px+env(safe-area-inset-bottom))]">
       <div className="flex items-center gap-2 px-1 pb-1">
-        <span className="font-display grid h-7 w-7 place-items-center rounded-[9px] bg-[var(--cozy-600)] text-[13px] font-semibold text-white">{(brand ?? "V")[0]}</span>
+        <Logo size={28} />
         <span className="font-display text-[15px] font-semibold tracking-tight">{brand ?? ""}</span>
         <LangSwitch className="ml-auto" />
       </div>

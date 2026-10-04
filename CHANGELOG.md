@@ -3,6 +3,17 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.1
+### en
+- Subscription page: bundled app icons (Happ, Streisand, v2RayTun, INCY, Hiddify, Koala Clash) and the Cozy logo, a "Welcome, {name}!" greeting, and a green unlimited ring.
+- Windows tab: Happ and Hiddify first, Clash Verge Rev removed; platform tabs and icons restyled into the site theme (no more white-on-white).
+- Network-DNS saving fixed: enabling DNS with an empty list starts a default server, and validation errors are shown instead of silently swallowing the save.
+
+### ru
+- Страница подписки: встроенные иконки приложений (Happ, Streisand, v2RayTun, INCY, Hiddify, Koala Clash) и логотип Cozy, приветствие «Добро пожаловать, {name}!» и зелёный кружок безлимита.
+- Вкладка Windows: сначала Happ и Hiddify, Clash Verge Rev убран; вкладки платформ и иконки перекрашены в стилистику сайта (белого на белом больше нет).
+- Починено сохранение DNS в «Сети»: включение с пустым списком подставляет сервер по умолчанию, а ошибки валидации показываются, а не глотаются молча.
+
 ## 0.5.1
 ### en
 - Install next to another VPN panel or a web server: `cozy install --skip-port-check` turns the busy 443/8443 ports from a stop into a warning. New inbounds must avoid those ports.

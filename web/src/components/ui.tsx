@@ -94,10 +94,10 @@ export function Bar({ pct, className, label }: { pct: number; className?: string
   );
 }
 
-export function Ring({ pct, label, sub, size = 112 }: { pct: number; label: ReactNode; sub: ReactNode; size?: number }) {
+export function Ring({ pct, label, sub, size = 112, tone: force }: { pct: number; label: ReactNode; sub: ReactNode; size?: number; tone?: "ok" }) {
   const r = size / 2 - 8;
   const c = 2 * Math.PI * r;
-  const tone = pct >= 100 ? "bad" : pct >= 85 ? "warn" : "";
+  const tone = force ?? (pct >= 100 ? "bad" : pct >= 85 ? "warn" : "");
   return (
     <div className={clsx("gauge", tone)} style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
