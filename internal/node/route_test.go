@@ -37,6 +37,11 @@ func TestDNSMatch(t *testing.T) {
 	if err != nil || !r.Matched || r.Key != "yandex.ru" || len(r.Servers) != 1 {
 		t.Fatalf("suffix: %+v %v", r, err)
 	}
+	// A pasted URL resolves to its host before matching.
+	r, err = e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{Domain: "https://mail.yandex.ru/app"})
+	if err != nil || !r.Matched || r.Key != "yandex.ru" {
+		t.Fatalf("url: %+v %v", r, err)
+	}
 	r, err = e.DNSMatch(context.Background(), nodeapi.DNSMatchRequest{Domain: "example.com"})
 	if err != nil || !r.Matched || r.Key != "default" || len(r.Servers) != 1 {
 		t.Fatalf("default: %+v %v", r, err)

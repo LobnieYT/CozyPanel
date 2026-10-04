@@ -782,7 +782,7 @@ type RouteInput struct {
 // and mihomo keeps the order.
 func MatchDNSPolicy(servers []nodeapi.DNSServer, domain string) (key string, addrs []string, matched, geoSkipped bool) {
 	_, policy := nodeapi.SplitServers(servers)
-	domain = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(domain), "."))
+	domain = nodeapi.NormalizeDomain(domain)
 	keys := make([]string, 0, len(policy))
 	for k := range policy {
 		keys = append(keys, k)

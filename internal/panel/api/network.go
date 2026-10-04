@@ -121,7 +121,7 @@ func (h *handlers) testNodeDNS(ctx context.Context, in *dnsMatchInput) (*dnsMatc
 	if err != nil {
 		return nil, err
 	}
-	domain := strings.TrimSpace(in.Body.Domain)
+	domain := nodeapi.NormalizeDomain(in.Body.Domain)
 	if domain == "" {
 		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body", Message: "domain"})
 	}
@@ -444,6 +444,7 @@ func (h *handlers) testNodeRoute(ctx context.Context, in *routeTestInput) (*rout
 		return nil, err
 	}
 	b := in.Body
+	b.Domain = nodeapi.NormalizeDomain(b.Domain)
 	if b.Domain == "" && b.IP == "" {
 		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body", Message: "domain_or_ip"})
 	}

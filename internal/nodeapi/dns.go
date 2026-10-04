@@ -62,6 +62,30 @@ func PolicyMatcher(k string) string {
 	return strings.TrimPrefix(k, "domain:")
 }
 
+// NormalizeDomain cleans what an admin types into a domain field: a pasted URL
+// gives its host ("https://gemini.google.com/app" → "gemini.google.com"),
+// otherwise the text is trimmed, un-dotted and lowered. "" means there is no
+// domain to ask about.
+func NormalizeDomain(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.Contains(s, "://") {
+		if u, err := url.Parse(s); err == nil && u.Hostname() != "" {
+			s = u.Hostname()
+		} else {
+			return ""
+		}
+	} else if h, _, err := net.SplitHostPort(s); err == nil {
+		s = h
+	} else if i := strings.IndexByte(s, '/'); i >= 0 {
+		s = s[:i]
+	}
+	s = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(s), "."))
+	if s == "" || strings.ContainsAny(s, " \t\r\n@:") {
+		return ""
+	}
+	return s
+}
+
 // SplitServers divides servers into the default addresses and the policy map
 // (matcher → server addresses), the way mihomo reads them: what nothing else
 // claims goes to the defaults.

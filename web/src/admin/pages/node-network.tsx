@@ -354,11 +354,31 @@ function OutboundRow({
   );
 }
 
+// cleanDomain takes what an admin pastes into a domain field: a URL gives its
+// host ("https://gemini.google.com/app" → "gemini.google.com"), otherwise the
+// text is trimmed, un-dotted and lowered. "" means there is no domain to ask
+// about. Mirrors nodeapi.NormalizeDomain on the backend.
+export function cleanDomain(s: string): string {
+  s = s.trim();
+  if (s.includes("://")) {
+    try {
+      s = new URL(s).hostname;
+    } catch {
+      return "";
+    }
+  } else {
+    const slash = s.indexOf("/");
+    if (slash >= 0) s = s.slice(0, slash);
+    if (/^[^:]+:\d+$/.test(s)) s = s.slice(0, s.lastIndexOf(":"));
+  }
+  s = s.toLowerCase().replace(/\.+$/, "").trim();
+  return s && !/[\s@:]/.test(s) ? s : "";
+}
+
 export function NodeTesterSection({ nodeId }: { nodeId: number }) {
   const [domain, setDomain] = useState("");
   const [ip, setIp] = useState("");
-  const [port, setPort] = useState("443");
-  const [network, setNetwork] = useState<"tcp" | "udp">("tcp");
+  const [port, setPort] = useState("443");  const [network, setNetwork] = useState<"tcp" | "udp">("tcp");
   const [inbound, setInbound] = useState("");
   const [res, setRes] = useState<Schemas["RouteTestOutputBody"] | null>(null);
   const [dns, setDns] = useState<Schemas["DnsMatchOutputBody"] | null>(null);
@@ -369,10 +389,11 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
     setBusy(true);
     setError("");
     setRes(null);
+    const d = cleanDomain(domain);
     void unwrap(
       api.POST("/api/v1/nodes/{id}/route-test", {
         params: { path: { id: nodeId } },
-        body: { domain: domain.trim() || undefined, ip: ip.trim() || undefined, port: Number(port) || undefined, network: network || undefined, inbound: inbound.trim() || undefined },
+        body: { domain: d || undefined, ip: ip.trim() || undefined, port: Number(port) || undefined, network: network || undefined, inbound: inbound.trim() || undefined },
       }),
     ).then(
       (v) => {
@@ -392,7 +413,7 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
     void unwrap(
       api.POST("/api/v1/nodes/{id}/dns-match", {
         params: { path: { id: nodeId } },
-        body: { domain: domain.trim() },
+        body: { domain: cleanDomain(domain) },
       }),
     ).then(
       (v) => {
@@ -410,7 +431,7 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
       <p className="mb-3 text-[13px] text-[var(--ink-500)]">{t("network.testerSub")}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t("network.tDomain")}>
-          <input className="input" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="example.com" />
+          <input className="input" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="example.com / https://…" />
         </Field>
         <Field label={t("network.tIp")}>
           <input className="input" value={ip} onChange={(e) => setIp(e.target.value)} placeholder="203.0.113.9" />
@@ -432,10 +453,10 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
         <input className="input" value={inbound} onChange={(e) => setInbound(e.target.value)} placeholder="" />
       </Field>
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" disabled={(!domain.trim() && !ip.trim()) || busy} loading={busy} onClick={run}>
+        <Button variant="primary" disabled={(!cleanDomain(domain) && !ip.trim()) || busy} loading={busy} onClick={run}>
           {t("network.tRun")}
         </Button>
-        <Button variant="glass" disabled={!domain.trim() || dnsBusy} loading={dnsBusy} onClick={runDns}>
+        <Button variant="glass" disabled={!cleanDomain(domain) || dnsBusy} loading={dnsBusy} onClick={runDns}>
           {t("network.tDnsRun")}
         </Button>
       </div>

@@ -34,7 +34,7 @@ func (e *Engine) DNSResolve(ctx context.Context, req nodeapi.DNSResolveRequest) 
 	if st.DNS == nil || !st.DNS.Enable {
 		return out, nil
 	}
-	domain := strings.TrimSuffix(strings.TrimSpace(req.Domain), ".")
+	domain := nodeapi.NormalizeDomain(req.Domain)
 	if domain == "" {
 		return out, nil
 	}

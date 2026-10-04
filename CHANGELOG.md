@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.4
+### en
+- The route/DNS tester accepts a pasted URL: the host is extracted before matching and resolving, so `https://gemini.google.com/app` tests `gemini.google.com` instead of answering "default / NXDOMAIN" to garbage.
+
+### ru
+- Тестер маршрута/DNS принимает вставленный URL: хост извлекается до матчинга и резолва, так что `https://gemini.google.com/app` проверяет `gemini.google.com`, а не отвечает «default / NXDOMAIN» на мусор.
+
 ## 1.1.3
 ### en
 - Live DNS resolve test on the node's card: every server is asked for the domain from the node itself, with answers, round-trip times and errors — the ground truth behind "which DNS answered".

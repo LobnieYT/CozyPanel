@@ -80,7 +80,7 @@ func (e *Engine) DNSMatch(ctx context.Context, req nodeapi.DNSMatchRequest) (nod
 	if st.DNS == nil || !st.DNS.Enable {
 		return nodeapi.DNSMatchResult{}, nil
 	}
-	domain := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(req.Domain), "."))
+	domain := nodeapi.NormalizeDomain(req.Domain)
 	if domain == "" {
 		return nodeapi.DNSMatchResult{}, errors.New("empty domain")
 	}

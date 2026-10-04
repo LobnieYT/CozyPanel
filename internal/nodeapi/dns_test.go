@@ -18,6 +18,24 @@ func TestPolicyMatcher(t *testing.T) {
 	}
 }
 
+func TestNormalizeDomain(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://gemini.google.com/app": "gemini.google.com",
+		"http://Example.COM:8443/x?y=1": "example.com",
+		"  gemini.google.com. ":         "gemini.google.com",
+		"GEMINI.GOOGLE.COM":             "gemini.google.com",
+		"example.com/path":              "example.com",
+		"":                              "",
+		"https://":                      "",
+		"not a domain":                  "",
+		"gemini.google.com:443":         "gemini.google.com",
+	} {
+		if got := NormalizeDomain(in); got != want {
+			t.Errorf("NormalizeDomain(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestRenderAddress(t *testing.T) {
 	for _, tc := range []struct {
 		in   DNSServer
