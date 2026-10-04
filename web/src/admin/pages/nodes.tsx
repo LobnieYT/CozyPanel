@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cloud, Copy, Globe, KeyRound, Pencil, Plus, ShieldCheck, Trash2, Waypoints } from "lucide-react";
+import { Cloud, Copy, KeyRound, Pencil, Plus, ShieldCheck, Trash2, Waypoints } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
 import { qk, useNodes } from "../../api/hooks";
@@ -13,7 +13,6 @@ import { t, tMaybe } from "../../i18n";
 import { useCopy } from "../../lib/copy";
 import { bytes, num } from "../../lib/format";
 import { CascadeDrawer } from "./node-cascade";
-import { NodeNetworkDrawer } from "./node-network";
 import { WarpDrawer } from "./node-warp";
 
 type Node = Schemas["NodeInfo"];
@@ -34,7 +33,6 @@ export function NodesPage() {
   const [joined, setJoined] = useState<Joined | null>(null);
   const [warpOf, setWarpOf] = useState<Node | null>(null);
   const [cascadeOf, setCascadeOf] = useState<Node | null>(null);
-  const [netOf, setNetOf] = useState<Node | null>(null);
   const [certOf, setCertOf] = useState<Node | null>(null);
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: qk.nodes });
@@ -98,7 +96,7 @@ export function NodesPage() {
                 </div>
               ) : null}
               {list.map((n, idx) => (
-                <NodeCard key={n.id} n={n} idx={idx} onEdit={() => setEditing(n)} onWarp={() => setWarpOf(n)} onCascade={() => setCascadeOf(n)} onNet={() => setNetOf(n)} onCert={() => setCertOf(n)} onRekey={() => setRekeying(n)} onRemove={() => setRemoving(n)} />
+                <NodeCard key={n.id} n={n} idx={idx} onEdit={() => setEditing(n)} onWarp={() => setWarpOf(n)} onCascade={() => setCascadeOf(n)} onCert={() => setCertOf(n)} onRekey={() => setRekeying(n)} onRemove={() => setRemoving(n)} />
               ))}
             </div>
           )
@@ -116,7 +114,6 @@ export function NodesPage() {
       <KeyDrawer joined={joined} onClose={() => setJoined(null)} />
       <WarpDrawer node={warpOf ? { id: warpOf.id, name: nodeLabel(warpOf) } : null} onClose={() => setWarpOf(null)} />
       <CascadeDrawer node={cascadeOf ? { id: cascadeOf.id, name: nodeLabel(cascadeOf) } : null} onClose={() => setCascadeOf(null)} />
-      <NodeNetworkDrawer node={netOf ? { id: netOf.id, name: nodeLabel(netOf) } : null} onClose={() => setNetOf(null)} />
       <CertDrawer
         open={!!certOf}
         onClose={() => setCertOf(null)}
@@ -158,7 +155,6 @@ function NodeCard({
   onEdit,
   onWarp,
   onCascade,
-  onNet,
   onCert,
   onRekey,
   onRemove,
@@ -168,7 +164,6 @@ function NodeCard({
   onEdit: () => void;
   onWarp: () => void;
   onCascade: () => void;
-  onNet: () => void;
   onCert: () => void;
   onRekey: () => void;
   onRemove: () => void;
@@ -257,9 +252,6 @@ function NodeCard({
         </Button>
         <Button size="sm" onClick={onCascade}>
           <Waypoints size={16} aria-hidden /> {t("cascade.title")}
-        </Button>
-        <Button size="sm" onClick={onNet}>
-          <Globe size={16} aria-hidden /> {t("network.title")}
         </Button>
         <Button size="sm" onClick={onCert}>
           <ShieldCheck size={16} aria-hidden /> {t("nodes.certButton")}

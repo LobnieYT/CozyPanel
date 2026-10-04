@@ -1,9 +1,9 @@
-// Node network: per-node DNS/routes/outbounds overrides (empty inherits the shared
-// ones), the effective setup, a route tester and outbound probes.
+// Node network sections: per-node DNS/routes/outbounds overrides (empty inherits
+// the shared ones), the effective setup, a route tester, outbound probes and geodata.
+// Rendered inside the Network page for the picked node.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { Switch } from "../../components/switch";
 import { Tabs } from "../../components/tabs";
@@ -34,7 +34,7 @@ type Probe = Schemas["ProbeView"];
 const TABS = ["dns", "routes", "outbounds", "tester", "geo"] as const;
 type Tab = (typeof TABS)[number];
 
-function useNodeNet(id: number | null) {
+export function useNodeNet(id: number | null) {
   return useQuery({
     queryKey: ["node-network", id],
     queryFn: ({ signal }) => unwrap(api.GET("/api/v1/nodes/{id}/network", { params: { path: { id: id! } }, signal })),
@@ -42,39 +42,35 @@ function useNodeNet(id: number | null) {
   });
 }
 
-export function NodeNetworkDrawer({ node, onClose }: { node: { id: number; name: string } | null; onClose: () => void }) {
+export function NodeNetworkSections({ nodeId }: { nodeId: number }) {
   const [tab, setTab] = useState<Tab>("dns");
-  const net = useNodeNet(node?.id ?? null);
+  const net = useNodeNet(nodeId);
   return (
-    <Drawer open={!!node} onOpenChange={(v) => !v && onClose()} title={t("network.title")} meta={node?.name}>
-      <div className="pt-5">
-        <QueryBoundary query={net} pending={<Skeleton style={{ height: 240, borderRadius: 16 }} />}>
-          {(n) => (
-            <>
-              <Tabs
-                id="node-network"
-                label={t("network.title")}
-                tabs={TABS.map((id) => ({ id, label: t(`network.${id}`) }))}
-                value={tab}
-                onChange={setTab}
-              >
-                {tab === "dns" ? (
-                  <NodeDNS key="dns" nodeId={node!.id} n={n} />
-                ) : tab === "routes" ? (
-                  <NodeRoutes key="routes" nodeId={node!.id} n={n} />
-                ) : tab === "outbounds" ? (
-                  <NodeOutbounds key="outbounds" nodeId={node!.id} n={n} />
-                ) : tab === "tester" ? (
-                  <NodeTester key="tester" nodeId={node!.id} />
-                ) : (
-                  <NodeGeo key="geo" nodeId={node!.id} />
-                )}
-              </Tabs>
-            </>
-          )}
-        </QueryBoundary>
-      </div>
-    </Drawer>
+    <QueryBoundary query={net} pending={<Skeleton style={{ height: 240, borderRadius: 16 }} />}>
+      {(n) => (
+        <>
+          <Tabs
+            id="node-network"
+            label={t("network.title")}
+            tabs={TABS.map((id) => ({ id, label: t(`network.${id}`) }))}
+            value={tab}
+            onChange={setTab}
+          >
+            {tab === "dns" ? (
+              <NodeDNSSection key="dns" nodeId={nodeId} n={n} />
+            ) : tab === "routes" ? (
+              <NodeRoutesSection key="routes" nodeId={nodeId} n={n} />
+            ) : tab === "outbounds" ? (
+              <NodeOutboundsSection key="outbounds" nodeId={nodeId} n={n} />
+            ) : tab === "tester" ? (
+              <NodeTesterSection key="tester" nodeId={nodeId} />
+            ) : (
+              <NodeGeoSection key="geo" nodeId={nodeId} />
+            )}
+          </Tabs>
+        </>
+      )}
+    </QueryBoundary>
   );
 }
 
@@ -106,7 +102,7 @@ function InheritRow({ on, onChange }: { on: boolean; onChange: (v: boolean) => v
   );
 }
 
-function NodeDNS({ nodeId, n }: { nodeId: number; n: NodeNet }) {
+export function NodeDNSSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
   const [inherit, setInherit] = useState(!n.dns_override.trim());
   const initial = parseDnsDoc(n.dns_override);
@@ -158,7 +154,7 @@ function EffectiveDNS({ n }: { n: NodeNet }) {
   );
 }
 
-function NodeRoutes({ nodeId, n }: { nodeId: number; n: NodeNet }) {
+export function NodeRoutesSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
   const [inherit, setInherit] = useState(!n.routes_override.trim());
   const parsed = splitDefault(n.routes_override);
@@ -187,7 +183,7 @@ function NodeRoutes({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   );
 }
 
-function NodeOutbounds({ nodeId, n }: { nodeId: number; n: NodeNet }) {
+export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
   const qc = useQueryClient();
   const toast = useToast();
@@ -357,7 +353,7 @@ function OutboundRow({
   );
 }
 
-function NodeTester({ nodeId }: { nodeId: number }) {
+export function NodeTesterSection({ nodeId }: { nodeId: number }) {
   const [domain, setDomain] = useState("");
   const [ip, setIp] = useState("");
   const [port, setPort] = useState("443");
@@ -454,7 +450,7 @@ function MatchCard({ title, m }: { title: string; m: { matched: boolean; rule?: 
   );
 }
 
-function NodeGeo({ nodeId }: { nodeId: number }) {
+export function NodeGeoSection({ nodeId }: { nodeId: number }) {
   const qc = useQueryClient();
   const toast = useToast();
   const geo = useQuery({

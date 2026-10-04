@@ -337,6 +337,11 @@ func (h *handlers) updateNodeNetwork(ctx context.Context, in *patchNodeNetworkIn
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "node.network.update", "node", strconv.FormatInt(n.ID, 10), nil)
 	h.d.Changes.SlotsChanged()
+	// Re-read: the response must carry what was saved, not the pre-update node.
+	n, err = h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
 	v, err := h.nodeNetworkView(ctx, n)
 	if err != nil {
 		return nil, err
@@ -476,6 +481,10 @@ func (h *handlers) importNodeOutbound(ctx context.Context, in *importOutboundInp
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "node.outbound.import", "node", strconv.FormatInt(n.ID, 10), map[string]any{"name": name})
 	h.d.Changes.SlotsChanged()
+	n, err = h.nodeOr404(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
 	v, err := h.nodeNetworkView(ctx, n)
 	if err != nil {
 		return nil, err

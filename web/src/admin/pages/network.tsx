@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
+import { useNodes } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { Switch } from "../../components/switch";
@@ -11,6 +12,7 @@ import { useToast } from "../../components/toast";
 import { Button, Field, PageHeader, Skeleton } from "../../components/ui";
 import { t } from "../../i18n";
 import { fieldErrors } from "../../lib/fields";
+import { NodeNetworkSections } from "./node-network";
 
 export type DnsServerRow = { address: string; port: string; tag: string; domains: string };
 
@@ -67,6 +69,9 @@ function parseJson<T>(text: string, fallback: T): T {
 export function NetworkPage() {
   const [tab, setTab] = useState<Tab>("dns");
   const net = useNetwork();
+  const nodes = useNodes();
+  const [nodeId, setNodeId] = useState<number | null>(null);
+  const picked = (nodes.data ?? []).find((n) => n.id === nodeId) ?? (nodes.data ?? [])[0];
   return (
     <>
       <PageHeader title={t("nav.network")} sub={t("network.sub")} />
@@ -93,6 +98,27 @@ export function NetworkPage() {
           }
         </QueryBoundary>
       </Tabs>
+      <section className="card glass mt-4 max-w-4xl">
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">{t("nav.nodes")}</h2>
+            <div className="card-sub">{t("network.nodeHint")}</div>
+          </div>
+          <select
+            className="input max-w-[240px]"
+            aria-label={t("nav.nodes")}
+            value={picked?.id ?? ""}
+            onChange={(e) => setNodeId(Number(e.target.value) || null)}
+          >
+            {(nodes.data ?? []).map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.name || `#${n.id}`}
+              </option>
+            ))}
+          </select>
+        </div>
+        {picked ? <NodeNetworkSections key={picked.id} nodeId={picked.id} /> : null}
+      </section>
     </>
   );
 }
@@ -267,22 +293,11 @@ export function DNSEditor({
             <Button variant="glass" onClick={() => setServers([...servers, { address: "", port: "", tag: "", domains: "" }])}>
               {t("network.add")}
             </Button>
-            <select
-              className="input max-w-[220px]"
-              aria-label={t("network.presets")}
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) addPreset(e.target.value);
-                e.target.value = "";
-              }}
-            >
-              <option value="">{t("network.presets")}</option>
-              {DNS_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            {DNS_PRESETS.map((p) => (
+              <button key={p.id} type="button" className="chip-btn" title={p.servers.map((s) => s.address).join(", ")} onClick={() => addPreset(p.id)}>
+                + {p.label}
+              </button>
+            ))}
           </div>
           <p className="mb-3 text-xs text-[var(--ink-500)]">{t("network.serverDomainsHint")}</p>
           <Field label={t("network.proxy")} hint={t("network.proxyHint")}>

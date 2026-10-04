@@ -1463,6 +1463,7 @@
   "network": {
     "title": "Network",
     "sub": "DNS, routes and outbounds: shared by all nodes, overridable per node",
+    "nodeHint": "Overrides, route testing, probes and geodata of the picked node",
     "dns": "DNS",
     "routes": "Routes",
     "outbounds": "Outbounds",
