@@ -24,6 +24,7 @@ export const qk = {
   cascade: (node: number) => ["cascade", node] as const,
   pools: ["pools"] as const,
   userPools: (id: number) => ["users", "pools", id] as const,
+  userKeys: (id: number) => ["users", "keys", id] as const,
   packages: ["packages"] as const,
   userGrants: (id: number) => ["users", "grants", id] as const,
 };
@@ -63,6 +64,15 @@ export function useUserTraffic(id: number) {
   return useQuery({
     queryKey: qk.userTraffic(id),
     queryFn: ({ signal }) => unwrap(api.GET("/api/v1/users/{id}/traffic", { params: { path: { id }, query: { range: "30d" } }, signal })),
+  });
+}
+
+/** Per-inbound share links of a user, to hand out from the admin panel. */
+export function useUserKeys(id: number | undefined) {
+  return useQuery({
+    queryKey: qk.userKeys(id ?? 0),
+    queryFn: ({ signal }) => unwrap(api.GET("/api/v1/users/{id}/keys", { params: { path: { id: id! } }, signal })),
+    enabled: !!id,
   });
 }
 

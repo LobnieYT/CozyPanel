@@ -15,9 +15,11 @@ import (
 func TestApplyNetGlobals(t *testing.T) {
 	oldResolver, oldMapper, oldService := resolver.DefaultResolver, resolver.DefaultHostMapper, resolver.DefaultService
 	oldProxy, oldDirect := resolver.ProxyServerHostResolver, resolver.DirectHostResolver
+	oldIPv6 := resolver.DisableIPv6
 	defer func() {
 		resolver.DefaultResolver, resolver.DefaultHostMapper, resolver.DefaultService = oldResolver, oldMapper, oldService
 		resolver.ProxyServerHostResolver, resolver.DirectHostResolver = oldProxy, oldDirect
+		resolver.DisableIPv6 = oldIPv6
 	}()
 
 	st := nodeapi.DesiredState{DNS: &nodeapi.NodeDNS{Enable: true,
@@ -35,9 +37,12 @@ func TestApplyNetGlobals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	applyNetGlobals(cfg)
+	applyNetGlobals(cfg, false)
 	if resolver.DirectHostResolver == nil || resolver.DefaultResolver == nil {
 		t.Fatal("resolvers left nil: dials would use the system resolver")
+	}
+	if !resolver.DisableIPv6 {
+		t.Fatal("egress IPv6 off must disable IPv6 resolving and dialing")
 	}
 	if v, ok := resolver.DefaultHosts.Search("internal.example", false); !ok || len(v.IPs) == 0 {
 		t.Fatalf("hosts not applied: %+v %v", v, ok)
@@ -51,8 +56,13 @@ func TestApplyNetGlobals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	applyNetGlobals(offCfg)
+	applyNetGlobals(offCfg, false)
 	if resolver.DirectHostResolver != nil || resolver.DefaultResolver != nil {
 		t.Fatal("disabled DNS must nil the resolvers, like stock")
+	}
+
+	applyNetGlobals(cfg, true)
+	if resolver.DisableIPv6 {
+		t.Fatal("egress IPv6 on must keep IPv6 resolving and dialing")
 	}
 }

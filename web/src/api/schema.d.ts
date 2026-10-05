@@ -1066,6 +1066,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ключи пользователя: по ссылке на подключение */
+        get: operations["user-keys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/pools": {
         parameters: {
             query?: never;
@@ -2007,6 +2024,7 @@ export interface components {
             device_binding?: boolean;
             device_require_hwid?: boolean;
             domain?: string;
+            egress_ipv6?: boolean;
             /** @description @имя, ссылка t.me или текст — бот показывает его вместо счетов */
             pay_contact?: string;
             public_host?: string;
@@ -2196,6 +2214,8 @@ export interface components {
             /** @description Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место) */
             device_require_hwid: boolean;
             domain: string;
+            /** @description Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода */
+            egress_ipv6: boolean;
             /** Format: int64 */
             panel_port: number;
             /** @description Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст */
@@ -2473,6 +2493,12 @@ export interface components {
             expiring: number;
             /** Format: int64 */
             limited: number;
+        };
+        UserKey: {
+            /** Format: int64 */
+            inbound_id: number;
+            name: string;
+            uri: string;
         };
         UserPoolView: {
             /** @description Лимит пула и его пакеты исчерпаны: подключения пула не работают до сброса */
@@ -5326,6 +5352,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GrantView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "user-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserKey"][];
                 };
             };
             /** @description Error */

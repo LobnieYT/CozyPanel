@@ -16,13 +16,17 @@ import (
 //
 // Without this the globals stay as Start left them (DNS off, resolvers nil):
 // every dial falls back to the system resolver, the DNS policy never touches
-// real traffic, hosts entries never apply and sniffing stays dormant — while
-// the testers, which match directly, keep reporting that everything is fine.
+// real traffic, hosts never apply and sniffing stays dormant — while the
+// testers, which match directly, keep reporting green.
 // This mirrors hub/executor.updateDNS, updateHosts and the sniffer part of
 // ApplyConfig line for line; when mihomo changes them, this follows.
-func applyNetGlobals(cfg *mihomocfg.Config) {
+//
+// egressIPv6 comes from the panel's egress_ipv6 switch (off by default):
+// strictly IPv4 egress, one identity for anti-abuse systems.
+func applyNetGlobals(cfg *mihomocfg.Config, egressIPv6 bool) {
 	applyHosts(cfg.Hosts)
 	applySniffer(cfg.Sniffer)
+	resolver.DisableIPv6 = !egressIPv6
 	applyDNS(cfg.DNS, cfg.General.IPv6)
 }
 

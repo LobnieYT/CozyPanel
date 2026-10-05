@@ -232,6 +232,10 @@ func (s *Syncer) desired(ctx context.Context) (nodeapi.DesiredState, error) {
 	if st.TLS, err = s.tls(); err != nil {
 		return st, err
 	}
+	// Strictly IPv4 egress unless switched on: one identity for anti-abuse.
+	if st.EgressIPv6, err = s.m.set.On(ctx, settings.EgressIPv6); err != nil {
+		return st, err
+	}
 	st.Epoch, st.Policies, _, err = s.policies(ctx)
 	return st, err
 }
@@ -697,7 +701,8 @@ func stateKey(st nodeapi.DesiredState) string {
 		Rt nodeapi.NodeRoutes
 		O  []nodeapi.NodeOutbound
 		A  *nodeapi.AdBlock
-	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds, st.AdBlock})
+		V  bool
+	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds, st.AdBlock, st.EgressIPv6})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }

@@ -298,14 +298,21 @@ func (h *Handler) slotFor(r *http.Request, u db.User, cfg Config) (db.Slot, erro
 
 // profile lists what the user may use; slot is whose keys go in (zero for the page).
 func (h *Handler) profile(ctx context.Context, u db.User, cfg Config, slot db.Slot) (Profile, error) {
+	return ProfileForUser(ctx, h.st.Q, h.now, cfg, u, slot)
+}
+
+// ProfileForUser lists what the user may use with their own slot: the admin's
+// per-user keys (no device binding, no app filtering). Spent traffic pools
+// stay out, like in subscriptions.
+func ProfileForUser(ctx context.Context, q *db.Queries, now func() time.Time, cfg Config, u db.User, slot db.Slot) (Profile, error) {
 	prof := Profile{Nodes: cfg.Nodes, Direct: cfg.Direct, Slot: slot, Fingerprint: cfg.Fingerprint, DNS: cfg.DNS, AdBlock: cfg.AdBlock}
-	all, err := h.st.Q.ListInbounds(ctx)
+	all, err := q.ListInbounds(ctx)
 	if err != nil {
 		return prof, err
 	}
 	allowed := domain.DecodeInbounds(u.Inbounds)
 	// A traffic pool that ran out leaves the subscription; the node already turns it away.
-	spent, err := domain.ExhaustedPools(ctx, h.st.Q, u.ID, h.now())
+	spent, err := domain.ExhaustedPools(ctx, q, u.ID, now())
 	if err != nil {
 		return prof, err
 	}

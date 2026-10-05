@@ -1,7 +1,7 @@
 import { Copy, ExternalLink, RefreshCw, Send } from "lucide-react";
 import { useState } from "react";
 import { api, errorText, unwrap, type User } from "../../../api/client";
-import { useInbounds, userActions, useUserMutation } from "../../../api/hooks";
+import { useInbounds, userActions, useUserKeys, useUserMutation } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { useToast } from "../../../components/toast";
 import { Button, QR } from "../../../components/ui";
@@ -44,6 +44,42 @@ export function SubscriptionSection({ u, onReissue }: { u: User; onReissue: () =
           </Button>
         </div>
       </div>
+    </Section>
+  );
+}
+
+/** One share link per connection, to hand out from the admin panel alone. */
+export function KeysSection({ u }: { u: User }) {
+  const keys = useUserKeys(u.id);
+  const copyText = useCopy();
+  return (
+    <Section title={t("userDrawer.keys")}>
+      <p className="mb-3 text-xs text-[var(--ink-500)]">{t("userDrawer.keysHint")}</p>
+      {keys.isPending ? (
+        <p className="text-[13px] text-[var(--ink-500)]">{t("common.loading")}</p>
+      ) : keys.data === undefined ? (
+        <p className="text-[13px] text-[var(--berry-600)]" role="alert">
+          {errorText(keys.error)}
+        </p>
+      ) : keys.data.length === 0 ? (
+        <p className="text-[13px] text-[var(--ink-500)]">{t("userDrawer.keysEmpty")}</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {keys.data.map((k) => (
+            <li key={k.inbound_id} className="panel-soft flex items-center gap-3 p-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-medium">{k.name}</div>
+                <div className="mono truncate text-xs text-[var(--ink-500)]" title={k.uri}>
+                  {k.uri}
+                </div>
+              </div>
+              <button type="button" className="icon-btn shrink-0" onClick={() => void copyText(k.uri, t("common.linkCopied"))} aria-label={t("common.copyLink")}>
+                <Copy size={18} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Section>
   );
 }

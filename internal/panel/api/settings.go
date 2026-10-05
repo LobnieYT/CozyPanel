@@ -41,6 +41,7 @@ type SettingsView struct {
 	Fingerprint  string   `json:"client_fingerprint" doc:"Отпечаток TLS (uTLS) у клиентов, если у подключения не задан свой: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized или своё значение"`
 	AutoPort     bool     `json:"auto_port" doc:"Переносить подключение на другой порт, если клиенты перестали до него доходить"`
 	AutoSNI      bool     `json:"auto_sni" doc:"Менять сайт маскировки REALITY, если он перестал подходить"`
+	EgressIPv6   bool     `json:"egress_ipv6" doc:"Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода"`
 	// Devices: see domain.Devices.
 	DeviceBinding bool        `json:"device_binding" doc:"Привязывать подписку к устройствам: у каждого устройства свои ключи"`
 	RequireHWID   bool        `json:"device_require_hwid" doc:"Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)"`
@@ -65,6 +66,7 @@ type patchSettingsInput struct {
 		Fingerprint   *string `json:"client_fingerprint,omitempty" pattern:"^[a-z0-9_]{1,32}$" doc:"Из списка или своё: латиница в нижнем регистре, цифры и _, до 32 символов"`
 		AutoPort      *bool   `json:"auto_port,omitempty"`
 		AutoSNI       *bool   `json:"auto_sni,omitempty"`
+		EgressIPv6    *bool   `json:"egress_ipv6,omitempty"`
 		DeviceBinding *bool   `json:"device_binding,omitempty"`
 		RequireHWID   *bool   `json:"device_require_hwid,omitempty"`
 		DefaultLang   *string `json:"default_lang,omitempty" enum:"auto,ru,en"`
@@ -144,6 +146,9 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 		return v, err
 	}
 	if v.AutoSNI, err = h.d.Settings.On(ctx, settings.AutoSNI); err != nil {
+		return v, err
+	}
+	if v.EgressIPv6, err = h.d.Settings.On(ctx, settings.EgressIPv6); err != nil {
 		return v, err
 	}
 	if v.DeviceBinding, err = h.d.Settings.On(ctx, settings.DeviceBinding); err != nil {
@@ -329,7 +334,7 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 			}
 		}
 		for key, v := range map[string]*bool{settings.KeyAutoPort: b.AutoPort, settings.KeyAutoSNI: b.AutoSNI,
-			settings.KeyDeviceBinding: b.DeviceBinding, settings.KeyRequireHWID: b.RequireHWID} {
+			settings.KeyDeviceBinding: b.DeviceBinding, settings.KeyRequireHWID: b.RequireHWID, settings.KeyEgressIPv6: b.EgressIPv6} {
 			if v != nil {
 				if err := settings.Set(ctx, set, key, *v); err != nil {
 					return err
@@ -355,6 +360,8 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 		auditDetails = map[string]any{"sub_port": *b.SubPort}
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "settings.update", "", "", auditDetails)
+	// Switches like egress IPv6 ride node states: push them out at once.
+	h.d.Changes.SlotsChanged()
 	v, err := h.readSettings(ctx)
 	if err != nil {
 		return nil, err

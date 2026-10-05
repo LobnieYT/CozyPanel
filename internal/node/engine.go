@@ -89,7 +89,8 @@ func routesKey(st nodeapi.DesiredState, allowPrivate bool) string {
 		C nodeapi.NodeRoutes
 		O []nodeapi.NodeOutbound
 		A *nodeapi.AdBlock
-	}{st.Warp, st.Exits, rules(st, allowPrivate), st.DNS, st.Routes, st.Outbounds, st.AdBlock})
+		V bool
+	}{st.Warp, st.Exits, rules(st, allowPrivate), st.DNS, st.Routes, st.Outbounds, st.AdBlock, st.EgressIPv6})
 	return string(raw)
 }
 
@@ -217,7 +218,7 @@ func (e *Engine) Apply(st nodeapi.DesiredState) (nodeapi.ApplyResult, error) {
 	// from Start's DNS-off base: every dial falls back to the system resolver,
 	// the DNS policy never touches real traffic, hosts never apply and
 	// sniffing stays dormant — while the testers keep reporting green.
-	applyNetGlobals(cfg)
+	applyNetGlobals(cfg, st.EgressIPv6)
 
 	// Listeners are patched below; the way out (WARP and the rules that pick it) is
 	// swapped only when it changed, so open connections keep their outbound otherwise.

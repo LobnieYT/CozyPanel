@@ -2466,6 +2466,9 @@
             "maxLength": 253,
             "type": "string"
           },
+          "egress_ipv6": {
+            "type": "boolean"
+          },
           "pay_contact": {
             "description": "@имя, ссылка t.me или текст — бот показывает его вместо счетов",
             "maxLength": 64,
@@ -3029,6 +3032,10 @@
           "domain": {
             "type": "string"
           },
+          "egress_ipv6": {
+            "description": "Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода",
+            "type": "boolean"
+          },
           "panel_port": {
             "format": "int64",
             "type": "integer"
@@ -3107,6 +3114,7 @@
           "client_fingerprint",
           "auto_port",
           "auto_sni",
+          "egress_ipv6",
           "device_binding",
           "device_require_hwid",
           "default_lang",
@@ -3774,6 +3782,27 @@
           "limited",
           "expired",
           "disabled"
+        ],
+        "type": "object"
+      },
+      "UserKey": {
+        "additionalProperties": false,
+        "properties": {
+          "inbound_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inbound_id",
+          "name",
+          "uri"
         ],
         "type": "object"
       },
@@ -7790,6 +7819,52 @@
           }
         },
         "summary": "Начислить трафик",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/keys": {
+      "get": {
+        "operationId": "user-keys",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserKey"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Ключи пользователя: по ссылке на подключение",
         "tags": [
           "users"
         ]

@@ -7,7 +7,7 @@ import { Columns, Tabs } from "../../../components/tabs";
 import { PageHeader, Skeleton } from "../../../components/ui";
 import { t } from "../../../i18n";
 import { SETTINGS_TABS } from "../../search";
-import { AutoCard, LanguageCard, ServerCard, UpdatesCard } from "./general";
+import { AutoCard, EgressCard, LanguageCard, ServerCard, UpdatesCard } from "./general";
 import { ClashRulesCard } from "./rules";
 import { AccessCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
 import { DevicesCard, SubPortCard, SubscriptionCard } from "./subscription";
@@ -38,6 +38,7 @@ export function SettingsPage() {
                     <ServerCard s={s} />
                     <LanguageCard s={s} />
                     <AutoCard s={s} />
+                    <EgressCard s={s} />
                   </>
                 }
                 right={

@@ -116,6 +116,30 @@ export function AutoCard({ s }: { s: Schemas["SettingsView"] }) {
   );
 }
 
+/** Node egress address family: strictly IPv4 unless IPv6 is switched on. */
+export function EgressCard({ s }: { s: Schemas["SettingsView"] }) {
+  const save = useSaveSettings();
+  return (
+    <section className="card glass reveal" style={{ "--i": 4 } as React.CSSProperties}>
+      <div className="card-head">
+        <div>
+          <h2 className="card-title">{t("settings.egress")}</h2>
+          <div className="card-sub">{t("settings.egressSub")}</div>
+        </div>
+      </div>
+      <ul className="row-list">
+        <li className="flex items-start justify-between gap-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium">{t("settings.egressIPv6")}</div>
+            <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.egressIPv6Sub")}</div>
+          </div>
+          <Switch checked={s.egress_ipv6} label={t("settings.egressIPv6")} disabled={save.isPending} onChange={(v) => save.mutate({ egress_ipv6: v })} />
+        </li>
+      </ul>
+    </section>
+  );
+}
+
 /** The release the panel runs, the newest one and the host updater's last run. */
 export function UpdatesCard() {
   const u = useUpdates();

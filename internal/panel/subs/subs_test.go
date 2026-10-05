@@ -540,3 +540,29 @@ func TestCustomSubDNS(t *testing.T) {
 		t.Fatal("geosite policy needs geodata")
 	}
 }
+
+// Links hands every inbound's share link to the admin panel: names, inbound
+// ids and URIs, mihomo-only types left out like in subscriptions.
+func TestLinks(t *testing.T) {
+	p := profile(t, "ab12")
+	links, err := Links(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(links) == 0 {
+		t.Fatal("no links")
+	}
+	seen := map[int64]bool{}
+	for _, l := range links {
+		if l.InboundID == 0 || l.Name == "" || l.URI == "" {
+			t.Fatalf("thin link: %+v", l)
+		}
+		if seen[l.InboundID] {
+			t.Fatalf("duplicate inbound: %+v", l)
+		}
+		seen[l.InboundID] = true
+		if _, err := url.Parse(l.URI); err != nil {
+			t.Fatalf("bad uri %q: %v", l.URI, err)
+		}
+	}
+}

@@ -26,6 +26,7 @@ import (
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store"
 	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
 	"cozy/internal/panel/tgbot"
 	"cozy/internal/panel/tlscert"
 	"cozy/internal/panel/updates"
@@ -67,6 +68,9 @@ type Deps struct {
 	Warp warp.Client
 	// SubBase is https://host:port/<sub path> ("" without an address).
 	SubBase func(ctx context.Context) string
+	// SubConfig builds the subscription config (nodes, DNS, profiles); admin
+	// per-user keys render from it.
+	SubConfig func(ctx context.Context) (subs.Config, error)
 	// SubPort opens subscriptions on a port of their own (0: closes it); SubPortError says
 	// why the saved one is not served. nil: the panel runs no server (tests).
 	SubPort      func(port int) error

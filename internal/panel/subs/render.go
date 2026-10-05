@@ -138,10 +138,11 @@ type Profile struct {
 }
 
 type proxy struct {
-	name string
-	node int64
-	uri  string
-	yaml map[string]any
+	name    string
+	node    int64
+	inbound int64
+	uri     string
+	yaml    map[string]any
 }
 
 // NodePrefix is what precedes proxy names of a node when a subscription has several:
@@ -195,7 +196,7 @@ func build(p Profile) ([]proxy, error) {
 				continue
 			}
 			used[name] = true
-			out = append(out, proxy{name: name, node: n.ID, uri: c.URI, yaml: c.Mihomo})
+			out = append(out, proxy{name: name, node: n.ID, inbound: in.ID, uri: c.URI, yaml: c.Mihomo})
 		}
 	}
 	return out, nil
@@ -215,6 +216,34 @@ func firstPort(spec string) (int, error) {
 		return 0, fmt.Errorf("bad port %q", spec)
 	}
 	return p, nil
+}
+
+// Link is one inbound's share link, handed out in the admin panel (never on a
+// user-facing page): the admin copies it to whoever gets this user.
+type Link struct {
+	InboundID int64
+	Name      string
+	URI       string
+}
+
+// Links renders one share link per inbound that has one (mihomo-only types
+// carry no link and are left out, like in subscriptions).
+func Links(p Profile) ([]Link, error) {
+	ps, err := build(p)
+	if err != nil {
+		return nil, err
+	}
+	var out []Link
+	for _, x := range ps {
+		if x.uri == "" {
+			continue
+		}
+		out = append(out, Link{InboundID: x.inbound, Name: x.name, URI: x.uri})
+	}
+	if len(out) == 0 {
+		return nil, ErrNoProxies
+	}
+	return out, nil
 }
 
 // URIs renders one share link per inbound.

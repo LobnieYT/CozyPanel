@@ -47,6 +47,9 @@ type DesiredState struct {
 	AdBlock *AdBlock `json:"adblock,omitempty"`
 	// Outbounds are the admin's own proxies besides WARP and cascade exits.
 	Outbounds []NodeOutbound `json:"outbounds,omitempty"`
+	// EgressIPv6 lets node egress use IPv6; false means strictly IPv4, one
+	// identity for anti-abuse systems.
+	EgressIPv6 bool `json:"egress_ipv6,omitempty"`
 }
 
 // DNSServer is one resolver: an address (a plain IP, "udp://"/"tcp://" host,

@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.7
+### en
+- IPv6 egress switch (Settings → Node egress, off by default): off means strictly IPv4 egress, a single identity for anti-abuse systems. On keeps IPv6 where available.
+- Per-user keys in the admin panel: one ready VLESS link per connection in the user's card, copy button, admin only — the subscription page never shows them. Same slot, so limits, devices and addresses keep working as before.
+
+### ru
+- Тумблер IPv6 на выходе (Настройки → Выход нод, по умолчанию выкл): выкл — строго IPv4-выход, одна личность для антифрода. Вкл — IPv6 там, где он есть.
+- Одиночные ключи в админке: по готовой VLESS-ссылке на подключение в карточке пользователя, кнопка копирования, только из админки — страница подписки их не показывает. Тот же слот, так что лимиты, устройства и адреса работают как раньше.
+
 ## 1.1.6
 ### en
 - Fixed DNS never reaching real traffic: Apply now wires mihomo's resolvers, hosts and sniffer like a full config load does. Before, they stayed nil from the DNS-off base config, so every dial fell back to the system resolver while the testers reported green.

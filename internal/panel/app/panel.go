@@ -182,10 +182,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 	p.Updates = updates.New(o.DataDir, o.Version, o.Releases, o.Log, o.Now)
 	deps.Updates = p.Updates
 	deps.Warp = warp.Client{API: o.WarpAPI}
-	apiHandler, _, err := api.New(deps)
-	if err != nil {
-		return nil, err
-	}
+	var err error
 	p.spa, err = server.NewSPA(o.Web, "index.html")
 	if err != nil {
 		return nil, fmt.Errorf("web bundle: %w", err)
@@ -279,11 +276,16 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		return g
 	}}
 	subCfg := func(ctx context.Context) (subs.Config, error) { return cache.get(ctx, buildSubCfg) }
+	deps.SubConfig = subCfg
 	subHandler := subs.NewHandler(st, subCfg, subPageHandler, o.Now, deps.Devices, o.TrustProxy)
 	subHandler.SetLogger(o.Log)
 	subHandler.SetTelegram(p.Telegram)
 
 	adminMux := http.NewServeMux()
+	apiHandler, _, err := api.New(deps)
+	if err != nil {
+		return nil, err
+	}
 	adminMux.Handle("/api/", apiHandler)
 	adminMux.Handle("/", p.spa)
 	p.server = server.New(adminMux, subHandler)

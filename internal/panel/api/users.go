@@ -14,6 +14,7 @@ import (
 	"cozy/internal/nodeapi"
 	"cozy/internal/panel/domain"
 	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
 )
 
 // TelegramLink is the Telegram account that manages a subscription in the bot.
@@ -266,6 +267,7 @@ func (h *handlers) registerUsers() {
 	huma.Register(h.api, huma.Operation{OperationID: "bulk-users", Method: http.MethodPost, Path: "/api/v1/users/bulk", Summary: "Массовое действие", Tags: tags}, h.bulkUsers)
 	huma.Register(h.api, huma.Operation{OperationID: "user-traffic", Method: http.MethodGet, Path: "/api/v1/users/{id}/traffic", Summary: "График трафика пользователя", Tags: tags}, h.userTraffic)
 	huma.Register(h.api, huma.Operation{OperationID: "user-devices", Method: http.MethodGet, Path: "/api/v1/users/{id}/devices", Summary: "Адреса, с которых заходил пользователь", Tags: tags}, h.userDevices)
+	huma.Register(h.api, huma.Operation{OperationID: "user-keys", Method: http.MethodGet, Path: "/api/v1/users/{id}/keys", Summary: "Ключи пользователя: по ссылке на подключение", Tags: tags}, h.userKeys)
 	huma.Register(h.api, huma.Operation{OperationID: "user-bound-devices", Method: http.MethodGet, Path: "/api/v1/users/{id}/bound-devices", Summary: "Устройства, привязанные к подписке", Tags: tags}, h.boundDevices)
 	huma.Register(h.api, huma.Operation{OperationID: "unbind-device", Method: http.MethodDelete, Path: "/api/v1/users/{id}/bound-devices/{device}", Summary: "Отвязать устройство: его ключи сгорают", Tags: tags, DefaultStatus: http.StatusNoContent}, h.unbindDevice)
 }
@@ -535,6 +537,54 @@ func (h *handlers) userTraffic(ctx context.Context, in *trafficInput) (*trafficO
 	}
 	for _, r := range rows {
 		out.Body.Points = append(out.Body.Points, TrafficPoint{T: time.Unix(r.Hour*3600, 0).UTC(), Up: r.Up, Down: r.Down})
+	}
+	return out, nil
+}
+
+type userKey struct {
+	InboundID int64  `json:"inbound_id"`
+	Name      string `json:"name"`
+	URI       string `json:"uri"`
+}
+
+type userKeysOutput struct {
+	Body []userKey
+}
+
+func (h *handlers) userKeys(ctx context.Context, in *userIDInput) (*userKeysOutput, error) {
+	// Keys are handed out from the admin panel alone: no API key, however full.
+	if _, ok := apiKeyOf(ctx); ok {
+		return nil, huma.Error403Forbidden("session_only")
+	}
+	u, err := h.d.Users.Get(ctx, in.ID)
+	if err != nil {
+		return nil, mapDomainErr(err)
+	}
+	if h.d.SubConfig == nil {
+		return nil, huma.Error409Conflict("subs_disabled")
+	}
+	cfg, err := h.d.SubConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !u.SlotID.Valid {
+		return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body", Message: "no_slot"})
+	}
+	slot, err := h.d.Store.Q.GetSlot(ctx, u.SlotID.Int64)
+	if err != nil {
+		return nil, err
+	}
+	prof, err := subs.ProfileForUser(ctx, h.d.Store.Q, h.d.Now, cfg, u, slot)
+	if err != nil {
+		return nil, err
+	}
+	links, err := subs.Links(prof)
+	if err != nil {
+		return nil, huma.Error404NotFound("no_keys")
+	}
+	out := &userKeysOutput{Body: []userKey{}}
+	for _, l := range links {
+		out.Body = append(out.Body, userKey{InboundID: l.InboundID, Name: l.Name, URI: l.URI})
 	}
 	return out, nil
 }
