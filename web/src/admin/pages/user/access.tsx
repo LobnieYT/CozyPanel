@@ -1,10 +1,10 @@
 import { Copy, ExternalLink, RefreshCw, Send } from "lucide-react";
 import { useState } from "react";
 import { api, errorText, unwrap, type User } from "../../../api/client";
-import { useInbounds, userActions, useUserKeys, useUserMutation } from "../../../api/hooks";
+import { useInbounds, useGrants, userActions, useUserKeys, useUserMutation } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { useToast } from "../../../components/toast";
-import { Button, QR } from "../../../components/ui";
+import { Button, Pill, QR } from "../../../components/ui";
 import { Switch } from "../../../components/switch";
 import { t } from "../../../i18n";
 import { useCopy } from "../../../lib/copy";
@@ -146,6 +146,8 @@ export function ProtocolsSection({ u }: { u: User }) {
     const ids = next.size === all.length ? [] : [...next];
     update.mutate({ id: u.id, body: { inbounds: ids } }, { onError: (e) => toast.error(errorText(e)) });
   };
+  const { can } = useGrants();
+  const writable = can("users", true);
   return (
     <Section title={t("userDrawer.protocols")}>
       {all.map((i) => (
@@ -156,7 +158,11 @@ export function ProtocolsSection({ u }: { u: User }) {
               {i.title} · {i.port}/{i.network}
             </div>
           </div>
-          <Switch checked={allowed.has(i.id)} onChange={(v) => toggle(i.id, v)} label={i.sub_name} disabled={update.isPending} />
+          {writable ? (
+            <Switch checked={allowed.has(i.id)} onChange={(v) => toggle(i.id, v)} label={i.sub_name} disabled={update.isPending} />
+          ) : allowed.has(i.id) ? (
+            <Pill tone="ok">{t("userDrawer.protocolOn")}</Pill>
+          ) : null}
         </div>
       ))}
     </Section>

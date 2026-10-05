@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cloud, Copy, KeyRound, Pencil, Plus, ShieldCheck, Trash2, Waypoints } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, useNodes } from "../../api/hooks";
+import { qk, useGrants, useNodes } from "../../api/hooks";
 import { CertDrawer, certUntil } from "../../components/cert-drawer";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
@@ -26,6 +26,8 @@ export function NodesPage() {
   const nodes = useNodes();
   const qc = useQueryClient();
   const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("node", true);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Node | null>(null);
   const [rekeying, setRekeying] = useState<Node | null>(null);
@@ -65,10 +67,12 @@ export function NodesPage() {
         title={t("nav.nodes")}
         sub={t("nodes.subtitle")}
         actions={
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <Plus size={18} aria-hidden />
-            <span className="max-[760px]:hidden">{t("nodes.add")}</span>
-          </Button>
+          writable ? (
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={18} aria-hidden />
+              <span className="max-[760px]:hidden">{t("nodes.add")}</span>
+            </Button>
+          ) : undefined
         }
       />
       <QueryBoundary
@@ -169,6 +173,8 @@ function NodeCard({
   onRemove: () => void;
 }) {
   const mem = n.mem_total ? Math.round((n.mem_used / n.mem_total) * 100) : 0;
+  const { can } = useGrants();
+  const writable = can("node", true);
   return (
     <section className="card glass reveal" style={{ "--i": idx } as React.CSSProperties}>
       <div className="flex items-start justify-between gap-3">
@@ -249,26 +255,30 @@ function NodeCard({
         ) : null}
       </dl>
       <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--hairline)] pt-4">
-        <Button size="sm" onClick={onEdit}>
-          <Pencil size={16} aria-hidden /> {t("nodes.configure")}
-        </Button>
-        <Button size="sm" onClick={onWarp}>
-          <Cloud size={16} aria-hidden /> WARP
-        </Button>
-        <Button size="sm" onClick={onCascade}>
-          <Waypoints size={16} aria-hidden /> {t("cascade.title")}
-        </Button>
-        <Button size="sm" onClick={onCert}>
-          <ShieldCheck size={16} aria-hidden /> {t("nodes.certButton")}
-        </Button>
-        {!n.local ? (
+        {writable ? (
           <>
-            <Button size="sm" onClick={onRekey}>
-              <KeyRound size={16} aria-hidden /> {t("nodes.rekey")}
+            <Button size="sm" onClick={onEdit}>
+              <Pencil size={16} aria-hidden /> {t("nodes.configure")}
             </Button>
-            <Button size="sm" variant="danger" onClick={onRemove}>
-              <Trash2 size={16} aria-hidden /> {t("common.delete")}
+            <Button size="sm" onClick={onWarp}>
+              <Cloud size={16} aria-hidden /> WARP
             </Button>
+            <Button size="sm" onClick={onCascade}>
+              <Waypoints size={16} aria-hidden /> {t("cascade.title")}
+            </Button>
+            <Button size="sm" onClick={onCert}>
+              <ShieldCheck size={16} aria-hidden /> {t("nodes.certButton")}
+            </Button>
+            {!n.local ? (
+              <>
+                <Button size="sm" onClick={onRekey}>
+                  <KeyRound size={16} aria-hidden /> {t("nodes.rekey")}
+                </Button>
+                <Button size="sm" variant="danger" onClick={onRemove}>
+                  <Trash2 size={16} aria-hidden /> {t("common.delete")}
+                </Button>
+              </>
+            ) : null}
           </>
         ) : null}
       </div>

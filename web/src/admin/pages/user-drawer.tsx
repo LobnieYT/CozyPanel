@@ -2,7 +2,7 @@ import * as Menu from "@radix-ui/react-dropdown-menu";
 import { CalendarPlus, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { errorText, type User } from "../../api/client";
-import { onePeriod, userActions, useUser, useUserMutation } from "../../api/hooks";
+import { onePeriod, userActions, useGrants, useUser, useUserMutation } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { useToast } from "../../components/toast";
 import { QueryBoundary } from "../../components/query";
@@ -62,9 +62,12 @@ function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {
   const [confirm, setConfirm] = useState<"reissue" | "delete" | null>(null);
   const fail = (e: unknown) => toast.error(errorText(e));
   const disabled = u.state === "disabled";
+  const { can } = useGrants();
+  const writable = can("users", true);
 
   return (
     <>
+      {writable ? (
       <div className="flex flex-wrap gap-2 py-4">
         <Button variant="primary" loading={extend.isPending} onClick={() => extend.mutate({ id: u.id, ...onePeriod(u) }, { onSuccess: (r) => toast.ok(t("userDrawer.extendedUntil", { date: dateShort(r.expires_at!) })), onError: fail })}>
           <CalendarPlus size={18} aria-hidden /> {u.billing_day != null ? t("userDrawer.extendMonth") : t("userDrawer.extend30")}
@@ -102,6 +105,7 @@ function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {
           </Menu.Portal>
         </Menu.Root>
       </div>
+      ) : null}
 
       <TariffSection u={u} />
       <TrafficSection u={u} />

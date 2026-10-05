@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk } from "../../api/hooks";
+import { qk, useGrants } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { useToast } from "../../components/toast";
 import { QueryBoundary } from "../../components/query";
@@ -46,6 +46,8 @@ export function WarpDrawer({ node, onClose }: { node: { id: number; name: string
 }
 
 function Setup({ nodeId }: { nodeId: number }) {
+  const { can } = useGrants();
+  const writable = can("node", true);
   const qc = useQueryClient();
   const toast = useToast();
   const [how, setHow] = useState<"register" | "import">("register");
@@ -85,9 +87,11 @@ function Setup({ nodeId }: { nodeId: number }) {
             <Field label={t("warp.license")} htmlFor="w-lic" hint={t("warp.licenseHint")} error={fields.license}>
               <input id="w-lic" className="input mono" value={license} onChange={(e) => setLicense(e.target.value)} placeholder="xxxxxxxx-xxxxxxxx-xxxxxxxx" autoComplete="off" spellCheck={false} />
             </Field>
-            <Button variant="primary" loading={register.isPending} onClick={() => register.mutate()}>
-              {t("warp.registerDo")}
-            </Button>
+            {writable ? (
+              <Button variant="primary" loading={register.isPending} onClick={() => register.mutate()}>
+                {t("warp.registerDo")}
+              </Button>
+            ) : null}
           </>
         ) : (
           <>
@@ -102,9 +106,11 @@ function Setup({ nodeId }: { nodeId: number }) {
                 aria-invalid={!!fields.config}
               />
             </Field>
-            <Button variant="primary" loading={load.isPending} disabled={!conf.trim()} onClick={() => load.mutate()}>
-              {t("warp.importDo")}
-            </Button>
+            {writable ? (
+              <Button variant="primary" loading={load.isPending} disabled={!conf.trim()} onClick={() => load.mutate()}>
+                {t("warp.importDo")}
+              </Button>
+            ) : null}
           </>
         )}
       </div>
@@ -113,6 +119,8 @@ function Setup({ nodeId }: { nodeId: number }) {
 }
 
 function Configured({ nodeId, w, refetch, checking, onClose }: { nodeId: number; w: Warp; refetch: () => void; checking: boolean; onClose: () => void }) {
+  const { can } = useGrants();
+  const writable = can("node", true);
   const qc = useQueryClient();
   const toast = useToast();
   // The status check refetches `w`: the typed routes survive it.
@@ -185,7 +193,7 @@ function Configured({ nodeId, w, refetch, checking, onClose }: { nodeId: number;
           <div className="text-[13px] font-semibold">{t("warp.enabled")}</div>
           <div className="text-xs text-[var(--ink-500)]">{t("warp.enabledSub")}</div>
         </div>
-        <Switch checked={enabled} onChange={setEnabled} label={t("warp.enabled")} />
+        <Switch checked={enabled} onChange={(v) => writable && setEnabled(v)} label={t("warp.enabled")} disabled={!writable} />
       </div>
 
       <dl className="mb-4 grid grid-cols-2 gap-3 text-xs">
@@ -223,14 +231,16 @@ function Configured({ nodeId, w, refetch, checking, onClose }: { nodeId: number;
         </Field>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-          {t("common.save")}
-        </Button>
-        <Button variant="danger" onClick={() => setRemove(true)}>
-          <Trash2 size={16} aria-hidden /> {t("warp.delete")}
-        </Button>
-      </div>
+      {writable ? (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
+            {t("common.save")}
+          </Button>
+          <Button variant="danger" onClick={() => setRemove(true)}>
+            <Trash2 size={16} aria-hidden /> {t("warp.delete")}
+          </Button>
+        </div>
+      ) : null}
       <Confirm open={remove} onOpenChange={setRemove} title={t("warp.deleteTitle")} text={t("warp.deleteText")} confirm={t("warp.delete")} danger loading={del.isPending} onConfirm={() => del.mutate()} />
     </>
   );

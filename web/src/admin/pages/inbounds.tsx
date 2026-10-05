@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api, errorText, unwrap, type Inbound, type Schemas } from "../../api/client";
-import { qk, useInbounds, useNodes } from "../../api/hooks";
+import { qk, useGrants, useInbounds, useNodes } from "../../api/hooks";
 import { Confirm } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -30,6 +30,8 @@ export function InboundsPage() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Inbound | null>(null);
   const [removing, setRemoving] = useState<Inbound | null>(null);
+  const { can } = useGrants();
+  const writable = can("inbounds", true);
   const patch = useMutation({
     mutationFn: ({ id, body }: { id: number; body: Schemas["PatchInboundInputBody"] }) => unwrap(api.PATCH("/api/v1/inbounds/{id}", { params: { path: { id } }, body })),
     onSettled: () => void qc.invalidateQueries({ queryKey: qk.inbounds }),
@@ -51,10 +53,12 @@ export function InboundsPage() {
         title={t("nav.inbounds")}
         sub={t("inbounds.subtitle")}
         actions={
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <Plus size={18} aria-hidden />
-            <span className="max-[760px]:hidden">{t("common.add")}</span>
-          </Button>
+          writable ? (
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={18} aria-hidden />
+              <span className="max-[760px]:hidden">{t("common.add")}</span>
+            </Button>
+          ) : undefined
         }
       />
       <div className="banner warn">
@@ -86,9 +90,11 @@ export function InboundsPage() {
           inbounds.length === 0 ? (
             <section className="card glass">
               <EmptyState title={multi ? t("inbounds.nodeEmptyTitle") : t("inbounds.emptyTitle")} text={multi ? t("inbounds.nodeEmptyText") : t("inbounds.emptyText")}>
-                <Button variant="primary" onClick={() => setAdding(true)}>
-                  <Plus size={18} aria-hidden /> {t("inbounds.add")}
-                </Button>
+                {writable ? (
+                  <Button variant="primary" onClick={() => setAdding(true)}>
+                    <Plus size={18} aria-hidden /> {t("inbounds.add")}
+                  </Button>
+                ) : null}
               </EmptyState>
             </section>
           ) : (
@@ -139,14 +145,16 @@ export function InboundsPage() {
                     </p>
                   ) : null}
                   <AutoInfo i={i} />
-                  <div className="mt-4 flex gap-2 border-t border-[var(--hairline)] pt-4">
-                    <Button size="sm" onClick={() => setEditing(i)}>
-                      <Pencil size={16} aria-hidden /> {t("inbounds.configure")}
-                    </Button>
-                    <Button size="sm" variant="danger" onClick={() => setRemoving(i)}>
-                      <Trash2 size={16} aria-hidden /> {t("common.delete")}
-                    </Button>
-                  </div>
+                  {writable ? (
+                    <div className="mt-4 flex gap-2 border-t border-[var(--hairline)] pt-4">
+                      <Button size="sm" onClick={() => setEditing(i)}>
+                        <Pencil size={16} aria-hidden /> {t("inbounds.configure")}
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => setRemoving(i)}>
+                        <Trash2 size={16} aria-hidden /> {t("common.delete")}
+                      </Button>
+                    </div>
+                  ) : null}
                 </section>
               ))}
             </div>

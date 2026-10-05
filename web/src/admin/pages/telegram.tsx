@@ -4,7 +4,7 @@ import { Link, useBlocker, useNavigate, useSearch } from "@tanstack/react-router
 import { ArrowDown, ArrowUp, Bell, Bot, Globe, LayoutList, Link2, Megaphone, Network, Plus, PlugZap, Send, Shield, Trash2, TriangleAlert } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, useNodes, useSettings } from "../../api/hooks";
+import { qk, useGrants, useNodes, useSettings } from "../../api/hooks";
 import { useDraft } from "../../lib/draft";
 import { TELEGRAM_TABS } from "../search";
 import { ago, num } from "../../lib/format";
@@ -71,6 +71,8 @@ function TelegramBody({ v }: { v: View }) {
   const navigate = useNavigate({ from: "/telegram" });
   const patch = usePatchTelegram();
   const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("telegram", true);
   // The draft follows the server's copy while untouched and keeps the edits when the copy
   // changes under it (a poll, the bot saved from another session).
   const { draft, setDraft, dirty, reset } = useDraft(v.config);
@@ -142,9 +144,11 @@ function TelegramBody({ v }: { v: View }) {
             <Button variant="ghost" size="sm" onClick={reset}>
               {t("telegram.discard")}
             </Button>
-            <Button variant="primary" size="sm" loading={patch.isPending} onClick={save}>
-              {t("common.save")}
-            </Button>
+            {writable ? (
+              <Button variant="primary" size="sm" loading={patch.isPending} onClick={save}>
+                {t("common.save")}
+              </Button>
+            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -175,6 +179,8 @@ const rise = (i: number) => ({ className: "card glass reveal", style: { "--i": i
 const slide = { type: "spring", stiffness: 520, damping: 40 } as const;
 
 function ConnectCard({ v }: { v: View }) {
+  const { can } = useGrants();
+  const writable = can("telegram", true);
   const patch = usePatchTelegram();
   const toast = useToast();
   const [token, setToken] = useState("");
@@ -250,9 +256,11 @@ function ConnectCard({ v }: { v: View }) {
             <input id="tg-token" className="input mono" type="password" autoComplete="off" spellCheck={false} value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456789:AAH…" aria-invalid={!!error} />
           </Field>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" type="submit" loading={patch.isPending} disabled={!token.trim()}>
-              <Link2 size={16} aria-hidden /> {t("telegram.connectButton")}
-            </Button>
+            {writable ? (
+              <Button variant="primary" type="submit" loading={patch.isPending} disabled={!token.trim()}>
+                <Link2 size={16} aria-hidden /> {t("telegram.connectButton")}
+              </Button>
+            ) : null}
             {editing ? (
               <Button variant="ghost" onClick={() => setEditing(false)}>
                 {t("common.cancel")}
@@ -260,7 +268,7 @@ function ConnectCard({ v }: { v: View }) {
             ) : null}
           </div>
         </form>
-      ) : (
+      ) : writable ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" onClick={() => setEditing(true)}>
             {t("telegram.changeToken")}
@@ -269,7 +277,7 @@ function ConnectCard({ v }: { v: View }) {
             <Trash2 size={16} aria-hidden /> {t("telegram.removeToken")}
           </Button>
         </div>
-      )}
+      ) : null}
       <Confirm
         open={removing}
         onOpenChange={setRemoving}
@@ -299,6 +307,8 @@ function tunnels(version?: string): boolean {
 // How the bot reaches Telegram: straight, through a node of the panel or a proxy — for a
 // server where Telegram is blocked.
 function RouteCard({ v }: { v: View }) {
+  const { can } = useGrants();
+  const writable = can("telegram", true);
   const patch = usePatchTelegram();
   const toast = useToast();
   const nodes = useNodes();
@@ -419,11 +429,11 @@ function RouteCard({ v }: { v: View }) {
             {error}
           </p>
         ) : null}
-        {mode === "node" && !nodes.isPending && remote.length === 0 ? null : (
+        {mode === "node" && !nodes.isPending && remote.length === 0 ? null : writable ? (
           <Button variant="primary" type="submit" loading={patch.isPending} disabled={!changed || !ready}>
             {mode === "direct" ? t("common.save") : t("telegram.routeSave")}
           </Button>
-        )}
+        ) : null}
       </form>
     </section>
   );
@@ -586,6 +596,8 @@ function OptionsCard({ draft, setDraft, v }: { draft: Config; setDraft: (c: Conf
 }
 
 function BroadcastCard({ v }: { v: View }) {
+  const { can } = useGrants();
+  const writable = can("telegram", true);
   const toast = useToast();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -612,9 +624,11 @@ function BroadcastCard({ v }: { v: View }) {
       </div>
       <textarea className="input" rows={4} maxLength={3500} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("telegram.broadcastPlaceholder")} aria-label={t("telegram.broadcast")} disabled={!v.running} />
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button variant="primary" disabled={!ready || !text.trim()} onClick={() => setConfirm(true)}>
-          <Send size={16} aria-hidden /> {t("telegram.broadcastButton")}
-        </Button>
+        {writable ? (
+          <Button variant="primary" disabled={!ready || !text.trim()} onClick={() => setConfirm(true)}>
+            <Send size={16} aria-hidden /> {t("telegram.broadcastButton")}
+          </Button>
+        ) : null}
         <span className="text-xs text-[var(--ink-500)]">{busy ? t("telegram.broadcasting") : !v.running ? t("telegram.broadcastOff") : t("telegram.broadcastHint")}</span>
       </div>
       {v.broadcast && <BroadcastProgress b={v.broadcast} />}

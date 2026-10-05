@@ -3,6 +3,17 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.9
+### en
+- Honest 403s: a refused action says "No access to this section" with its code instead of "Session expired"; CSRF and key errors keep their own texts.
+- Buttons without grants are hidden: new-user on the overview, create/bulk/row actions on users, tariffs, inbounds, nodes, network, telegram, settings and API keys. Read-only stays a clean read UI.
+- Sub-admins page, terms and the grants matrix from 1.1.8 unchanged.
+
+### ru
+- Честные 403: отказ показывает «Нет прав на этот раздел» со своим кодом, а не «Сессия устарела»; у CSRF и ключей свои тексты.
+- Кнопки без прав скрыты: «Новый пользователь» на обзоре, создание/массовые/строчные действия у пользователей, тарифов, подключений, нод, сети, telegram, настроек и API-ключей. Только чтение — чистый read-интерфейс.
+- Суб-админы, сроки и матрица из 1.1.8 без изменений.
+
 ## 1.1.8
 ### en
 - Panel sub-admins: login/password accounts with a term, a per-section read/write matrix (viewer/operator presets) and on/off, managed by the owner on a new Admins page. Expired and disabled accounts stop at login and mid-session; audit keeps the actor.

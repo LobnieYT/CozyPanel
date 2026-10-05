@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
+import { useGrants } from "../../api/hooks";
 import { QueryBoundary } from "../../components/query";
 import { Switch } from "../../components/switch";
 import { Tabs } from "../../components/tabs";
@@ -105,6 +106,8 @@ function InheritRow({ on, onChange }: { on: boolean; onChange: (v: boolean) => v
 
 export function NodeDNSSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
+  const { can } = useGrants();
+  const writable = can("node", true);
   const [inherit, setInherit] = useState(!n.dns_override.trim());
   const initial = parseDnsDoc(n.dns_override);
   const [form, setForm] = useState<DnsDoc>(initial.form);
@@ -128,9 +131,11 @@ export function NodeDNSSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
           {fieldPrefix(errors, "dns_override")}
         </p>
       ) : null}
-      <Button type="submit" variant="primary" loading={save.isPending}>
-        {t("network.save")}
-      </Button>
+      {writable ? (
+        <Button type="submit" variant="primary" loading={save.isPending}>
+          {t("network.save")}
+        </Button>
+      ) : null}
     </form>
   );
 }
@@ -157,6 +162,8 @@ function EffectiveDNS({ n }: { n: NodeNet }) {
 
 export function NodeRoutesSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
+  const { can } = useGrants();
+  const writable = can("node", true);
   const [inherit, setInherit] = useState(!n.routes_override.trim());
   const parsed = splitDefault(n.routes_override);
   const [def, setDef] = useState(parsed.def || "DIRECT");
@@ -177,15 +184,19 @@ export function NodeRoutesSection({ nodeId, n }: { nodeId: number; n: NodeNet })
           <pre className="mono mt-1 text-xs whitespace-pre-wrap">{n.effective_routes.map((r) => r.rule).join("\n") || t("network.empty")}</pre>
         </div>
       )}
-      <Button type="submit" variant="primary" loading={save.isPending}>
-        {t("network.save")}
-      </Button>
+      {writable ? (
+        <Button type="submit" variant="primary" loading={save.isPending}>
+          {t("network.save")}
+        </Button>
+      ) : null}
     </form>
   );
 }
 
 export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet }) {
   const save = useSaveNodeNet(nodeId);
+  const { can } = useGrants();
+  const writable = can("node", true);
   const qc = useQueryClient();
   const toast = useToast();
   const [inherit, setInherit] = useState(!n.outbounds_override.trim());
@@ -234,19 +245,21 @@ export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet
               ))}
             </ul>
           )}
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button
-              variant="glass"
-              onClick={() => {
-                setText(JSON.stringify([...parseOutbounds(text), { name: "", type: "socks5", server: "127.0.0.1", port: 1080 }], null, 2));
-              }}
-            >
-              {t("network.obAdd")}
-            </Button>
-            <Button variant="glass" onClick={() => setShowImport(true)}>
-              {t("network.obImport")}
-            </Button>
-          </div>
+          {writable ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Button
+                variant="glass"
+                onClick={() => {
+                  setText(JSON.stringify([...parseOutbounds(text), { name: "", type: "socks5", server: "127.0.0.1", port: 1080 }], null, 2));
+                }}
+              >
+                {t("network.obAdd")}
+              </Button>
+              <Button variant="glass" onClick={() => setShowImport(true)}>
+                {t("network.obImport")}
+              </Button>
+            </div>
+          ) : null}
           <Field label={t("network.outbounds")} error={fieldPrefix(errors, "outbounds_override")}>
             <textarea className="input mono" style={{ minHeight: 140 }} value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} wrap="off" />
           </Field>
@@ -262,11 +275,13 @@ export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet
               ))}
             </ul>
           )}
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button variant="glass" onClick={() => setShowImport(true)}>
-              {t("network.obImport")}
-            </Button>
-          </div>
+          {writable ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Button variant="glass" onClick={() => setShowImport(true)}>
+                {t("network.obImport")}
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
       {fieldPrefix(errors, "outbounds_override") ? (
@@ -274,9 +289,11 @@ export function NodeOutboundsSection({ nodeId, n }: { nodeId: number; n: NodeNet
           {fieldPrefix(errors, "outbounds_override")}
         </p>
       ) : null}
-      <Button type="submit" variant="primary" loading={save.isPending}>
-        {t("network.save")}
-      </Button>
+      {writable ? (
+        <Button type="submit" variant="primary" loading={save.isPending}>
+          {t("network.save")}
+        </Button>
+      ) : null}
       <OutboundAddModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
@@ -314,6 +331,16 @@ function effectiveOutbounds(n: NodeNet): OutboundDoc[] {
   });
 }
 
+function ProbeButton({ probe, onProbe }: { probe?: { busy: boolean; res?: Probe; err?: string }; onProbe: () => void }) {
+  const { can } = useGrants();
+  if (!can("node", true)) return null;
+  return (
+    <Button variant="glass" loading={probe?.busy} onClick={onProbe}>
+      {t("network.probe")}
+    </Button>
+  );
+}
+
 function OutboundRow({
   o,
   probe,
@@ -341,9 +368,7 @@ function OutboundRow({
         ) : null}
       </div>
       <div className="flex gap-1">
-        <Button variant="glass" loading={probe?.busy} onClick={onProbe}>
-          {t("network.probe")}
-        </Button>
+        <ProbeButton probe={probe} onProbe={onProbe} />
         {onDelete ? (
           <Button variant="ghost" onClick={onDelete}>
             {t("network.obDelete")}
@@ -376,6 +401,8 @@ export function cleanDomain(s: string): string {
 }
 
 export function NodeTesterSection({ nodeId }: { nodeId: number }) {
+  const { can } = useGrants();
+  const writable = can("node", true);
   const [domain, setDomain] = useState("");
   const [ip, setIp] = useState("");
   const [port, setPort] = useState("443");  const [network, setNetwork] = useState<"tcp" | "udp">("tcp");
@@ -474,17 +501,19 @@ export function NodeTesterSection({ nodeId }: { nodeId: number }) {
       <Field label={t("network.tInbound")}>
         <input className="input" value={inbound} onChange={(e) => setInbound(e.target.value)} placeholder="" />
       </Field>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="primary" disabled={(!cleanDomain(domain) && !ip.trim()) || busy} loading={busy} onClick={run}>
-          {t("network.tRun")}
-        </Button>
-        <Button variant="glass" disabled={!cleanDomain(domain) || dnsBusy} loading={dnsBusy} onClick={runDns}>
-          {t("network.tDnsRun")}
-        </Button>
-        <Button variant="glass" disabled={!cleanDomain(domain) || egressBusy} loading={egressBusy} onClick={runEgress}>
-          {t("network.tEgressRun")}
-        </Button>
-      </div>
+      {writable ? (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" disabled={(!cleanDomain(domain) && !ip.trim()) || busy} loading={busy} onClick={run}>
+            {t("network.tRun")}
+          </Button>
+          <Button variant="glass" disabled={!cleanDomain(domain) || dnsBusy} loading={dnsBusy} onClick={runDns}>
+            {t("network.tDnsRun")}
+          </Button>
+          <Button variant="glass" disabled={!cleanDomain(domain) || egressBusy} loading={egressBusy} onClick={runEgress}>
+            {t("network.tEgressRun")}
+          </Button>
+        </div>
+      ) : null}
       {error ? (
         <p className="mt-3 text-xs text-[var(--berry-600)]" role="alert">
           {error}
@@ -587,6 +616,8 @@ function DNSCard({ title, m }: { title: string; m: { matched: boolean; key?: str
 export function NodeGeoSection({ nodeId }: { nodeId: number }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const { can } = useGrants();
+  const writableGeo = can("node", true);
   const geo = useQuery({
     queryKey: ["node-geo", nodeId],
     queryFn: ({ signal }) => unwrap(api.GET("/api/v1/nodes/{id}/geo", { params: { path: { id: nodeId } }, signal })),
@@ -621,9 +652,11 @@ export function NodeGeoSection({ nodeId }: { nodeId: number }) {
               ))}
             </ul>
           )}
-          <Button variant="primary" loading={update.isPending} onClick={() => update.mutate()}>
-            {t("network.geoUpdate")}
-          </Button>
+          {writableGeo ? (
+            <Button variant="primary" loading={update.isPending} onClick={() => update.mutate()}>
+              {t("network.geoUpdate")}
+            </Button>
+          ) : null}
         </>
       )}
     </QueryBoundary>

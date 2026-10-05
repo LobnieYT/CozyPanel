@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { RefreshCw } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api, errorText, unwrap, type Schemas } from "../../../api/client";
-import { qk, useUpdates } from "../../../api/hooks";
+import { qk, useGrants, useUpdates } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { StaleNotice } from "../../../components/query";
 import { useToast } from "../../../components/toast";
@@ -17,6 +17,8 @@ import { useSaveSettings } from "./shared";
 
 export function ServerCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   // Saving another card replaces `s`: what is typed here stays.
   const { draft: form, setDraft: setForm } = useDraft({ public_host: s.public_host, domain: s.domain, quiet_hour_utc: String(s.quiet_hour_utc) });
   const errors = fieldErrors(save.error);
@@ -40,9 +42,11 @@ export function ServerCard({ s }: { s: Schemas["SettingsView"] }) {
         <Field label={t("settings.quietHour")} htmlFor="s-quiet" hint={t("settings.quietHourHint")}>
           <input id="s-quiet" className="input max-w-[100px]" inputMode="numeric" value={form.quiet_hour_utc} onChange={set("quiet_hour_utc")} />
         </Field>
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("common.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("common.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );
@@ -51,6 +55,8 @@ export function ServerCard({ s }: { s: Schemas["SettingsView"] }) {
 /** What visitors get until they pick a language; the header's switch is this browser's own. */
 export function LanguageCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   const options = [
     { id: "auto", label: t("settings.langAuto") },
     ...LOCALES.map((l) => ({ id: l.id, label: l.label, lang: l.id })),
@@ -73,8 +79,8 @@ export function LanguageCard({ s }: { s: Schemas["SettingsView"] }) {
             aria-checked={current === o.id}
             className="opt"
             lang={"lang" in o ? o.lang : undefined}
-            disabled={save.isPending}
-            onClick={() => o.id !== s.default_lang && save.mutate({ default_lang: o.id })}
+            disabled={save.isPending || !writable}
+            onClick={() => writable && o.id !== s.default_lang && save.mutate({ default_lang: o.id })}
           >
             <span className="font-semibold">{o.label}</span>
           </button>

@@ -1,7 +1,7 @@
 import { Laptop, Layers, Smartphone, Unlink } from "lucide-react";
 import { useState } from "react";
 import { errorText, type Schemas, type User } from "../../../api/client";
-import { useBoundDevices, useDevices, userActions, useSettings, useUserMutation } from "../../../api/hooks";
+import { useBoundDevices, useDevices, useGrants, userActions, useSettings, useUserMutation } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { useToast } from "../../../components/toast";
 import { ErrorState, Skeleton } from "../../../components/ui";
@@ -14,6 +14,8 @@ export function DevicesSection({ u }: { u: User }) {
   const devices = useDevices(u.id);
   const toast = useToast();
   const update = useUserMutation(userActions.update);
+  const { can } = useGrants();
+  const writable = can("users", true);
   const list = devices.data ?? [];
   const setLimit = (n: number | null) =>
     update.mutate({ id: u.id, body: n === null ? { devices_unlimited: true } : { device_limit: n } }, { onError: (e) => toast.error(errorText(e)) });
@@ -21,6 +23,7 @@ export function DevicesSection({ u }: { u: User }) {
     <Section title={t("userDrawer.devices")} aside={t("userDrawer.devicesAside", { online: u.online_ips.length, limit: u.device_limit ?? "∞" })}>
       <div className="mb-4 flex items-center gap-2 text-[13px]">
         <span className="text-[var(--ink-600)]">{t("userDrawer.deviceLimit")}</span>
+        {writable ? (
         <div className="seg" role="group" aria-label={t("userDrawer.deviceLimit")}>
           {[1, 2, 3, 5, 10].map((n) => (
             <button key={n} type="button" aria-pressed={u.device_limit === n} onClick={() => setLimit(n)}>
@@ -31,6 +34,9 @@ export function DevicesSection({ u }: { u: User }) {
             ∞
           </button>
         </div>
+        ) : (
+          <b className="num">{u.device_limit ?? "∞"}</b>
+        )}
       </div>
       <BoundDevices u={u} />
       <h4 className="mt-5 mb-2 text-xs font-medium text-[var(--ink-500)]">{t("userDrawer.addresses")}</h4>
@@ -71,6 +77,8 @@ function BoundDevices({ u }: { u: User }) {
   const settings = useSettings();
   const bound = useBoundDevices(u.id);
   const unbind = useUserMutation(userActions.unbindDevice);
+  const { can } = useGrants();
+  const writable = can("users", true);
   const toast = useToast();
   const [pick, setPick] = useState<BoundDevice | null>(null);
   const list = bound.data ?? [];
@@ -103,9 +111,11 @@ function BoundDevices({ u }: { u: User }) {
                     {d.online ? <span className="text-[var(--leaf-700)]">{t("users.onlineNow")}</span> : ago(d.last_seen)}
                   </div>
                 </div>
-                <button type="button" className="icon-btn" aria-label={t("userDrawer.unbindLabel", { name: deviceName(d) })} title={t("userDrawer.unbind")} onClick={() => setPick(d)}>
-                  <Unlink size={16} />
-                </button>
+                {writable ? (
+                  <button type="button" className="icon-btn" aria-label={t("userDrawer.unbindLabel", { name: deviceName(d) })} title={t("userDrawer.unbind")} onClick={() => setPick(d)}>
+                    <Unlink size={16} />
+                  </button>
+                ) : null}
               </li>
             );
           })}

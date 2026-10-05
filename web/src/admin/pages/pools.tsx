@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, usePools, useTariffs } from "../../api/hooks";
+import { qk, useGrants, usePools, useTariffs } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -26,6 +26,8 @@ function tariffLimits(pool: Pool, tariffs: Tariff[] | undefined): string[] {
 }
 
 export function PoolsCard() {
+  const { can } = useGrants();
+  const writable = can("inbounds", true);
   const pools = usePools();
   const tariffs = useTariffs();
   const qc = useQueryClient();
@@ -52,9 +54,11 @@ export function PoolsCard() {
           <h2 className="card-title">{t("pools.title")}</h2>
           <div className="card-sub">{t("pools.sub")}</div>
         </div>
-        <Button size="sm" onClick={() => setEdit("new")}>
-          <Plus size={16} aria-hidden /> {t("pools.add")}
-        </Button>
+        {writable ? (
+          <Button size="sm" onClick={() => setEdit("new")}>
+            <Plus size={16} aria-hidden /> {t("pools.add")}
+          </Button>
+        ) : null}
       </div>
       <QueryBoundary
         query={pools}
@@ -101,12 +105,16 @@ export function PoolsCard() {
                       </dl>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" className="icon-btn" aria-label={t("pools.rename", { name: p.name })} onClick={() => setEdit(p)}>
-                        <Pencil size={16} />
-                      </button>
-                      <button type="button" className="icon-btn" aria-label={t("pools.delete", { name: p.name })} onClick={() => setRemoving(p)}>
-                        <Trash2 size={16} />
-                      </button>
+                      {writable ? (
+                        <>
+                          <button type="button" className="icon-btn" aria-label={t("pools.rename", { name: p.name })} onClick={() => setEdit(p)}>
+                            <Pencil size={16} />
+                          </button>
+                          <button type="button" className="icon-btn" aria-label={t("pools.delete", { name: p.name })} onClick={() => setRemoving(p)}>
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </li>
                 );

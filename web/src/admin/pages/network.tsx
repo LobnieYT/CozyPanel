@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { useNodes } from "../../api/hooks";
+import { useGrants, useNodes } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { Switch } from "../../components/switch";
@@ -543,6 +543,8 @@ export const ROUTE_TARGETS = ["DIRECT", "REJECT", "REJECT-DROP", "WARP"];
 
 function GlobalRoutesCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
+  const { can } = useGrants();
+  const writable = can("network", true);
   const parsed = splitDefault(doc);
   const [def, setDef] = useState(parsed.def || "DIRECT");
   const [text, setText] = useState(parsed.rules);
@@ -561,9 +563,11 @@ function GlobalRoutesCard({ doc }: { doc: string }) {
           </div>
         </div>
         <RoutesEditor def={def} onDef={setDef} text={text} onText={setText} targets={ROUTE_TARGETS} error={fieldPrefix(errors, "node_routes")} />
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("network.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("network.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );
@@ -571,6 +575,8 @@ function GlobalRoutesCard({ doc }: { doc: string }) {
 
 function GlobalDNSCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
+  const { can } = useGrants();
+  const writable = can("network", true);
   const initial = parseDnsDoc(doc);
   const [form, setForm] = useState<DnsDoc>(initial.form);
   const [hostRows, setHostRows] = useState<KVRow[]>(initial.hostRows);
@@ -595,9 +601,11 @@ function GlobalDNSCard({ doc }: { doc: string }) {
             {fieldPrefix(errors, "node_dns")}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("network.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("network.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );
@@ -614,6 +622,8 @@ export function parseOutbounds(text: string): OutboundDoc[] {
 
 function GlobalOutboundsCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
+  const { can } = useGrants();
+  const writable = can("network", true);
   const [text, setText] = useState(doc);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -648,22 +658,26 @@ function GlobalOutboundsCard({ doc }: { doc: string }) {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" onClick={() => remove(o.name)}>
-                    {t("network.obDelete")}
-                  </Button>
+                  {writable ? (
+                    <Button variant="ghost" onClick={() => remove(o.name)}>
+                      {t("network.obDelete")}
+                    </Button>
+                  ) : null}
                 </div>
               </li>
             ))}
           </ul>
         )}
-        <div className="mb-3 flex flex-wrap gap-2">
-          <Button variant="glass" onClick={() => setShowAdd(true)}>
-            {t("network.obAdd")}
-          </Button>
-          <Button variant="glass" onClick={() => setShowImport(true)}>
-            {t("network.obImport")}
-          </Button>
-        </div>
+        {writable ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Button variant="glass" onClick={() => setShowAdd(true)}>
+              {t("network.obAdd")}
+            </Button>
+            <Button variant="glass" onClick={() => setShowImport(true)}>
+              {t("network.obImport")}
+            </Button>
+          </div>
+        ) : null}
         <Field label={t("network.outbounds")} error={fieldPrefix(errors, "node_outbounds")}>
           <textarea
             className="input mono"
@@ -675,9 +689,11 @@ function GlobalOutboundsCard({ doc }: { doc: string }) {
             wrap="off"
           />
         </Field>
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("network.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("network.save")}
+          </Button>
+        ) : null}
       </form>
       <OutboundAddModal
         open={showAdd}
@@ -840,6 +856,8 @@ export function parseWireGuardConf(name: string, conf: string): OutboundDoc {
 
 function SubDNSCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
+  const { can } = useGrants();
+  const writable = can("network", true);
   const parsed = parseJson<{
     servers?: { address?: string; port?: number; domains?: string[]; tag?: string }[];
     nameservers?: string[];
@@ -925,9 +943,11 @@ function SubDNSCard({ doc }: { doc: string }) {
             {fieldPrefix(errors, "sub_dns")}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("network.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("network.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );
@@ -1025,6 +1045,8 @@ function adBlockJson(form: AdBlockDoc): string {
 
 function AdBlockCard({ nodeDoc, subDoc }: { nodeDoc: string; subDoc: string }) {
   const save = useSaveNetwork();
+  const { can } = useGrants();
+  const writable = can("network", true);
   const [node, setNode] = useState<AdBlockDoc>(() => parseAdBlock(nodeDoc));
   const [sub, setSub] = useState<AdBlockDoc>(() => parseAdBlock(subDoc));
   const errors = fieldErrors(save.error);
@@ -1055,9 +1077,11 @@ function AdBlockCard({ nodeDoc, subDoc }: { nodeDoc: string; subDoc: string }) {
             </p>
           ) : null;
         })()}
-        <Button type="submit" variant="primary" loading={save.isPending}>
-          {t("network.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending}>
+            {t("network.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );

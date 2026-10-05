@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { api, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, useNodes } from "../../api/hooks";
+import { qk, useGrants, useNodes } from "../../api/hooks";
 import { Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -37,6 +37,8 @@ export function CascadeDrawer({ node, onClose }: { node: { id: number; name: str
 }
 
 function Body({ nodeId, c, refetch, checking }: { nodeId: number; c: Cascade; refetch: () => void; checking: boolean }) {
+  const { can } = useGrants();
+  const writable = can("node", true);
   const qc = useQueryClient();
   const toast = useToast();
   const nodes = useNodes();
@@ -137,9 +139,11 @@ function Body({ nodeId, c, refetch, checking }: { nodeId: number; c: Cascade; re
             </select>
           ) : null}
         </Field>
-        <Button variant="primary" loading={save.isPending} disabled={!changed || (route === "node" && !exit)} onClick={() => save.mutate()}>
-          {t("common.save")}
-        </Button>
+        {writable ? (
+          <Button variant="primary" loading={save.isPending} disabled={!changed || (route === "node" && !exit)} onClick={() => save.mutate()}>
+            {t("common.save")}
+          </Button>
+        ) : null}
       </section>
     </>
   );

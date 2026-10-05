@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Archive, Layers, Package, Pencil, Plus, Tag } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas, type Tariff } from "../../api/client";
-import { qk, usePools, useTariffs } from "../../api/hooks";
+import { qk, useGrants, usePools, useTariffs } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { Tabs } from "../../components/tabs";
@@ -56,6 +56,8 @@ export function TariffsPage() {
   const [archive, setArchive] = useState<Tariff | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("tariffs", true);
   const remove = useMutation({
     mutationFn: (id: number) => unwrap(api.DELETE("/api/v1/tariffs/{id}", { params: { path: { id } } })),
     onSuccess: () => {
@@ -72,7 +74,7 @@ export function TariffsPage() {
         title={t("nav.tariffs")}
         sub={t("tariffs.subtitle")}
         actions={
-          tab === "tariffs" ? (
+          tab === "tariffs" && writable ? (
             <Button variant="primary" onClick={() => setEdit("new")}>
               <Plus size={18} aria-hidden />
               <span className="max-[760px]:hidden">{t("tariffs.new")}</span>
@@ -111,9 +113,11 @@ export function TariffsPage() {
               list.length === 0 ? (
                 <section className="card glass">
                   <EmptyState title={t("tariffs.emptyTitle")} text={t("tariffs.emptyText")}>
-                    <Button variant="primary" onClick={() => setEdit("new")}>
-                      <Plus size={18} aria-hidden /> {t("tariffs.new")}
-                    </Button>
+                    {writable ? (
+                      <Button variant="primary" onClick={() => setEdit("new")}>
+                        <Plus size={18} aria-hidden /> {t("tariffs.new")}
+                      </Button>
+                    ) : null}
                   </EmptyState>
                 </section>
               ) : (
@@ -126,12 +130,16 @@ export function TariffsPage() {
                           {tr.price_label ? <div className="mt-1 text-[13px] font-medium text-[var(--cozy-200)]">{tr.price_label}</div> : null}
                         </div>
                         <div className="flex gap-1">
-                          <button type="button" className="icon-btn" aria-label={t("tariffs.editLabel", { name: tr.name })} onClick={() => setEdit(tr)}>
-                            <Pencil size={16} />
-                          </button>
-                          <button type="button" className="icon-btn" aria-label={t("tariffs.archiveLabel", { name: tr.name })} onClick={() => setArchive(tr)}>
-                            <Archive size={16} />
-                          </button>
+                          {writable ? (
+                            <>
+                              <button type="button" className="icon-btn" aria-label={t("tariffs.editLabel", { name: tr.name })} onClick={() => setEdit(tr)}>
+                                <Pencil size={16} />
+                              </button>
+                              <button type="button" className="icon-btn" aria-label={t("tariffs.archiveLabel", { name: tr.name })} onClick={() => setArchive(tr)}>
+                                <Archive size={16} />
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                       <dl className="mt-5 grid grid-cols-2 gap-3 text-xs text-[var(--ink-500)]">

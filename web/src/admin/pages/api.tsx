@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { lazy, Suspense, useState, type FormEvent } from "react";
 import { api, errorText, unwrap, type Schemas } from "../../api/client";
-import { meQuery, qk } from "../../api/hooks";
+import { meQuery, qk, useGrants } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -41,6 +41,8 @@ const expiries = [0, 30, 90, 365] as const;
 function KeysCard() {
   const qc = useQueryClient();
   const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("api-keys", true);
   const keys = useQuery({ queryKey: qk.apiKeys, queryFn: ({ signal }) => unwrap(api.GET("/api/v1/api-keys", { signal })) });
   const [adding, setAdding] = useState(false);
   const [made, setMade] = useState<string | null>(null);
@@ -61,9 +63,11 @@ function KeysCard() {
           <h2 className="card-title">{t("apiPage.keys")}</h2>
           <div className="card-sub">{t("apiPage.keysSub")}</div>
         </div>
-        <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
-          <Plus size={16} aria-hidden /> {t("apiPage.newKey")}
-        </Button>
+        {writable ? (
+          <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
+            <Plus size={16} aria-hidden /> {t("apiPage.newKey")}
+          </Button>
+        ) : null}
       </div>
       <QueryBoundary query={keys} pending={<Skeleton style={{ height: 96 }} />}>
         {(list) =>
@@ -118,10 +122,18 @@ function KeyRow({ k, onRevoke }: { k: APIKey; onRevoke: () => void }) {
           )}
         </div>
       </div>
-      <Button size="sm" variant="danger" onClick={onRevoke}>
-        <Trash2 size={16} aria-hidden /> {t("apiPage.revoke")}
-      </Button>
+      <RevokeButton onRevoke={onRevoke} />
     </li>
+  );
+}
+
+function RevokeButton({ onRevoke }: { onRevoke: () => void }) {
+  const { can } = useGrants();
+  if (!can("api-keys", true)) return null;
+  return (
+    <Button size="sm" variant="danger" onClick={onRevoke}>
+      <Trash2 size={16} aria-hidden /> {t("apiPage.revoke")}
+    </Button>
   );
 }
 

@@ -36,6 +36,19 @@ export const meQuery = {
   retry: false,
 };
 
+/** What the signed-in admin may do: owner passes everything, otherwise the matrix. */
+export function useGrants() {
+  const me = useQuery(meQuery);
+  const admin = me.data?.admin;
+  const can = (tag: string, write = false): boolean => {
+    if (!admin) return true;
+    if (admin.owner) return true;
+    const g = admin.scopes?.[tag];
+    return write ? g === "w" : g === "r" || g === "w";
+  };
+  return { admin, owner: !!admin?.owner, can };
+}
+
 type UsersFilter = { state: "all" | User["state"]; q: string };
 
 /** The users page lists everyone it can (the API's cap); a card that shows a few asks for just those. */

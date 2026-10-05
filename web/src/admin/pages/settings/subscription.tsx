@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Schemas } from "../../../api/client";
-import { useInbounds, useNodes } from "../../../api/hooks";
+import { useGrants, useInbounds, useNodes } from "../../../api/hooks";
 import { Button, Field, Pill } from "../../../components/ui";
 import { Switch } from "../../../components/switch";
 import { t } from "../../../i18n";
@@ -17,6 +17,8 @@ const OPEN_PORTS = [443, 2053, 2083, 2087, 2096, 8443] as const;
 // admin panel's port stops showing in every link. Links on the old port keep working.
 export function SubPortCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   const inbounds = useInbounds();
   const nodes = useNodes();
   const { draft: port, setDraft: setPort } = useDraft(s.sub_port ? String(s.sub_port) : "");
@@ -86,13 +88,17 @@ export function SubPortCard({ s }: { s: Schemas["SettingsView"] }) {
         </div>
         <p className="mb-4 text-xs text-[var(--ink-500)]">{t("settings.subPortNote")}</p>
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" loading={save.isPending && save.variables?.sub_port === next} disabled={!changed || !valid}>
-            {t("common.save")}
-          </Button>
-          {s.sub_port ? (
-            <Button variant="ghost" loading={save.isPending && save.variables?.sub_port === 0} onClick={() => save.mutate({ sub_port: 0 })}>
-              {t("settings.subPortOff", { port: current === s.sub_port ? s.panel_port : current })}
-            </Button>
+          {writable ? (
+            <>
+              <Button type="submit" variant="primary" loading={save.isPending && save.variables?.sub_port === next} disabled={!changed || !valid}>
+                {t("common.save")}
+              </Button>
+              {s.sub_port ? (
+                <Button variant="ghost" loading={save.isPending && save.variables?.sub_port === 0} onClick={() => save.mutate({ sub_port: 0 })}>
+                  {t("settings.subPortOff", { port: current === s.sub_port ? s.panel_port : current })}
+                </Button>
+              ) : null}
+            </>
           ) : null}
         </div>
       </form>
@@ -107,6 +113,8 @@ const routingModes = [
 
 export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   const inbounds = useInbounds();
   const { draft: form, setDraft: setForm } = useDraft({ brand: s.brand, support_url: s.support_url, pay_contact: s.pay_contact, sub_group_main: s.sub_group_main, sub_group_auto: s.sub_group_auto, sub_routing: s.sub_routing, client_fingerprint: s.client_fingerprint });
   const [fpOk, setFpOk] = useState(true);
@@ -174,9 +182,11 @@ export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
         <Field label={t("settings.payContact")} htmlFor="s-pay-contact" hint={t("settings.payContactHint")} error={errors.pay_contact}>
           <input id="s-pay-contact" className="input" value={form.pay_contact} onChange={set("pay_contact")} placeholder="@your_payment_contact" maxLength={64} aria-invalid={!!errors.pay_contact} />
         </Field>
-        <Button type="submit" variant="primary" loading={save.isPending} disabled={!fpOk || !form.client_fingerprint}>
-          {t("common.save")}
-        </Button>
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending} disabled={!fpOk || !form.client_fingerprint}>
+            {t("common.save")}
+          </Button>
+        ) : null}
       </form>
     </section>
   );
@@ -184,6 +194,8 @@ export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
 
 export function DevicesCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   return (
     <section className="card glass reveal" style={{ "--i": 4 } as React.CSSProperties}>
       <div className="card-head">
@@ -198,14 +210,14 @@ export function DevicesCard({ s }: { s: Schemas["SettingsView"] }) {
             <div className="text-[13px] font-medium">{t("settings.binding")}</div>
             <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.bindingSub")}</div>
           </div>
-          <Switch checked={s.device_binding} label={t("settings.binding")} disabled={save.isPending} onChange={(v) => save.mutate({ device_binding: v })} />
+          <Switch checked={s.device_binding} label={t("settings.binding")} disabled={save.isPending || !writable} onChange={(v) => writable && save.mutate({ device_binding: v })} />
         </li>
         <li className="flex items-start justify-between gap-4 py-3">
           <div className="min-w-0">
             <div className="text-[13px] font-medium">{t("settings.requireHwid")}</div>
             <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.requireHwidSub")}</div>
           </div>
-          <Switch checked={s.device_require_hwid} label={t("settings.requireHwid")} disabled={save.isPending || !s.device_binding} onChange={(v) => save.mutate({ device_require_hwid: v })} />
+          <Switch checked={s.device_require_hwid} label={t("settings.requireHwid")} disabled={save.isPending || !s.device_binding || !writable} onChange={(v) => writable && save.mutate({ device_require_hwid: v })} />
         </li>
       </ul>
       <p className="mt-3 text-xs text-[var(--ink-500)]">{t("settings.devicesNote")}</p>

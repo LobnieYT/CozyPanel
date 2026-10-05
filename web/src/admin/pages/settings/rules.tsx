@@ -3,6 +3,7 @@ import { ApiError, type Schemas } from "../../../api/client";
 import { Button, Pill } from "../../../components/ui";
 import { t } from "../../../i18n";
 import { useDraft } from "../../../lib/draft";
+import { useGrants } from "../../../api/hooks";
 import { useSaveSettings } from "./shared";
 
 // Ready-made rules the admin adds with one click; PROXY is the main group's alias that
@@ -18,6 +19,8 @@ const RULE_EXAMPLES = [
 // The admin's own rules for Clash apps (subs.ParseRules checks them line by line).
 export function ClashRulesCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
   const { draft: text, setDraft: setText, dirty: changed, reset } = useDraft(s.sub_rules);
   const gutter = useRef<HTMLDivElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -106,9 +109,11 @@ export function ClashRulesCard({ s }: { s: Schemas["SettingsView"] }) {
           </details>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" loading={save.isPending && save.variables?.sub_rules !== undefined} disabled={!changed}>
+          {writable ? (
+            <Button type="submit" variant="primary" loading={save.isPending && save.variables?.sub_rules !== undefined} disabled={!changed}>
             {t("common.save")}
-          </Button>
+            </Button>
+          ) : null}
           {changed ? (
             <Button variant="ghost" onClick={reset}>
               {t("telegram.discard")}

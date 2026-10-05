@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Plus, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { errorText, type Overview, type User } from "../../api/client";
-import { onePeriod, useInbounds, useNode, useOverview, userActions, useServerTraffic, useUserMutation, useUsers } from "../../api/hooks";
+import { onePeriod, useGrants, useInbounds, useNode, useOverview, userActions, useServerTraffic, useUserMutation, useUsers } from "../../api/hooks";
 import { buckets, TrafficChart, type Range } from "../../components/chart";
 import { QueryBoundary, StaleNotice } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -12,6 +12,7 @@ import { bits, bytes, dateShort, expiryText, maskedAs, num, uptime } from "../..
 
 export function Dashboard() {
   const node = useNode();
+  const { can } = useGrants();
   const status = node.data ? (node.data.ok ? t("dashboard.statusOk") : t("dashboard.statusDown")) : t("dashboard.statusChecking");
   const today = new Intl.DateTimeFormat(getLocale(), { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   return (
@@ -20,10 +21,12 @@ export function Dashboard() {
         title={t("dashboard.title")}
         sub={`${today.charAt(0).toUpperCase()}${today.slice(1)} · ${status}`}
         actions={
-          <Link to="/users" search={{ state: "all", q: "", create: true }} className="btn btn-primary">
-            <Plus size={18} aria-hidden />
-            <span className="max-[760px]:hidden">{t("dashboard.newUser")}</span>
-          </Link>
+          can("users", true) ? (
+            <Link to="/users" search={{ state: "all", q: "", create: true }} className="btn btn-primary">
+              <Plus size={18} aria-hidden />
+              <span className="max-[760px]:hidden">{t("dashboard.newUser")}</span>
+            </Link>
+          ) : undefined
         }
       />
       <Kpis />

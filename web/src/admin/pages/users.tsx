@@ -4,7 +4,7 @@ import { CalendarPlus, ChevronRight, Plus, Power, RotateCcw, Search, Trash2, X }
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorText, type Tariff, type User } from "../../api/client";
-import { userActions, useTariffs, useUserMutation, useUsers } from "../../api/hooks";
+import { userActions, useGrants, useTariffs, useUserMutation, useUsers } from "../../api/hooks";
 import { Confirm } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -27,6 +27,8 @@ export function UsersPage() {
   const tariffs = useTariffs();
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const narrow = useMediaQuery("(max-width: 767px)");
+  const { can } = useGrants();
+  const writable = can("users", true);
 
   useEffect(() => {
     if (search.q === written.current) return;
@@ -69,10 +71,12 @@ export function UsersPage() {
         title={t("nav.users")}
         sub={counts ? t("users.subtitle", { n: counts.all, active: num(counts.active) }) : "…"}
         actions={
-          <Button variant="primary" onClick={() => void navigate({ search: (s) => ({ ...s, create: true, user: undefined }) })}>
-            <Plus size={18} aria-hidden />
-            <span className="max-[760px]:hidden">{t("dashboard.newUser")}</span>
-          </Button>
+          writable ? (
+            <Button variant="primary" onClick={() => void navigate({ search: (s) => ({ ...s, create: true, user: undefined }) })}>
+              <Plus size={18} aria-hidden />
+              <span className="max-[760px]:hidden">{t("dashboard.newUser")}</span>
+            </Button>
+          ) : undefined
         }
       />
       <div className="reveal flex flex-col items-stretch justify-between gap-3 lg:flex-row lg:items-center">
@@ -103,9 +107,11 @@ export function UsersPage() {
           {(data) =>
             data.counts.all === 0 ? (
               <EmptyState title={t("users.emptyTitle")} text={t("users.emptyText")}>
-                <Button variant="primary" onClick={() => void navigate({ search: (s) => ({ ...s, create: true }) })}>
-                  <Plus size={18} aria-hidden /> {t("dashboard.newUser")}
-                </Button>
+                {writable ? (
+                  <Button variant="primary" onClick={() => void navigate({ search: (s) => ({ ...s, create: true }) })}>
+                    <Plus size={18} aria-hidden /> {t("dashboard.newUser")}
+                  </Button>
+                ) : null}
               </EmptyState>
             ) : data.items.length === 0 ? (
               <EmptyState search title={t("users.notFoundTitle")} text={search.q ? t("users.notFoundQuery", { q: search.q }) : t("users.notFoundGroup")}>
@@ -162,7 +168,7 @@ export function UsersPage() {
         </QueryBoundary>
       </section>
 
-      <BulkBar chosen={chosen} clear={clear} />
+      {writable ? <BulkBar chosen={chosen} clear={clear} /> : null}
       <CreateUserDrawer
         open={!!search.create}
         onOpenChange={(v) => void navigate({ search: (s) => ({ ...s, create: v ? true : undefined }) })}

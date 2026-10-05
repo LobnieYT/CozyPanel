@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Pencil, Plus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
-import { qk, usePackages, usePools } from "../../api/hooks";
+import { qk, useGrants, usePackages, usePools } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -32,6 +32,8 @@ function lifetimeText(lifetime: Lifetime, days: number): string {
 export function PackagesCard() {
   const packages = usePackages();
   const pools = usePools();
+  const { can } = useGrants();
+  const writable = can("tariffs", true);
   const qc = useQueryClient();
   const toast = useToast();
   const [edit, setEdit] = useState<Package | "new" | null>(null);
@@ -53,9 +55,11 @@ export function PackagesCard() {
           <h2 className="card-title">{t("packages.title")}</h2>
           <div className="card-sub">{t("packages.sub")}</div>
         </div>
-        <Button size="sm" onClick={() => setEdit("new")}>
-          <Plus size={16} aria-hidden /> {t("packages.add")}
-        </Button>
+        {writable ? (
+          <Button size="sm" onClick={() => setEdit("new")}>
+            <Plus size={16} aria-hidden /> {t("packages.add")}
+          </Button>
+        ) : null}
       </div>
       <QueryBoundary query={packages} pending={<Skeleton style={{ height: 64 }} />}>
         {(list) =>
@@ -72,12 +76,16 @@ export function PackagesCard() {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button type="button" className="icon-btn" aria-label={t("packages.editLabel", { name: p.name })} onClick={() => setEdit(p)}>
-                      <Pencil size={16} />
-                    </button>
-                    <button type="button" className="icon-btn" aria-label={t("packages.archiveLabel", { name: p.name })} onClick={() => setArchive(p)}>
-                      <Archive size={16} />
-                    </button>
+                    {writable ? (
+                      <>
+                        <button type="button" className="icon-btn" aria-label={t("packages.editLabel", { name: p.name })} onClick={() => setEdit(p)}>
+                          <Pencil size={16} />
+                        </button>
+                        <button type="button" className="icon-btn" aria-label={t("packages.archiveLabel", { name: p.name })} onClick={() => setArchive(p)}>
+                          <Archive size={16} />
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </li>
               ))}
