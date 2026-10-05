@@ -16,6 +16,10 @@ type Admin struct {
 	RecoveryCodes sql.NullString
 	CreatedAt     int64
 	LastLoginAt   sql.NullInt64
+	DisabledAt    sql.NullInt64
+	ExpiresAt     sql.NullInt64
+	Scopes        string
+	IsOwner       int64
 }
 
 type ApiKey struct {

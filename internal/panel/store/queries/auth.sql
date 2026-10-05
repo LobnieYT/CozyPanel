@@ -35,6 +35,15 @@ UPDATE admins SET recovery_codes = sqlc.arg(rest) WHERE id = sqlc.arg(id) AND re
 -- name: SetAdminLastLogin :exec
 UPDATE admins SET last_login_at = ? WHERE id = ?;
 
+-- name: UpdateAdminAccess :exec
+UPDATE admins SET disabled_at = ?, expires_at = ?, scopes = ? WHERE id = ?;
+
+-- name: SetAdminOwner :exec
+UPDATE admins SET is_owner = ? WHERE id = ?;
+
+-- name: DeleteAdmin :exec
+DELETE FROM admins WHERE id = ?;
+
 -- name: CreateSession :exec
 INSERT INTO sessions (id_hash, admin_id, csrf_token, created_at, last_seen_at, expires_at, ip, user_agent)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);

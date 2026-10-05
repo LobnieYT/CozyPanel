@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/api/v1/admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Администраторы */
+        get: operations["list-admins"];
+        put?: never;
+        /** Создать администратора */
+        post: operations["create-admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admins/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Удалить администратора */
+        delete: operations["delete-admin"];
+        options?: never;
+        head?: never;
+        /** Изменить администратора */
+        patch: operations["update-admin"];
+        trace?: never;
+    };
     "/api/v1/api-keys": {
         parameters: {
             query?: never;
@@ -1190,10 +1226,17 @@ export interface components {
             scope: "read" | "full";
         };
         AdminView: {
+            disabled: boolean;
+            /** Format: date-time */
+            expires_at?: string;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
             last_login_at?: string;
+            owner: boolean;
+            scopes: {
+                [key: string]: string;
+            };
             totp_enabled: boolean;
             username: string;
         };
@@ -1414,6 +1457,20 @@ export interface components {
             prefix: string;
             /** @enum {string} */
             scope: "read" | "full";
+        };
+        CreateAdminInputBody: {
+            /**
+             * Format: int64
+             * @description Конец срока в unix-секундах; null — бессрочно
+             */
+            expires_at?: number;
+            /** @description Не короче 12 символов */
+            password: string;
+            /** @description Раздел → r|w; пусто — только вход */
+            scopes?: {
+                [key: string]: string;
+            };
+            username: string;
         };
         CreateInboundInputBody: {
             /** @description Шаблон листенера (YAML) для preset=custom */
@@ -2451,6 +2508,18 @@ export interface components {
             /** Format: int64 */
             up: number;
         };
+        UpdateAdminInputBody: {
+            disabled?: boolean;
+            /**
+             * Format: int64
+             * @description Unix-секунды; 0 — бессрочно
+             */
+            expires_at?: number;
+            password?: string;
+            scopes?: {
+                [key: string]: string;
+            };
+        };
         UpdatesView: {
             /** @description Сервер сам ставит новые релизы раз в сутки, ночью */
             auto: boolean;
@@ -2643,6 +2712,132 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "list-admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminView"][];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdminInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "list-api-keys": {
         parameters: {
             query?: never;

@@ -50,6 +50,13 @@
       "AdminView": {
         "additionalProperties": false,
         "properties": {
+          "disabled": {
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
           "id": {
             "format": "int64",
             "type": "integer"
@@ -57,6 +64,15 @@
           "last_login_at": {
             "format": "date-time",
             "type": "string"
+          },
+          "owner": {
+            "type": "boolean"
+          },
+          "scopes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "totp_enabled": {
             "type": "boolean"
@@ -68,7 +84,10 @@
         "required": [
           "id",
           "username",
-          "totp_enabled"
+          "totp_enabled",
+          "owner",
+          "disabled",
+          "scopes"
         ],
         "type": "object"
       },
@@ -694,6 +713,39 @@
           "prefix",
           "scope",
           "created_at"
+        ],
+        "type": "object"
+      },
+      "CreateAdminInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "description": "Конец срока в unix-секундах; null — бессрочно",
+            "format": "int64",
+            "type": "integer"
+          },
+          "password": {
+            "description": "Не короче 12 символов",
+            "maxLength": 256,
+            "minLength": 12,
+            "type": "string"
+          },
+          "scopes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Раздел → r|w; пусто — только вход",
+            "type": "object"
+          },
+          "username": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
         ],
         "type": "object"
       },
@@ -3686,6 +3738,31 @@
         ],
         "type": "object"
       },
+      "UpdateAdminInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "disabled": {
+            "type": "boolean"
+          },
+          "expires_at": {
+            "description": "Unix-секунды; 0 — бессрочно",
+            "format": "int64",
+            "type": "integer"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 12,
+            "type": "string"
+          },
+          "scopes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
       "UpdatesView": {
         "additionalProperties": false,
         "properties": {
@@ -4236,6 +4313,166 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admins": {
+      "get": {
+        "operationId": "list-admins",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Администраторы",
+        "tags": [
+          "admins"
+        ]
+      },
+      "post": {
+        "operationId": "create-admin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Создать администратора",
+        "tags": [
+          "admins"
+        ]
+      }
+    },
+    "/api/v1/admins/{id}": {
+      "delete": {
+        "operationId": "delete-admin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Удалить администратора",
+        "tags": [
+          "admins"
+        ]
+      },
+      "patch": {
+        "operationId": "update-admin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Изменить администратора",
+        "tags": [
+          "admins"
+        ]
+      }
+    },
     "/api/v1/api-keys": {
       "get": {
         "operationId": "list-api-keys",

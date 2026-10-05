@@ -27,6 +27,9 @@ func TestResetPasswordRevokesSessionsAndKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := st.Q.SetAdminOwner(ctx, db.SetAdminOwnerParams{IsOwner: 1, ID: a.ID}); err != nil {
+		t.Fatal(err)
+	}
 	if _, _, err := auth.NewSessions(st.Q, func() time.Time { return now }, nil).Create(ctx, a.ID, "127.0.0.1", "test"); err != nil {
 		t.Fatal(err)
 	}

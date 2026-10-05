@@ -51,7 +51,11 @@ func newHarness(t *testing.T, with ...func(*Options)) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Q.CreateAdmin(ctx, db.CreateAdminParams{Username: "admin", PasswordHash: hash, CreatedAt: time.Now().Unix()}); err != nil {
+	a, err := st.Q.CreateAdmin(ctx, db.CreateAdminParams{Username: "admin", PasswordHash: hash, CreatedAt: time.Now().Unix()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Q.SetAdminOwner(ctx, db.SetAdminOwnerParams{IsOwner: 1, ID: a.ID}); err != nil {
 		t.Fatal(err)
 	}
 	set := settings.New(st.Q)

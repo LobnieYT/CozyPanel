@@ -60,15 +60,18 @@ func TestMigration0017KeepsWhatIsThere(t *testing.T) {
 	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name IN ('traffic_hourly_hour', 'traffic_daily_day', 'devices_last_seen', 'audit_log_ts')").Scan(&n); err != nil || n != 4 {
 		t.Fatalf("time indexes: %d %v", n, err)
 	}
-	// And back: the rollbacks leave the data (0019, 0018, then 0017).
-	if _, err := p.Down(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.Down(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.Down(ctx); err != nil {
-		t.Fatal(err)
+	// And back: every rollback leaves the data, down to 0016.
+	for {
+		v, err := p.GetDBVersion(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if v <= 16 {
+			break
+		}
+		if _, err := p.Down(ctx); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := conn.QueryRowContext(ctx, "SELECT client FROM devices WHERE user_id = 1").Scan(new(string)); err != nil {
 		t.Fatalf("the column after a rollback: %v", err)

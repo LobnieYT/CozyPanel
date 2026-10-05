@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowUpCircle, Bot, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Server, SlidersHorizontal, Tag, Users } from "lucide-react";
+import { ArrowUpCircle, Bot, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Server, ShieldCheck, SlidersHorizontal, Tag, Users } from "lucide-react";
 import { api, unwrap } from "../api/client";
 import { meQuery, useNode, useOverview, useUpdates } from "../api/hooks";
 import { Logo } from "../components/atmosphere";
@@ -11,18 +11,27 @@ import { t, useLocale } from "../i18n";
 import { num, uptime } from "../lib/format";
 
 const NAV = [
-  { to: "/", key: "overview", icon: LayoutDashboard },
-  { to: "/users", key: "users", icon: Users },
-  { to: "/tariffs", key: "tariffs", icon: Tag },
-  { to: "/inbounds", key: "inbounds", icon: Server },
-  { to: "/nodes", key: "nodes", icon: Network },
-  { to: "/network", key: "network", icon: Globe },
-  { to: "/telegram", key: "telegram", icon: Bot },
-  { to: "/settings", key: "settings", icon: SlidersHorizontal },
+  { to: "/", key: "overview", icon: LayoutDashboard, tag: "stats" },
+  { to: "/users", key: "users", icon: Users, tag: "users" },
+  { to: "/tariffs", key: "tariffs", icon: Tag, tag: "tariffs" },
+  { to: "/inbounds", key: "inbounds", icon: Server, tag: "inbounds" },
+  { to: "/nodes", key: "nodes", icon: Network, tag: "node" },
+  { to: "/network", key: "network", icon: Globe, tag: "network" },
+  { to: "/telegram", key: "telegram", icon: Bot, tag: "telegram" },
+  { to: "/settings", key: "settings", icon: SlidersHorizontal, tag: "settings" },
+  { to: "/admins", key: "admins", icon: ShieldCheck, tag: "admins" },
 ] as const;
 
 function useNav() {
-  return NAV;
+  const me = useQuery(meQuery);
+  const admin = me.data?.admin;
+  return NAV.filter((n) => {
+    if (!admin) return true;
+    if (admin.owner) return true;
+    if (n.tag === "admins") return false;
+    const g = admin.scopes?.[n.tag];
+    return g === "r" || g === "w";
+  });
 }
 
 export function Shell() {
@@ -162,7 +171,7 @@ function AdminRow() {
       <Avatar name={name} seed={4} size="sm" />
       <div className="who-wrap min-w-0">
         <div className="truncate text-[13px] font-medium">{name}</div>
-        <div className="text-xs text-[var(--ink-500)]">{me.data?.admin.totp_enabled ? t("shell.twoFactorOn") : t("shell.owner")}</div>
+        <div className="text-xs text-[var(--ink-500)]">{me.data?.admin.owner ? t("admins.owner") : me.data?.admin.totp_enabled ? t("shell.twoFactorOn") : ""}</div>
       </div>
       <button type="button" className="icon-btn logout ml-auto" aria-label={t("shell.logout")} onClick={() => logout.mutate()} disabled={logout.isPending}>
         <LogOut size={18} />

@@ -199,6 +199,7 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h := &handlers{d: d, api: api, dummyHash: dummy, hashSem: make(chan struct{}, 4), pending: map[int64]pendingTOTP{}}
 	api.UseMiddleware(h.middleware)
 	h.registerAuth()
+	h.registerAdmins()
 	h.registerUsers()
 	h.registerCatalog()
 	h.registerInbounds()
@@ -259,6 +260,16 @@ func (h *handlers) middleware(ctx huma.Context, next func(huma.Context)) {
 	}
 	if mutating && !secure.Equal(ctx.Header("X-CSRF-Token"), sess.CsrfToken) {
 		_ = huma.WriteErr(h.api, ctx, http.StatusForbidden, "csrf")
+		return
+	}
+	if _, err := h.authorize(ctx.Context(), sess, op.Tags, mutating); err != nil {
+		var se huma.StatusError
+		if errors.As(err, &se) {
+			_ = huma.WriteErr(h.api, ctx, se.GetStatus(), se.Error())
+		} else {
+			h.d.Log.Error("authorize", "err", err)
+			_ = huma.WriteErr(h.api, ctx, http.StatusInternalServerError, "internal error")
+		}
 		return
 	}
 	next(huma.WithValue(ctx, keySession, sess))

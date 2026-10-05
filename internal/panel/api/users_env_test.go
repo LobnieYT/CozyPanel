@@ -34,7 +34,11 @@ func TestUserListReadsSharedStateOnce(t *testing.T) {
 	if err := domain.Seed(ctx, st, now); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Q.CreateAdmin(ctx, db.CreateAdminParams{Username: "admin", PasswordHash: "x", CreatedAt: now.Unix()}); err != nil {
+	a, err := st.Q.CreateAdmin(ctx, db.CreateAdminParams{Username: "admin", PasswordHash: "x", CreatedAt: now.Unix()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Q.SetAdminOwner(ctx, db.SetAdminOwnerParams{IsOwner: 1, ID: a.ID}); err != nil {
 		t.Fatal(err)
 	}
 	pool := domain.NewPool(st, clock)

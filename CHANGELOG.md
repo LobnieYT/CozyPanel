@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.1.8
+### en
+- Panel sub-admins: login/password accounts with a term, a per-section read/write matrix (viewer/operator presets) and on/off, managed by the owner on a new Admins page. Expired and disabled accounts stop at login and mid-session; audit keeps the actor.
+- Owners keep working exactly as before; API keys keep their read/full semantics.
+
+### ru
+- Суб-админы панели: аккаунты с логином/паролем, сроком действия, матрицей прав по разделам (пресеты «наблюдатель»/«оператор») и выключателем — всё на новой странице «Администраторы», только для владельца. Истёкшие и выключенные останавливаются и при входе, и посреди сессии; аудит хранит исполнителя.
+- Владелец работает как раньше; API-ключи — с той же семантикой read/full.
+
 ## 1.1.7
 ### en
 - IPv6 egress switch (Settings → Node egress, off by default): off means strictly IPv4 egress, a single identity for anti-abuse systems. On keeps IPv6 where available.

@@ -23,7 +23,7 @@ func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
 
 const createAdmin = `-- name: CreateAdmin :one
 INSERT INTO admins (username, password_hash, created_at) VALUES (?, ?, ?)
-RETURNING id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at
+RETURNING id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at, disabled_at, expires_at, scopes, is_owner
 `
 
 type CreateAdminParams struct {
@@ -43,6 +43,10 @@ func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (Admin
 		&i.RecoveryCodes,
 		&i.CreatedAt,
 		&i.LastLoginAt,
+		&i.DisabledAt,
+		&i.ExpiresAt,
+		&i.Scopes,
+		&i.IsOwner,
 	)
 	return i, err
 }
@@ -74,6 +78,15 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 		arg.Ip,
 		arg.UserAgent,
 	)
+	return err
+}
+
+const deleteAdmin = `-- name: DeleteAdmin :exec
+DELETE FROM admins WHERE id = ?
+`
+
+func (q *Queries) DeleteAdmin(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAdmin, id)
 	return err
 }
 
@@ -124,7 +137,7 @@ func (q *Queries) DeleteStaleSessions(ctx context.Context, arg DeleteStaleSessio
 }
 
 const getAdmin = `-- name: GetAdmin :one
-SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at FROM admins WHERE id = ?
+SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at, disabled_at, expires_at, scopes, is_owner FROM admins WHERE id = ?
 `
 
 func (q *Queries) GetAdmin(ctx context.Context, id int64) (Admin, error) {
@@ -138,12 +151,16 @@ func (q *Queries) GetAdmin(ctx context.Context, id int64) (Admin, error) {
 		&i.RecoveryCodes,
 		&i.CreatedAt,
 		&i.LastLoginAt,
+		&i.DisabledAt,
+		&i.ExpiresAt,
+		&i.Scopes,
+		&i.IsOwner,
 	)
 	return i, err
 }
 
 const getAdminByUsername = `-- name: GetAdminByUsername :one
-SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at FROM admins WHERE username = ?
+SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at, disabled_at, expires_at, scopes, is_owner FROM admins WHERE username = ?
 `
 
 func (q *Queries) GetAdminByUsername(ctx context.Context, username string) (Admin, error) {
@@ -157,6 +174,10 @@ func (q *Queries) GetAdminByUsername(ctx context.Context, username string) (Admi
 		&i.RecoveryCodes,
 		&i.CreatedAt,
 		&i.LastLoginAt,
+		&i.DisabledAt,
+		&i.ExpiresAt,
+		&i.Scopes,
+		&i.IsOwner,
 	)
 	return i, err
 }
@@ -257,7 +278,7 @@ func (q *Queries) ListAdminSessions(ctx context.Context, adminID int64) ([]Sessi
 }
 
 const listAdmins = `-- name: ListAdmins :many
-SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at FROM admins ORDER BY id
+SELECT id, username, password_hash, totp_secret, recovery_codes, created_at, last_login_at, disabled_at, expires_at, scopes, is_owner FROM admins ORDER BY id
 `
 
 func (q *Queries) ListAdmins(ctx context.Context) ([]Admin, error) {
@@ -277,6 +298,10 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]Admin, error) {
 			&i.RecoveryCodes,
 			&i.CreatedAt,
 			&i.LastLoginAt,
+			&i.DisabledAt,
+			&i.ExpiresAt,
+			&i.Scopes,
+			&i.IsOwner,
 		); err != nil {
 			return nil, err
 		}
@@ -358,6 +383,20 @@ func (q *Queries) SetAdminLastLogin(ctx context.Context, arg SetAdminLastLoginPa
 	return err
 }
 
+const setAdminOwner = `-- name: SetAdminOwner :exec
+UPDATE admins SET is_owner = ? WHERE id = ?
+`
+
+type SetAdminOwnerParams struct {
+	IsOwner int64
+	ID      int64
+}
+
+func (q *Queries) SetAdminOwner(ctx context.Context, arg SetAdminOwnerParams) error {
+	_, err := q.db.ExecContext(ctx, setAdminOwner, arg.IsOwner, arg.ID)
+	return err
+}
+
 const setAdminPassword = `-- name: SetAdminPassword :exec
 UPDATE admins SET password_hash = ? WHERE id = ?
 `
@@ -433,5 +472,26 @@ type TouchSessionParams struct {
 
 func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) error {
 	_, err := q.db.ExecContext(ctx, touchSession, arg.LastSeenAt, arg.IDHash)
+	return err
+}
+
+const updateAdminAccess = `-- name: UpdateAdminAccess :exec
+UPDATE admins SET disabled_at = ?, expires_at = ?, scopes = ? WHERE id = ?
+`
+
+type UpdateAdminAccessParams struct {
+	DisabledAt sql.NullInt64
+	ExpiresAt  sql.NullInt64
+	Scopes     string
+	ID         int64
+}
+
+func (q *Queries) UpdateAdminAccess(ctx context.Context, arg UpdateAdminAccessParams) error {
+	_, err := q.db.ExecContext(ctx, updateAdminAccess,
+		arg.DisabledAt,
+		arg.ExpiresAt,
+		arg.Scopes,
+		arg.ID,
+	)
 	return err
 }

@@ -189,6 +189,15 @@ func (h *handlers) bearer(ctx huma.Context, next func(huma.Context), mutating bo
 		_ = huma.WriteErr(h.api, ctx, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if admin, err := h.d.Store.Q.GetAdmin(ctx.Context(), key.AdminID); err != nil {
+		h.d.Log.Error("api key admin", "err", err)
+		_ = huma.WriteErr(h.api, ctx, http.StatusInternalServerError, "internal error")
+		return
+	} else if serr := AdminStatus(admin, now); serr != nil {
+		h.d.IPLimit.Fail(ipKey, now)
+		_ = huma.WriteErr(h.api, ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	op := ctx.Operation()
 	if only, _ := op.Metadata["sessionOnly"].(bool); only {
 		_ = huma.WriteErr(h.api, ctx, http.StatusForbidden, "session_only")

@@ -18,10 +18,14 @@ import (
 )
 
 type AdminView struct {
-	ID          int64      `json:"id"`
-	Username    string     `json:"username"`
-	TOTPEnabled bool       `json:"totp_enabled"`
-	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+	ID          int64             `json:"id"`
+	Username    string            `json:"username"`
+	TOTPEnabled bool              `json:"totp_enabled"`
+	LastLoginAt *time.Time        `json:"last_login_at,omitempty"`
+	Owner       bool              `json:"owner"`
+	Disabled    bool              `json:"disabled"`
+	ExpiresAt   *time.Time        `json:"expires_at,omitempty"`
+	Scopes      map[string]string `json:"scopes"`
 }
 
 type MeBody struct {
@@ -30,10 +34,18 @@ type MeBody struct {
 }
 
 func viewAdmin(a db.Admin) AdminView {
-	v := AdminView{ID: a.ID, Username: a.Username, TOTPEnabled: a.TotpSecret.Valid}
+	v := AdminView{ID: a.ID, Username: a.Username, TOTPEnabled: a.TotpSecret.Valid, Owner: a.IsOwner != 0,
+		Disabled: a.DisabledAt.Valid, Scopes: map[string]string{}}
 	if a.LastLoginAt.Valid {
 		t := time.Unix(a.LastLoginAt.Int64, 0).UTC()
 		v.LastLoginAt = &t
+	}
+	if a.ExpiresAt.Valid {
+		t := time.Unix(a.ExpiresAt.Int64, 0).UTC()
+		v.ExpiresAt = &t
+	}
+	if g, err := ParseGrants(a.Scopes); err == nil {
+		v.Scopes = g
 	}
 	return v
 }
@@ -213,6 +225,10 @@ func (h *handlers) login(ctx context.Context, in *loginInput) (*loginOutput, err
 	if !found || !ok {
 		h.loginFailed(ctx, username, found, "bad_password", blocked)
 		return nil, huma.Error401Unauthorized("invalid_credentials")
+	}
+	if serr := AdminStatus(admin, now); serr != nil {
+		h.loginFailed(ctx, username, true, "account_closed", blocked)
+		return nil, serr
 	}
 
 	if admin.TotpSecret.Valid {
