@@ -118,6 +118,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		Version: o.Version, Store: st, Settings: set, Sessions: p.sessions,
 		IPLimit: p.ipLimit, UserLimit: p.userLimit, TOTP: auth.NewTOTPGuard(),
 		TrustProxy: o.TrustProxy, Log: o.Log, Now: o.Now, Pool: pool,
+		DataDir: o.DataDir,
 	}
 	if o.Connect != nil {
 		p.Nodes = nodesync.NewManager(st, set, pool, o.Connect, o.Log, o.Now)

@@ -20,6 +20,10 @@ let csrfToken = "";
 export function setCsrf(token: string) {
   csrfToken = token;
 }
+/** The session's CSRF token for raw (non-client) requests. */
+export function csrf() {
+  return csrfToken;
+}
 
 export class ApiError extends Error {
   status: number;

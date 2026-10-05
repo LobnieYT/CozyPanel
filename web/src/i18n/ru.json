@@ -30,7 +30,8 @@
     "nodes": "Ноды",
     "telegram": "Telegram",
     "network": "Сеть",
-    "admins": "Администраторы"
+    "admins": "Администраторы",
+    "backups": "Бекапы"
   },
   "navShort": {
     "overview": "Обзор",
@@ -42,7 +43,8 @@
     "telegram": "Бот",
     "api": "API",
     "network": "Сеть",
-    "admins": "Админы"
+    "admins": "Админы",
+    "backups": "Бекапы"
   },
   "shell": {
     "update": "Вышла {v}",
@@ -129,6 +131,11 @@
       "support_url_invalid": "Ссылка должна начинаться с https:// или tg://",
       "pay_contact_invalid": "Контакт — одна строка",
       "bad_json": "Не JSON",
+      "bad_backup": "Это не бекап Cozy или он повреждён",
+      "backup_too_big": "Файл больше 2 ГБ",
+      "bad_request": "Плохой запрос",
+      "invalid": "Проверьте введённые данные",
+      "account_closed": "Аккаунт отключён или срок вышел",
       "no_servers": "Укажите хотя бы один сервер",
       "no_default": "Добавьте сервер без условия — всё остальное пойдёт через него",
       "bad_server": "Не похоже на адрес сервера",
@@ -1602,6 +1609,33 @@
     "geoOk": "На месте",
     "geoUpdate": "Обновить геоданные",
     "empty": "Пусто"
+  },
+  "backups": {
+    "title": "Бекапы",
+    "sub": "Весь сервер — наружу и обратно",
+    "export": "Экспорт",
+    "exportSub": "Всегда весь сервер: база, сертификаты, настройки",
+    "download": "Скачать бекап",
+    "import": "Импорт",
+    "importSub": "Выборочно: секции, стратегия конфликтов",
+    "file": "Файл бекапа",
+    "uploading": "Загружаем и проверяем…",
+    "from": "Бекап панели {panel} от {date}",
+    "overlap": "совпадений: {n}",
+    "strategy": "Совпадения",
+    "strategy_skip": "Пропустить",
+    "strategy_skip_hint": "Оставить своё, чужое не трогать",
+    "strategy_replace": "Перезаписать",
+    "strategy_replace_hint": "Своё заменить пришедшим (ссылки целы)",
+    "strategy_fresh": "Новым",
+    "strategy_fresh_hint": "Импортировать как новое (ссылки умрут)",
+    "apply": "Применить",
+    "sec_tariffs": "Тарифы",
+    "sec_nodes": "Ноды",
+    "sec_inbounds": "Подключения",
+    "sec_users": "Пользователи",
+    "sec_network": "Сеть",
+    "sec_settings": "Настройки"
   },
   "admins": {
     "title": "Администраторы",

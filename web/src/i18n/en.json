@@ -30,7 +30,8 @@
     "nodes": "Nodes",
     "telegram": "Telegram",
     "network": "Network",
-    "admins": "Admins"
+    "admins": "Admins",
+    "backups": "Backups"
   },
   "navShort": {
     "overview": "Overview",
@@ -42,7 +43,8 @@
     "telegram": "Bot",
     "api": "API",
     "network": "Network",
-    "admins": "Admins"
+    "admins": "Admins",
+    "backups": "Backups"
   },
   "shell": {
     "update": "{v} is out",
@@ -129,6 +131,11 @@
       "support_url_invalid": "The link must start with https:// or tg://",
       "pay_contact_invalid": "The contact is a single line",
       "bad_json": "Not JSON",
+      "bad_backup": "Not a Cozy backup or a broken one",
+      "backup_too_big": "File over 2 GB",
+      "bad_request": "Bad request",
+      "invalid": "Check the entered data",
+      "account_closed": "Account disabled or expired",
       "no_servers": "Name at least one server",
       "no_default": "Add a server with no matcher — everything else goes through it",
       "bad_server": "Not a server address",
@@ -272,7 +279,7 @@
       "config_client_port": "Port 1–65535",
       "config_client_sni": "SNI is a domain; with REALITY the camouflage site sets it",
       "tg_proxy_private": "The proxy name leads to this server itself or to a metadata address: give the address of the proxy as an IP",
-      "tg_proxy_invalid":"A proxy address is socks5://login:password@host:port or http://host:port",
+      "tg_proxy_invalid": "A proxy address is socks5://login:password@host:port or http://host:port",
       "tg_route_node": "Pick a remote node of the panel: its own node shares the server",
       "tg_route_unreachable": "Telegram does not answer this way: check the node or the proxy",
       "sub_port_reserved": "Port {value} is the system's (SSH or Let's Encrypt)",
@@ -1602,6 +1609,33 @@
     "geoOk": "Present",
     "geoUpdate": "Update geodata",
     "empty": "Empty"
+  },
+  "backups": {
+    "title": "Backups",
+    "sub": "The whole server out and back",
+    "export": "Export",
+    "exportSub": "Always the whole server: database, certificates, settings",
+    "download": "Download backup",
+    "import": "Import",
+    "importSub": "Selective: sections, conflict strategy",
+    "file": "Backup file",
+    "uploading": "Uploading and checking…",
+    "from": "Backup of panel {panel} from {date}",
+    "overlap": "overlaps: {n}",
+    "strategy": "Conflicts",
+    "strategy_skip": "Skip",
+    "strategy_skip_hint": "Keep mine, ignore incoming",
+    "strategy_replace": "Overwrite",
+    "strategy_replace_hint": "Replace mine with incoming (links survive)",
+    "strategy_fresh": "As new",
+    "strategy_fresh_hint": "Import as new (links die)",
+    "apply": "Apply",
+    "sec_tariffs": "Plans",
+    "sec_nodes": "Nodes",
+    "sec_inbounds": "Connections",
+    "sec_users": "Users",
+    "sec_network": "Network",
+    "sec_settings": "Settings"
   },
   "admins": {
     "title": "Admins",

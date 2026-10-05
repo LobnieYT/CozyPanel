@@ -71,6 +71,8 @@ type Deps struct {
 	// SubConfig builds the subscription config (nodes, DNS, profiles); admin
 	// per-user keys render from it.
 	SubConfig func(ctx context.Context) (subs.Config, error)
+	// DataDir is the panel data dir (database, TLS files); "" when unknown.
+	DataDir string
 	// SubPort opens subscriptions on a port of their own (0: closes it); SubPortError says
 	// why the saved one is not served. nil: the panel runs no server (tests).
 	SubPort      func(port int) error
@@ -137,6 +139,7 @@ type client struct{ IP, UserAgent string }
 type handlers struct {
 	d         Deps
 	api       huma.API
+	staging   *staging
 	dummyHash string
 	// hashSem bounds the password hashes that run at once (see verifyPassword).
 	hashSem chan struct{}
@@ -196,10 +199,11 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	h := &handlers{d: d, api: api, dummyHash: dummy, hashSem: make(chan struct{}, 4), pending: map[int64]pendingTOTP{}}
+	h := &handlers{d: d, api: api, staging: newStaging(), dummyHash: dummy, hashSem: make(chan struct{}, 4), pending: map[int64]pendingTOTP{}}
 	api.UseMiddleware(h.middleware)
 	h.registerAuth()
 	h.registerAdmins()
+	h.registerBackups(mux)
 	h.registerUsers()
 	h.registerCatalog()
 	h.registerInbounds()

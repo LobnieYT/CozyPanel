@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.0
+### en
+- Backups: download the whole server in one archive (database copy, certificates, manifest) to the computer, upload it back, preview the contents and import by sections with a conflict strategy (skip, overwrite, as new) per import. Snapshots roll back on failure; admins and audit never import.
+
+### ru
+- Бекапы: весь сервер одним архивом (копия базы, сертификаты, манифест) — скачать на компьютер, загрузить обратно, посмотреть содержимое и импортировать по секциям со стратегией конфликтов (пропустить, перезаписать, новым) на каждый импорт. При ошибке — откат на снапшот; админы и аудит не импортируются.
+
 ## 1.1.9
 ### en
 - Honest 403s: a refused action says "No access to this section" with its code instead of "Session expired"; CSRF and key errors keep their own texts.
