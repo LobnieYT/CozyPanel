@@ -994,7 +994,7 @@
     "link": "Subscription link",
     "qrOther": "QR code for another device",
     "support": "Contact support",
-    "openTelegram": "Open in Telegram",
+    "openTelegram": "Link Telegram account",
     "tgLoading": "Opening the subscription…",
     "tgNoSubTitle": "No subscription connected",
     "tgNoSubText": "Open your subscription link in a browser and tap “Open in Telegram”, or send the link to the bot.",
