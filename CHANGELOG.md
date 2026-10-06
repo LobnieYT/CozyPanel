@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.1
+### en
+- Confirm dialogs are centered on the screen: delete user, reissue link, revoke keys, delete nodes, inbounds, routes and outbounds no longer drift away from the viewport center.
+
+### ru
+- Окна-подтверждения строго по центру экрана: удаление пользователя, перевыпуск ссылки, отзыв ключей, удаление нод, подключений, маршрутов и аутбаундов больше не уезжают от центра.
+
 ## 1.2.0
 ### en
 - Backups: download the whole server in one archive (database copy, certificates, manifest) to the computer, upload it back, preview the contents and import by sections with a conflict strategy (skip, overwrite, as new) per import. Snapshots roll back on failure; admins and audit never import.
