@@ -305,6 +305,11 @@ func Mihomo(p Profile, g Groups, r Routing) ([]byte, error) {
 	}
 	// The panel and the nodes stay out of the tunnel whatever the admin's rules say.
 	rules := append(directRules(p.Direct), "GEOIP,LAN,DIRECT,no-resolve")
+	// Plain DNS stays direct: the fallback resolvers below must not be dragged
+	// into the tunnel by MATCH, or the fallback deadlocks through the same dead
+	// tunnel it rescues (a node that cannot reach public resolvers kills every
+	// resolve downstream: sites, DoH, voice media).
+	rules = append(rules, "DST-PORT,53,DIRECT")
 	rules = append(rules, p.Rules...)
 	// AdBlock after the admin's rules: explicit routes win over the automatic
 	// block, and blocked ads never leave through the tunnel.
@@ -383,6 +388,13 @@ func applyProfileDNS(dns map[string]any, doc *netcfg.SubDNS, ruDirect bool) {
 			// and fallback instead of leaking queries.
 			dns["nameserver"] = []string{}
 		}
+		// Survival when the tunnel cannot reach public resolvers (a hoster
+		// filtering them kills every resolve downstream): plain resolvers raced
+		// as fallback. mihomo races main and fallback together; a healthy main
+		// answer wins and the fallback answers are discarded, so privacy only
+		// degrades while the tunnel is actually dead. Plain entries follow the
+		// routing rules, and DST-PORT,53,DIRECT above keeps them direct.
+		dns["fallback"] = []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"}
 		dns["proxy-server-nameserver"] = append([]string{}, profileBootstrapDNS...)
 		if ruDirect {
 			dns["nameserver-policy"] = map[string]any{"geosite:category-ru": []string{"77.88.8.8", "77.88.8.1"}}

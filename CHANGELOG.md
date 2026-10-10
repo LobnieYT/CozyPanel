@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.4
+### en
+- Subscriptions survive a node that cannot reach public DNS: when the tunnel resolvers fail, profiles pick up the answer from direct fallback resolvers (Yandex, Cloudflare, Google), and plain DNS no longer goes into the tunnel. Without this, every resolve died downstream: sites, DoH and voice media.
+
+### ru
+- Подписки переживают ноду без доступа к публичному DNS: если туннельные резолверы недоступны, профиль добирает ответ прямыми резервными резолверами (Яндекс, Cloudflare, Google), а plain-DNS больше не уходит в туннель. Без этого умирал весь резолв целиком: сайты, DoH и голосовые медиа.
+
 ## 1.2.3
 ### en
 - Import strategy pills show the choice: skip, overwrite and as-new highlight when pressed (the choice itself always worked, only the highlight was missing).
