@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.5
+### en
+- Revert of 1.2.4: profiles are back to tunnel-only DNS without direct fallback resolvers (1.2.4 stays in history).
+
+### ru
+- Откат 1.2.4: в профилях снова только туннельный DNS без прямых резервных резолверов (1.2.4 остаётся в истории).
+
 ## 1.2.4
 ### en
 - Subscriptions survive a node that cannot reach public DNS: when the tunnel resolvers fail, profiles pick up the answer from direct fallback resolvers (Yandex, Cloudflare, Google), and plain DNS no longer goes into the tunnel. Without this, every resolve died downstream: sites, DoH and voice media.

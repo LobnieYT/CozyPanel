@@ -134,7 +134,7 @@ func TestMihomoProfile(t *testing.T) {
 	if alias := cfg.Groups[2]; alias.Name != "PROXY" || !alias.Hidden || len(alias.Proxies) != 1 || alias.Proxies[0] != "VPN" {
 		t.Fatalf("PROXY alias: %+v", cfg.Groups)
 	}
-	wantRules := []string{"IP-CIDR,203.0.113.7/32,DIRECT,no-resolve", "DOMAIN,vpn.example.com,DIRECT", "GEOIP,LAN,DIRECT,no-resolve", "DST-PORT,53,DIRECT", "MATCH,VPN"}
+	wantRules := []string{"IP-CIDR,203.0.113.7/32,DIRECT,no-resolve", "DOMAIN,vpn.example.com,DIRECT", "GEOIP,LAN,DIRECT,no-resolve", "MATCH,VPN"}
 	if strings.Join(cfg.Rules, "|") != strings.Join(wantRules, "|") {
 		t.Fatalf("rules: %v", cfg.Rules)
 	}
@@ -194,7 +194,6 @@ func TestRouting(t *testing.T) {
 		Nameserver  []string            `json:"nameserver"`
 		ProxyServer []string            `json:"proxy-server-nameserver"`
 		Policy      map[string][]string `json:"nameserver-policy"`
-		Fallback    []string            `json:"fallback"`
 	}
 	type profileJSON struct {
 		Groups []struct {
@@ -220,7 +219,7 @@ func TestRouting(t *testing.T) {
 	}
 
 	ru := render(Groups{}, RoutingRUDirect)
-	want := []string{"IP-CIDR,203.0.113.7/32,DIRECT,no-resolve", "GEOIP,LAN,DIRECT,no-resolve", "DST-PORT,53,DIRECT", "GEOSITE,category-ru,DIRECT", "GEOIP,ru,DIRECT", "MATCH,VPN"}
+	want := []string{"IP-CIDR,203.0.113.7/32,DIRECT,no-resolve", "GEOIP,LAN,DIRECT,no-resolve", "GEOSITE,category-ru,DIRECT", "GEOIP,ru,DIRECT", "MATCH,VPN"}
 	if strings.Join(ru.Rules, "|") != strings.Join(want, "|") {
 		t.Fatalf("ru_direct rules: %v", ru.Rules)
 	}
@@ -239,11 +238,6 @@ func TestRouting(t *testing.T) {
 	}
 	if len(ru.DNS.Policy["geosite:category-ru"]) == 0 {
 		t.Errorf("Russian domains need a Russian resolver: %v", ru.DNS.Policy)
-	}
-	// The built-in tunnel DNS gets a direct fallback: when the node cannot
-	// reach public resolvers, every resolve dies without it.
-	if strings.Join(ru.DNS.Fallback, ",") != "77.88.8.8,1.1.1.1,8.8.8.8" {
-		t.Errorf("fallback resolvers: %v", ru.DNS.Fallback)
 	}
 
 	// The "#PROXY" suffix must name a group even when the admin calls the main group PROXY.
@@ -268,9 +262,6 @@ func TestRouting(t *testing.T) {
 		if !strings.HasSuffix(ns, "#PROXY") {
 			t.Errorf("all mode nameserver %q must go through the tunnel", ns)
 		}
-	}
-	if strings.Join(all.DNS.Fallback, ",") != "77.88.8.8,1.1.1.1,8.8.8.8" {
-		t.Errorf("all mode fallback resolvers: %v", all.DNS.Fallback)
 	}
 	if len(all.DNS.ProxyServer) == 0 || strings.Contains(strings.Join(all.DNS.ProxyServer, ""), "#") ||
 		strings.Contains(strings.Join(all.DNS.ProxyServer, ""), "://") {
