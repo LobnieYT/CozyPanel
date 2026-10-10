@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { csrf } from "../../api/client";
+import { basePath, csrf } from "../../api/client";
 import { meQuery } from "../../api/hooks";
 import { useToast } from "../../components/toast";
 import { Button, Field, PageHeader } from "../../components/ui";
@@ -45,7 +45,9 @@ function secLabel(s: string): string {
 }
 
 async function raw(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(path, { credentials: "same-origin", ...init });
+  // Absolute paths ignore the <base href="/<secret>/"> the server injects: without the
+  // prefix the request lands on the domain root, where nothing is mounted (404).
+  return fetch(basePath + path, { credentials: "same-origin", ...init });
 }
 
 function csrfHeader(): Record<string, string> {

@@ -17,6 +17,16 @@ export function DevicesSection({ u }: { u: User }) {
   const { can } = useGrants();
   const writable = can("users", true);
   const list = devices.data ?? [];
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? list : list.slice(0, 8);
+  const toggleIP = (ip: string) =>
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(ip)) next.delete(ip);
+      else next.add(ip);
+      return next;
+    });
   const setLimit = (n: number | null) =>
     update.mutate({ id: u.id, body: n === null ? { devices_unlimited: true } : { device_limit: n } }, { onError: (e) => toast.error(errorText(e)) });
   return (
@@ -48,19 +58,32 @@ export function DevicesSection({ u }: { u: User }) {
         <p className="text-[13px] text-[var(--ink-500)]">{t("userDrawer.noDevices")}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {list.slice(0, 8).map((d) => (
+          {visible.map((d) => (
             <li key={d.ip} className="panel-soft grid grid-cols-[36px_minmax(0,1fr)] items-center gap-3 p-2">
               <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--hover)] text-[var(--ink-600)]"><Smartphone size={18} /></span>
               <div className="min-w-0">
                 <div className="text-[13px] font-medium">{t("userDrawer.device")}</div>
                 <div className="text-xs text-[var(--ink-500)]">
-                  <span className="mono">{maskIP(d.ip)}</span> · {d.online ? <span className="text-[var(--leaf-700)]">{t("users.onlineNow")}</span> : ago(d.last_seen)}
+                  <button
+                    type="button"
+                    className="mono underline decoration-dotted underline-offset-2"
+                    title={t(revealed.has(d.ip) ? "userDrawer.hideIP" : "userDrawer.showIP")}
+                    onClick={() => toggleIP(d.ip)}
+                  >
+                    {revealed.has(d.ip) ? d.ip : maskIP(d.ip)}
+                  </button>{" "}
+                  · {d.online ? <span className="text-[var(--leaf-700)]">{t("users.onlineNow")}</span> : ago(d.last_seen)}
                 </div>
               </div>
             </li>
           ))}
         </ul>
       )}
+      {list.length > 8 ? (
+        <button type="button" className="mt-2 text-[13px] font-medium text-[var(--cozy-400)]" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? t("userDrawer.showLess") : t("userDrawer.showAll", { n: list.length })}
+        </button>
+      ) : null}
       <p className="mt-2 text-xs text-[var(--ink-500)]">{t("userDrawer.devicesNote")}</p>
     </Section>
   );

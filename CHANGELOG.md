@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.2
+### en
+- Backups download works under the secret admin path: export, upload, preview and apply no longer hit a 404, and failures read as words instead of a raw "server" code.
+- Connection addresses reveal on click: a masked address (128.71.•••.•••) opens to the full one and back; lists longer than 8 open with "Show all (N)".
+
+### ru
+- Скачивание бекапов работает под секретным путём админки: экспорт, загрузка, превью и применение больше не уходят в 404, а ошибки читаются словами, а не сырым кодом «server».
+- Адреса подключений раскрываются по клику: маскированный адрес (128.71.•••.•••) открывается полностью и обратно; списки длиннее 8 открываются кнопкой «Показать все (N)».
+
 ## 1.2.1
 ### en
 - Confirm dialogs are centered on the screen: delete user, reissue link, revoke keys, delete nodes, inbounds, routes and outbounds no longer drift away from the viewport center.
