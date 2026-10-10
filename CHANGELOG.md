@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.3
+### en
+- Import strategy pills show the choice: skip, overwrite and as-new highlight when pressed (the choice itself always worked, only the highlight was missing).
+
+### ru
+- Кнопки стратегии импорта показывают выбор: «пропустить», «перезаписать» и «новым» подсвечиваются при нажатии (сам выбор работал всегда, не хватало только подсветки).
+
 ## 1.2.2
 ### en
 - Backups download works under the secret admin path: export, upload, preview and apply no longer hit a 404, and failures read as words instead of a raw "server" code.

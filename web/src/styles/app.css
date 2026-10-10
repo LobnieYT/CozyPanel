@@ -248,6 +248,7 @@
   .gauge-label span { font-size: 11px; color: var(--ink-500); }
   .chip-btn { height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(148, 163, 255, 0.1); border: 1px solid var(--hairline); font-size: 13px; font-weight: 500; color: var(--ink-700); transition: background-color 0.2s, border-color 0.2s; }
   .chip-btn:hover:not(:disabled) { background: rgba(148, 163, 255, 0.18); border-color: var(--cozy-400); }
+  .chip-btn[aria-pressed="true"] { background: var(--cozy-600); border-color: var(--cozy-600); color: #fff; }
   .chip-btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .link-field { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 4px 0 12px; border-radius: var(--r-md); background: rgba(10, 15, 36, 0.55); border: 1px solid var(--hairline); }
   .link-field .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-700); }
