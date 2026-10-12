@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"cozy/internal/panel/store/db"
 )
 
 func TestAdminLinkCode(t *testing.T) {

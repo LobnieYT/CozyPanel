@@ -199,15 +199,15 @@ func (h *handlers) updateAdminBot(ctx context.Context, in *patchAdminBotInput) (
 				return nil, tgFieldErr("token", "tg_token_format")
 			}
 			me, err := h.d.AdminBot.CheckAdminTokenVia(ctx, token, route)
-		var ae *tgbot.APIError
-		switch {
-		case errors.As(err, &ae) && (ae.Code == 401 || ae.Code == 404):
-			return nil, tgFieldErr("token", "tg_token_invalid")
-		case err != nil && b.Route != nil && route.Mode != tgbot.RouteDirect:
-			return nil, tgFieldErr("route", "tg_route_unreachable")
-		case err != nil:
-			return nil, huma.Error502BadGateway("tg_unreachable")
-		}
+			var ae *tgbot.APIError
+			switch {
+			case errors.As(err, &ae) && (ae.Code == 401 || ae.Code == 404):
+				return nil, tgFieldErr("token", "tg_token_invalid")
+			case err != nil && b.Route != nil && route.Mode != tgbot.RouteDirect:
+				return nil, tgFieldErr("route", "tg_route_unreachable")
+			case err != nil:
+				return nil, huma.Error502BadGateway("tg_unreachable")
+			}
 			bot = &me
 			details["token"], details["bot"] = "set", me.Username
 		}

@@ -19,121 +19,121 @@ import (
 
 // adminWords is the bot's texts; the panel language picks one.
 type adminWords struct {
-	commands, menuApp                    string
-	help, helpOwner                      string
-	needLink, needOwner, linked          string
-	askLogin                             string
-	noAccess, closed                     string
-	requestSent, requestApproved         string
-	requestRefused, requestGone          string
-	approveAsk                           string
-	approved, refused                    string
-	stats                                string
-	userTitle, userNotFound, userMany    string
-	confirmAsk, cancelled                string
-	actDisabled, actEnabled              string
-	actExtended, actReset, actUnbound    string
-	unbindPick                           string
-	nodesTitle, noNodes                  string
-	broadcastAsk, broadcastSent          string
-	broadcastUsage                       string
-	unlinked                             string
-	noBound                              string
-	disableVerb, enableVerb              string
-	extendVerb, resetVerb, unbindVerb    string
-	unknown                              string
+	commands, menuApp                 string
+	help, helpOwner                   string
+	needLink, needOwner, linked       string
+	askLogin                          string
+	noAccess, closed                  string
+	requestSent, requestApproved      string
+	requestRefused, requestGone       string
+	approveAsk                        string
+	approved, refused                 string
+	stats                             string
+	userTitle, userNotFound, userMany string
+	confirmAsk, cancelled             string
+	actDisabled, actEnabled           string
+	actExtended, actReset, actUnbound string
+	unbindPick                        string
+	nodesTitle, noNodes               string
+	broadcastAsk, broadcastSent       string
+	broadcastUsage                    string
+	unlinked                          string
+	noBound                           string
+	disableVerb, enableVerb           string
+	extendVerb, resetVerb, unbindVerb string
+	unknown                           string
 }
 
 func adminText(lang string) adminWords {
 	if lang != "en" {
 		return adminWords{
-			commands:      "Панель",
-			menuApp:       "Панель",
-			help:          "Команды:\n/stats — сводка\n/user <имя> — найти подписку\n/nodes — ноды\n/unlink — отвязать этот чат",
-			helpOwner:     "\n/broadcast <текст> — всем привязанным админам",
-			needLink:      "Этот чат не привязан. Отправьте /start — владелец подтвердит заявку.",
-			askLogin:      "Пришлите ваш логин администратора — владелец подтвердит заявку.",
-			needOwner:     "Нужен владелец.",
-			linked:        "Чат привязан. /help — команды.",
-			noAccess:      "Нет прав на этот раздел.",
-			closed:        "Аккаунт отключён или срок вышел.",
-			requestSent:   "Заявка отправлена владельцу. Как подтвердит — напишу.",
+			commands:        "Панель",
+			menuApp:         "Панель",
+			help:            "Команды:\n/stats — сводка\n/user <имя> — найти подписку\n/nodes — ноды\n/unlink — отвязать этот чат",
+			helpOwner:       "\n/broadcast <текст> — всем привязанным админам",
+			needLink:        "Этот чат не привязан. Отправьте /start — владелец подтвердит заявку.",
+			askLogin:        "Пришлите ваш логин администратора — владелец подтвердит заявку.",
+			needOwner:       "Нужен владелец.",
+			linked:          "Чат привязан. /help — команды.",
+			noAccess:        "Нет прав на этот раздел.",
+			closed:          "Аккаунт отключён или срок вышел.",
+			requestSent:     "Заявка отправлена владельцу. Как подтвердит — напишу.",
 			requestApproved: "Доступ открыт. /help — команды.",
 			requestRefused:  "Владелец отклонил заявку.",
 			requestGone:     "Заявка устарела.",
-			approveAsk:    "Просит доступ:",
-			approved:      "Доступ открыт.",
-			refused:       "Заявка отклонена.",
-			stats:         "👥 Пользователей: {users}\n🟢 В сети: {online}\n🖥 Нод: {nodes}",
-			userTitle:     "#{id} {name}",
-			userNotFound:  "Никого не нашёл.",
-			userMany:      "…и ещё {n}.",
-			confirmAsk:    "{what} «{name}»?",
-			cancelled:     "Отменено.",
-			actDisabled:   "Выключен.",
-			actEnabled:    "Включён.",
-			actExtended:   "Продлён.",
-			actReset:      "Трафик сброшен.",
-			actUnbound:    "Устройство отвязано.",
-			unbindPick:    "Какое отвязать?",
-			nodesTitle:    "Ноды:",
-			noNodes:       "Нод нет.",
-			broadcastAsk:  "Разослать {n} админам?\n\n{text}",
-			broadcastSent: "В очереди: {n}.",
-			broadcastUsage: "Текст после команды: /broadcast Текст.",
-			unlinked:      "Чат отвязан.",
-			noBound:       "Привязанных устройств нет.",
-			disableVerb:   "Выключить",
-			enableVerb:    "Включить",
-			extendVerb:    "Продлить на 30 дней",
-			resetVerb:     "Сбросить трафик",
-			unbindVerb:    "Отвязать устройство",
-			unknown:       "Не понял. /help — команды.",
+			approveAsk:      "Просит доступ:",
+			approved:        "Доступ открыт.",
+			refused:         "Заявка отклонена.",
+			stats:           "👥 Пользователей: {users}\n🟢 В сети: {online}\n🖥 Нод: {nodes}",
+			userTitle:       "#{id} {name}",
+			userNotFound:    "Никого не нашёл.",
+			userMany:        "…и ещё {n}.",
+			confirmAsk:      "{what} «{name}»?",
+			cancelled:       "Отменено.",
+			actDisabled:     "Выключен.",
+			actEnabled:      "Включён.",
+			actExtended:     "Продлён.",
+			actReset:        "Трафик сброшен.",
+			actUnbound:      "Устройство отвязано.",
+			unbindPick:      "Какое отвязать?",
+			nodesTitle:      "Ноды:",
+			noNodes:         "Нод нет.",
+			broadcastAsk:    "Разослать {n} админам?\n\n{text}",
+			broadcastSent:   "В очереди: {n}.",
+			broadcastUsage:  "Текст после команды: /broadcast Текст.",
+			unlinked:        "Чат отвязан.",
+			noBound:         "Привязанных устройств нет.",
+			disableVerb:     "Выключить",
+			enableVerb:      "Включить",
+			extendVerb:      "Продлить на 30 дней",
+			resetVerb:       "Сбросить трафик",
+			unbindVerb:      "Отвязать устройство",
+			unknown:         "Не понял. /help — команды.",
 		}
 	}
 	return adminWords{
-		commands:      "Panel",
-		menuApp:       "Panel",
-		help:          "Commands:\n/stats — summary\n/user <name> — find a subscription\n/nodes — nodes\n/unlink — unlink this chat",
-		helpOwner:     "\n/broadcast <text> — to every linked admin",
-			needLink:      "This chat is not linked. Send /start — the owner approves requests.",
-			askLogin:      "Send your admin login — the owner approves requests.",
-		needOwner:     "The owner is needed.",
-		linked:        "Chat linked. /help for commands.",
-		noAccess:      "No access to this section.",
-		closed:        "The account is disabled or expired.",
-		requestSent:   "Request sent to the owner. I will write back on approval.",
+		commands:        "Panel",
+		menuApp:         "Panel",
+		help:            "Commands:\n/stats — summary\n/user <name> — find a subscription\n/nodes — nodes\n/unlink — unlink this chat",
+		helpOwner:       "\n/broadcast <text> — to every linked admin",
+		needLink:        "This chat is not linked. Send /start — the owner approves requests.",
+		askLogin:        "Send your admin login — the owner approves requests.",
+		needOwner:       "The owner is needed.",
+		linked:          "Chat linked. /help for commands.",
+		noAccess:        "No access to this section.",
+		closed:          "The account is disabled or expired.",
+		requestSent:     "Request sent to the owner. I will write back on approval.",
 		requestApproved: "Access granted. /help for commands.",
 		requestRefused:  "The owner refused the request.",
 		requestGone:     "The request expired.",
-		approveAsk:    "Asks for access:",
-		approved:      "Access granted.",
-		refused:       "Request refused.",
-		stats:         "👥 Users: {users}\n🟢 Online: {online}\n🖥 Nodes: {nodes}",
-		userTitle:     "#{id} {name}",
-		userNotFound:  "Nobody found.",
-		userMany:      "…and {n} more.",
-		confirmAsk:    "{what} “{name}”?",
-		cancelled:     "Cancelled.",
-		actDisabled:   "Disabled.",
-		actEnabled:    "Enabled.",
-		actExtended:   "Extended.",
-		actReset:      "Traffic reset.",
-		actUnbound:    "Device unbound.",
-		unbindPick:    "Which one to unbind?",
-		nodesTitle:    "Nodes:",
-		noNodes:       "No nodes.",
-			broadcastAsk:  "Send to {n} admins?\n\n{text}",
-			broadcastSent: "Queued: {n}.",
-			broadcastUsage: "Text after the command: /broadcast Text.",
-			unlinked:      "Chat unlinked.",
-			noBound:       "No bound devices.",
-			disableVerb:   "Disable",
-			enableVerb:    "Enable",
-			extendVerb:    "Extend 30 days",
-			resetVerb:     "Reset traffic",
-			unbindVerb:    "Unbind device",
-			unknown:       "Did not get it. /help for commands.",
+		approveAsk:      "Asks for access:",
+		approved:        "Access granted.",
+		refused:         "Request refused.",
+		stats:           "👥 Users: {users}\n🟢 Online: {online}\n🖥 Nodes: {nodes}",
+		userTitle:       "#{id} {name}",
+		userNotFound:    "Nobody found.",
+		userMany:        "…and {n} more.",
+		confirmAsk:      "{what} “{name}”?",
+		cancelled:       "Cancelled.",
+		actDisabled:     "Disabled.",
+		actEnabled:      "Enabled.",
+		actExtended:     "Extended.",
+		actReset:        "Traffic reset.",
+		actUnbound:      "Device unbound.",
+		unbindPick:      "Which one to unbind?",
+		nodesTitle:      "Nodes:",
+		noNodes:         "No nodes.",
+		broadcastAsk:    "Send to {n} admins?\n\n{text}",
+		broadcastSent:   "Queued: {n}.",
+		broadcastUsage:  "Text after the command: /broadcast Text.",
+		unlinked:        "Chat unlinked.",
+		noBound:         "No bound devices.",
+		disableVerb:     "Disable",
+		enableVerb:      "Enable",
+		extendVerb:      "Extend 30 days",
+		resetVerb:       "Reset traffic",
+		unbindVerb:      "Unbind device",
+		unknown:         "Did not get it. /help for commands.",
 	}
 }
 
@@ -404,7 +404,16 @@ func (b *AdminBot) onAdminPress(ctx context.Context, c *Client, out *Outbox, q *
 		if len(parts) != 3 {
 			return
 		}
-		b.showUser(ctx, c, out, w, chat, admin, parts[2], q)
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		u, err := b.d.Users.Get(ctx, uid)
+		if err != nil {
+			b.answer(c, q.ID, w.userNotFound)
+			return
+		}
+		b.showUser(ctx, c, out, w, chat, admin, u, q)
 	case "cf", "do":
 		if len(parts) < 4 {
 			return

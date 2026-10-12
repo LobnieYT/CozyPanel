@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cozy/internal/nodeapi"
 	"cozy/internal/panel/domain"
-	"cozy/internal/panel/nodeapi"
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store"
 	"cozy/internal/panel/store/db"
@@ -59,8 +59,8 @@ type AdminDeps struct {
 	// AdminBase is https://host:port/<admin path> for the Mini App button, ""
 	// while the panel has no public address.
 	AdminBase func(ctx context.Context) string
-	API     string // the Bot API; DefaultAPI unless testing
-	Log     interface {
+	API       string // the Bot API; DefaultAPI unless testing
+	Log       interface {
 		Warn(msg string, args ...any)
 		Error(msg string, args ...any)
 	}
@@ -294,9 +294,9 @@ var (
 	errAdminNotFound = errGone()
 )
 
-func errNoGrant() error  { return errorString("no_grant") }
-func errClosed() error   { return errorString("account_closed") }
-func errGone() error     { return errorString("not_found") }
+func errNoGrant() error { return errorString("no_grant") }
+func errClosed() error  { return errorString("account_closed") }
+func errGone() error    { return errorString("not_found") }
 
 type errorString string
 
@@ -392,7 +392,7 @@ func (b *AdminBot) poll(ctx context.Context, c *Client) {
 	_ = settings.Set(ctx, b.d.Settings, KeyAdminBot, me)
 	_ = c.DropWebhook(ctx)
 	_ = c.SetCommands(ctx, b.words().commands)
-	if url := b.miniAppURL(ctx); url != "" {
+	if url := b.MiniAppURL(ctx); url != "" {
 		_ = c.SetMenuButton(ctx, b.words().menuApp, url)
 	} else {
 		_ = c.SetMenuButton(ctx, "", "")
