@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.6
+### en
+- Admin bot: a second bot with its own token — the panel in Telegram for the owner and sub-admins. The owner links by code from the new settings page, sub-admins request access and the owner approves; every command enforces the grants matrix, mutating actions ask twice, broadcasts reach linked admins, everything lands in audit. The Mini App opens the full admin panel inside Telegram.
+- Error screens got a way home: forbidden pages and failed cards now offer Retry, Reload and Back to home instead of a dead end; reloading no longer sticks a sub-admin on a forbidden page.
+
+### ru
+- Админ-бот: второй бот со своим токеном — панель в Telegram для владельца и суб-админов. Владелец вяжется кодом с новой страницы настроек, суб-админы шлют заявки, владелец подтверждает; каждая команда проверяет матрицу прав, меняющие действия спрашивают дважды, рассылки идут привязанным админам, всё пишется в аудит. Mini App открывает полную админку внутри Telegram.
+- У экранов ошибок появился путь домой: запретные страницы и упавшие карточки предлагают «Повторить», «Обновить» и «На главную» вместо тупика; перезагрузка больше не приклеивает суб-админа к запретной странице.
+
 ## 1.2.5
 ### en
 - Revert of 1.2.4: profiles are back to tunnel-only DNS without direct fallback resolvers (1.2.4 stays in history).

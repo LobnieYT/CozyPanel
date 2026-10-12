@@ -54,7 +54,7 @@ function Kpi({ i, label, value, foot }: { i: number; label: string; value: React
 
 /** A card that has nothing to show because its data did not load: a way to try again, never an empty "all good". */
 function CardError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
-  return <ErrorState text={errorText(error)} onRetry={onRetry} />;
+  return <ErrorState text={errorText(error)} onRetry={onRetry} error={error} />;
 }
 
 function Kpis() {

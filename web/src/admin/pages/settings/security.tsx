@@ -371,3 +371,21 @@ export function ApiCard() {
     </section>
   );
 }
+
+// The admin bot lives on its own page too; owner-only, like the admins page.
+export function AdminBotCard({ owner }: { owner: boolean }) {
+  if (!owner) return null;
+  return (
+    <section className="card glass reveal" style={{ "--i": 6 } as React.CSSProperties}>
+      <div className="card-head">
+        <div>
+          <h2 className="card-title">{t("adminBot.title")}</h2>
+          <div className="card-sub">{t("adminBot.sub")}</div>
+        </div>
+        <Link to="/settings/admin-bot" className="btn btn-glass btn-sm">
+          {t("common.open")} <ChevronRight size={16} aria-hidden />
+        </Link>
+      </div>
+    </section>
+  );
+}

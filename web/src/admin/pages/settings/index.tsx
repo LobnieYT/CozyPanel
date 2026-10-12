@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Globe, Link2, ListFilter, ShieldCheck } from "lucide-react";
-import { useSettings } from "../../../api/hooks";
+import { useQuery } from "@tanstack/react-query";
+import { meQuery, useSettings } from "../../../api/hooks";
 import { LangSwitch } from "../../../components/lang";
 import { QueryBoundary } from "../../../components/query";
 import { Columns, Tabs } from "../../../components/tabs";
@@ -9,7 +10,7 @@ import { t } from "../../../i18n";
 import { SETTINGS_TABS } from "../../search";
 import { AutoCard, EgressCard, LanguageCard, ServerCard, UpdatesCard } from "./general";
 import { ClashRulesCard } from "./rules";
-import { AccessCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
+import { AccessCard, AdminBotCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
 import { DevicesCard, SubPortCard, SubscriptionCard } from "./subscription";
 
 const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, security: ShieldCheck } as const;
@@ -17,6 +18,7 @@ const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, security
 /** Settings in four sections, one at a time; the section is in the URL, so a link opens it. */
 export function SettingsPage() {
   const settings = useSettings();
+  const me = useQuery(meQuery);
   const { tab } = useSearch({ from: "/_app/settings" });
   const navigate = useNavigate({ from: "/settings" });
   return (
@@ -68,6 +70,7 @@ export function SettingsPage() {
                     <AccessCard s={s} />
                     <CertificateCard s={s} />
                     <ApiCard />
+                    <AdminBotCard owner={!!me.data?.admin.owner} />
                   </>
                 }
                 right={

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { api, errorText, unwrap, type Schemas } from "../../api/client";
 import { meQuery, qk } from "../../api/hooks";
@@ -38,12 +39,29 @@ export function AdminsPage() {
   const me = useQuery(meQuery);
   const admins = useQuery({ queryKey: [...qk.users, "admins"], queryFn: ({ signal }) => unwrap(api.GET("/api/v1/admins", { signal })) });
   if (me.data && !me.data.admin.owner) {
+    // After a reload the grants may be stale while the query cache is empty: offer a way
+    // back (re-read me, then the list) instead of a dead end.
+    const retry = async () => {
+      await qc.invalidateQueries({ queryKey: qk.me });
+      await admins.refetch();
+    };
     return (
       <>
         <PageHeader title={t("admins.title")} />
-        <p className="text-[13px] text-[var(--berry-600)]" role="alert">
-          {t("errors.api.no_grant")}
-        </p>
+        <section className="card glass max-w-4xl">
+          <div className="state-box" role="alert">
+            <p className="text-[13px] text-[var(--berry-600)]">{t("errors.api.no_grant")}</p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              <Button variant="primary" onClick={() => void retry()}>
+                {t("common.retry")}
+              </Button>
+              <Button onClick={() => location.reload()}>{t("common.reload")}</Button>
+              <Link to="/" className="btn btn-glass">
+                {t("errors.toOverview")}
+              </Link>
+            </div>
+          </div>
+        </section>
       </>
     );
   }

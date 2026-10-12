@@ -1,7 +1,8 @@
 import clsx from "clsx";
+import { Link } from "@tanstack/react-router";
 import { LoaderCircle, SearchX, TriangleAlert, UserRound } from "lucide-react";
 import { cloneElement, isValidElement, lazy, Suspense, useId, type ButtonHTMLAttributes, type CSSProperties, type ReactElement, type ReactNode } from "react";
-import type { UserState } from "../api/client";
+import { ApiError, type UserState } from "../api/client";
 import { t } from "../i18n";
 
 type Variant = "primary" | "glass" | "ghost" | "danger" | "danger-solid";
@@ -154,7 +155,12 @@ export function EmptyState({ title, text, children, search }: { title: string; t
   );
 }
 
-export function ErrorState({ title, text, onRetry }: { title?: string; text: string; onRetry?: () => void }) {
+/**
+ * A load that failed. `error` lets a stale-grants failure (403 no_grant after a reload
+ * with an empty query cache) offer a way out: reload the page or go home, next to Retry.
+ */
+export function ErrorState({ title, text, onRetry, error }: { title?: string; text: string; onRetry?: () => void; error?: unknown }) {
+  const noGrant = error instanceof ApiError && error.status === 403 && error.detail === "no_grant";
   return (
     <div className="state-box" role="alert">
       <div className="state-mark err">
@@ -162,10 +168,24 @@ export function ErrorState({ title, text, onRetry }: { title?: string; text: str
       </div>
       <h2>{title ?? t("common.loadFailed")}</h2>
       <p>{text}</p>
-      {onRetry ? (
-        <Button variant="primary" onClick={onRetry}>
-          {t("common.retry")}
-        </Button>
+      {onRetry || noGrant ? (
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          {onRetry ? (
+            <Button variant="primary" onClick={onRetry}>
+              {t("common.retry")}
+            </Button>
+          ) : null}
+          {noGrant ? (
+            <>
+              <Button variant={onRetry ? "glass" : "primary"} onClick={() => location.reload()}>
+                {t("common.reload")}
+              </Button>
+              <Link to="/" className="btn btn-glass">
+                {t("errors.toOverview")}
+              </Link>
+            </>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

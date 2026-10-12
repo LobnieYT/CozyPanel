@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowUpCircle, Bot, DatabaseBackup, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Server, ShieldCheck, SlidersHorizontal, Tag, Users } from "lucide-react";
+import { ArrowUpCircle, Bot, DatabaseBackup, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Send, Server, ShieldCheck, SlidersHorizontal, Tag, Users } from "lucide-react";
 import { api, unwrap } from "../api/client";
 import { meQuery, useNode, useOverview, useUpdates } from "../api/hooks";
 import { Logo } from "../components/atmosphere";
@@ -9,6 +9,7 @@ import { LangSwitch } from "../components/lang";
 import { Avatar, Bar, Pill } from "../components/ui";
 import { t, useLocale } from "../i18n";
 import { num, uptime } from "../lib/format";
+import { PageLoading } from "./route-states";
 
 const NAV = [
   { to: "/", key: "overview", icon: LayoutDashboard, tag: "stats" },
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/nodes", key: "nodes", icon: Network, tag: "node" },
   { to: "/network", key: "network", icon: Globe, tag: "network" },
   { to: "/telegram", key: "telegram", icon: Bot, tag: "telegram" },
+  { to: "/settings/admin-bot", key: "adminBot", icon: Send, tag: "admin-bot" },
   { to: "/settings", key: "settings", icon: SlidersHorizontal, tag: "settings" },
   { to: "/admins", key: "admins", icon: ShieldCheck, tag: "admins" },
   { to: "/backups", key: "backups", icon: DatabaseBackup, tag: "backups" },
@@ -38,8 +40,20 @@ function useNav() {
 
 export function Shell() {
   useLocale(); // the sidebar and the bar read their texts at render time
+  const me = useQuery(meQuery);
   const nav = useNav();
   const overview = useOverview();
+  // While `me` loads the nav fail-opens (useNav returns everything): hold the shell so
+  // pages do not fire queries their grants forbid.
+  if (me.isPending) {
+    return (
+      <div className="app">
+        <main className="main">
+          <PageLoading />
+        </main>
+      </div>
+    );
+  }
   return (
     <>
       <div className="app">

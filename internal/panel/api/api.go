@@ -64,6 +64,10 @@ type Deps struct {
 	}
 	// Telegram is the subscription owners' bot.
 	Telegram *tgbot.Bot
+	// AdminBot is the admins' bot; nil when the panel runs without one.
+	AdminBot *tgbot.AdminBot
+	// AdminSPA serves the admin bundle; the /tg Mini App page frames it.
+	AdminSPA http.Handler
 	// Warp registers WARP accounts with Cloudflare.
 	Warp warp.Client
 	// SubBase is https://host:port/<sub path> ("" without an address).
@@ -204,6 +208,8 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h.registerAuth()
 	h.registerAdmins()
 	h.registerBackups(mux)
+	h.registerAdminBot()
+	h.registerAdminTG(mux, d.AdminSPA)
 	h.registerUsers()
 	h.registerCatalog()
 	h.registerInbounds()

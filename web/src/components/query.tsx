@@ -28,7 +28,7 @@ export function QueryBoundary<T>({
 }) {
   if (query.data === undefined) {
     if (!query.isError) return <>{pending}</>;
-    const state = <ErrorState title={title} text={errorText(query.error)} onRetry={() => void query.refetch()} />;
+    const state = <ErrorState title={title} text={errorText(query.error)} onRetry={() => void query.refetch()} error={query.error} />;
     return <>{wrap ? wrap(state) : state}</>;
   }
   return (

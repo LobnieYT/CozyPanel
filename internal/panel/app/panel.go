@@ -43,6 +43,7 @@ type Panel struct {
 	Nodes     *nodesync.Manager
 	Tuner     *autotune.Tuner // nil without nodes
 	Telegram  *tgbot.Bot
+	AdminBot  *tgbot.AdminBot
 	Updates   *updates.Checker
 	server    *server.Server
 	spa       *server.SPA
@@ -180,6 +181,34 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		// Telegram apps refuse a Mini App on a self-signed certificate.
 		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" }, Tunnel: tunnel})
 	deps.Telegram = p.Telegram
+	p.AdminBot = tgbot.NewAdminBot(tgbot.AdminDeps{Store: st, Settings: set, Users: deps.Users, Devices: deps.Devices,
+		Online: deps.Online, Health: func(id int64) (bool, string) {
+			if p.Nodes == nil {
+				return false, ""
+			}
+			h, ok := p.Nodes.Health(id)
+			if !ok {
+				return false, ""
+			}
+			return h.OK, h.Error
+		},
+		AdminBase: func(ctx context.Context) string {
+			ep, err := set.Endpoint(ctx)
+			if err != nil {
+				return ""
+			}
+			paths, err := set.Paths(ctx)
+			if err != nil {
+				return ""
+			}
+			if ep.Host == "" || paths.Admin == "" {
+				return ""
+			}
+			return "https://" + net.JoinHostPort(ep.Host, strconv.Itoa(ep.Port)) + "/" + paths.Admin
+		},
+		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" },
+		API:     o.TelegramAPI, Log: o.Log, Now: o.Now, Tunnel: tunnel})
+	deps.AdminBot = p.AdminBot
 	p.Updates = updates.New(o.DataDir, o.Version, o.Releases, o.Log, o.Now)
 	deps.Updates = p.Updates
 	deps.Warp = warp.Client{API: o.WarpAPI}
@@ -283,6 +312,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 	subHandler.SetTelegram(p.Telegram)
 
 	adminMux := http.NewServeMux()
+	deps.AdminSPA = p.spa
 	apiHandler, _, err := api.New(deps)
 	if err != nil {
 		return nil, err
@@ -335,7 +365,7 @@ func (p *Panel) Run(ctx context.Context) {
 	if p.Tuner != nil {
 		workers = append(workers, p.Tuner.Run)
 	}
-	workers = append(workers, p.Telegram.Run, p.Updates.Run,
+	workers = append(workers, p.Telegram.Run, p.AdminBot.Run, p.Updates.Run,
 		func(ctx context.Context) {
 			every(ctx, 5*time.Second, func() {
 				if _, err := p.Apply(ctx); err != nil {

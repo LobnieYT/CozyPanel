@@ -1,5 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { Component, type ReactNode } from "react";
+import { basePath } from "../api/client";
 import { t } from "../i18n";
 import { Button } from "./ui";
 
@@ -7,6 +8,9 @@ import { Button } from "./ui";
  * What the page shows when it crashed: a way back, instead of a white screen. `text`
  * replaces the generic explanation (a failed request says what failed); `onRetry` redraws
  * in place, a reload starts the page over.
+ *
+ * A plain anchor goes home: this screen also renders above the router itself (the
+ * top-level boundary), where the router's Link has no context.
  */
 export function CrashScreen({ text, onRetry }: { text?: string; onRetry?: () => void }) {
   return (
@@ -27,6 +31,9 @@ export function CrashScreen({ text, onRetry }: { text?: string; onRetry?: () => 
             <Button variant={onRetry ? "glass" : "primary"} onClick={() => location.reload()}>
               {t("common.reload")}
             </Button>
+            <a href={`${basePath}/`} className="btn btn-glass">
+              {t("errors.toOverview")}
+            </a>
           </div>
         </div>
       </section>

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { basePath, csrf } from "../../api/client";
-import { meQuery } from "../../api/hooks";
+import { meQuery, qk } from "../../api/hooks";
 import { useToast } from "../../components/toast";
 import { Button, Field, PageHeader } from "../../components/ui";
 import { t, tMaybe } from "../../i18n";
@@ -56,6 +57,7 @@ function csrfHeader(): Record<string, string> {
 
 export function BackupsPage() {
   const toast = useToast();
+  const qc = useQueryClient();
   const me = useQuery(meQuery);
   const [busy, setBusy] = useState<"export" | "upload" | "apply" | null>(null);
   const [upload, setUpload] = useState<{ id: string; manifest: Manifest } | null>(null);
@@ -65,12 +67,25 @@ export function BackupsPage() {
   const [result, setResult] = useState<Applied | null>(null);
 
   if (me.data && !me.data.admin.owner) {
+    // After a reload the grants may be stale while the query cache is empty: offer a way
+    // back (re-read me) instead of a dead end.
     return (
       <>
         <PageHeader title={t("backups.title")} />
-        <p className="text-[13px] text-[var(--berry-600)]" role="alert">
-          {tMaybe("errors.api.no_grant") ?? "no_grant"}
-        </p>
+        <section className="card glass max-w-4xl">
+          <div className="state-box" role="alert">
+            <p className="text-[13px] text-[var(--berry-600)]">{tMaybe("errors.api.no_grant") ?? "no_grant"}</p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              <Button variant="primary" onClick={() => void qc.invalidateQueries({ queryKey: qk.me })}>
+                {t("common.retry")}
+              </Button>
+              <Button onClick={() => location.reload()}>{t("common.reload")}</Button>
+              <Link to="/" className="btn btn-glass">
+                {t("errors.toOverview")}
+              </Link>
+            </div>
+          </div>
+        </section>
       </>
     );
   }

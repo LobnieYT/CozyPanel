@@ -376,6 +376,11 @@ func (h *handlers) nodeUnused(ctx context.Context, q *db.Queries, id int64) erro
 	if route.Mode == tgbot.RouteNode && route.NodeID == id {
 		details = append(details, &huma.ErrorDetail{Location: "path.id", Message: "node_in_use_telegram"})
 	}
+	if h.d.AdminBot != nil {
+		if aroute, _, err := settings.Get[tgbot.Route](ctx, set, tgbot.KeyAdminRoute); err == nil && aroute.Mode == tgbot.RouteNode && aroute.NodeID == id {
+			details = append(details, &huma.ErrorDetail{Location: "path.id", Message: "node_in_use_adminbot"})
+		}
+	}
 	if len(details) > 0 {
 		return huma.Error409Conflict("node_in_use", details...)
 	}

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Outlet, redirect, type AsyncRouteComponent } from "@tanstack/react-router";
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Navigate, Outlet, redirect, type AsyncRouteComponent } from "@tanstack/react-router";
 import { ApiError, basePath, setCsrf } from "../api/client";
 import { meQuery } from "../api/hooks";
 import { useLocale } from "../i18n";
@@ -22,6 +22,28 @@ function page<M extends Record<string, unknown>, K extends keyof M & string>(loa
   return Object.assign(Page, { preload: Lazy.preload });
 }
 
+/**
+ * Which section a path belongs to, for the grants check in `_app.beforeLoad`. On a reload
+ * the query cache is empty and the nav fail-opens while `me` is pending, so a sub-admin
+ * could land on a page its grants forbid and die on a 403: denied pages go home instead.
+ * The owner always passes; the buttons keep their fail-open `can()` semantics.
+ */
+function sectionDenied(path: string, scopes: Record<string, string> | undefined): boolean {
+  const has = (tag: string) => scopes?.[tag] === "r" || scopes?.[tag] === "w";
+  if (path === "/admins" || path.startsWith("/admins/")) return true;
+  if (path === "/backups" || path.startsWith("/backups/")) return true;
+  if (path.startsWith("/settings/admin-bot")) return true;
+  if (path.startsWith("/settings/api") || path.startsWith("/api-docs")) return !has("api-keys");
+  if (path === "/") return false;
+  if (path.startsWith("/users")) return !has("users");
+  if (path.startsWith("/tariffs")) return !has("tariffs");
+  if (path.startsWith("/inbounds")) return !has("inbounds");
+  if (path.startsWith("/nodes") || path.startsWith("/network")) return !has("node");
+  if (path.startsWith("/settings")) return !has("settings");
+  if (path.startsWith("/telegram")) return !has("telegram");
+  return false;
+}
+
 export function createAppRouter(queryClient: QueryClient) {
   const root = createRootRouteWithContext<{ queryClient: QueryClient }>()({ component: () => <Outlet /> });
 
@@ -40,6 +62,13 @@ export function createAppRouter(queryClient: QueryClient) {
       try {
         const me = await context.queryClient.ensureQueryData(meQuery);
         setCsrf(me.csrf_token);
+        if (!me.admin.owner) {
+          // location.pathname carries the <base href> prefix; the map below does not.
+          const path = basePath && location.pathname.startsWith(basePath) ? location.pathname.slice(basePath.length) || "/" : location.pathname;
+          if (sectionDenied(path, me.admin.scopes as Record<string, string> | undefined)) {
+            throw redirect({ to: "/" });
+          }
+        }
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) {
           throw redirect({ to: "/login", search: { next: location.href } });
@@ -89,12 +118,15 @@ export function createAppRouter(queryClient: QueryClient) {
     }),
   });
   const apiDocs = createRoute({ getParentRoute: () => app, path: "/settings/api", component: page(() => import("./pages/api"), "ApiPage") });
+  const adminBot = createRoute({ getParentRoute: () => app, path: "/settings/admin-bot", component: page(() => import("./pages/admin-bot"), "AdminBotPage") });
   const admins = createRoute({ getParentRoute: () => app, path: "/admins", component: page(() => import("./pages/admins"), "AdminsPage") });
   const backups = createRoute({ getParentRoute: () => app, path: "/backups", component: page(() => import("./pages/backups"), "BackupsPage") });
   // The API section lived in the sidebar until 0.4.2: old links land on its new place.
   const apiDocsOld = createRoute({ getParentRoute: () => app, path: "/api-docs", beforeLoad: () => { throw redirect({ to: "/settings/api" }); } });
+  // The framed Mini App is served at <base>/tg: it boots the session, then lands home.
+  const tg = createRoute({ getParentRoute: () => app, path: "/tg", component: () => <Navigate to="/" /> });
 
-  const routeTree = root.addChildren([login, app.addChildren([dashboard, users, tariffs, inbounds, nodes, network, telegram, apiDocs, apiDocsOld, settings, admins, backups])]);
+  const routeTree = root.addChildren([login, app.addChildren([dashboard, users, tariffs, inbounds, nodes, network, telegram, apiDocs, adminBot, apiDocsOld, settings, admins, backups, tg])]);
   return createRouter({
     routeTree,
     basepath: basePath || "/",

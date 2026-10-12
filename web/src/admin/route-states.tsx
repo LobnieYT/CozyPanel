@@ -1,6 +1,8 @@
 import { Link, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Compass } from "lucide-react";
 import { ApiError, errorText } from "../api/client";
+import { qk } from "../api/hooks";
 import { CrashScreen } from "../components/error-boundary";
 import { Skeleton } from "../components/ui";
 import { t, useLocale } from "../i18n";
@@ -9,13 +11,18 @@ import { t, useLocale } from "../i18n";
 export function RouteError({ error, reset }: ErrorComponentProps) {
   useLocale();
   const router = useRouter();
+  const qc = useQueryClient();
   return (
     <CrashScreen
       // Only a request that failed has something to tell; any other error is ours.
       text={error instanceof ApiError ? errorText(error) : undefined}
       onRetry={() => {
         reset();
-        void router.invalidate();
+        // Grants may be stale (empty query cache after a reload): re-read me first.
+        void (async () => {
+          await qc.invalidateQueries({ queryKey: qk.me });
+          await router.invalidate();
+        })();
       }}
     />
   );
