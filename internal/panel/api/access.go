@@ -137,8 +137,13 @@ func (h *handlers) authorize(ctx context.Context, sess db.Session, tags []string
 			rest = append(rest, t)
 		}
 	}
+	// Identity alone ("auth": me, own sessions, own password and 2FA) needs no
+	// grants: the session is already authenticated by the middleware, and these
+	// operations only ever touch the caller itself. Denying them here locked
+	// every sub-admin out on a cold load (the login seeds `me`, a reload does
+	// not), while the owner bypass above never noticed.
 	if len(rest) == 0 {
-		return db.Admin{}, huma.Error403Forbidden("no_grant")
+		return admin, nil
 	}
 	g, err := ParseGrants(admin.Scopes)
 	if err != nil {

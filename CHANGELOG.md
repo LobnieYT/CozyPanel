@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.7
+### en
+- Sub-admins survive a reload: identity calls (me, own sessions, own password and 2FA) no longer need grants, so Ctrl+R on any page works instead of dying on "no access".
+- Nav highlights one section: opening the admin bot no longer lights up Settings too.
+
+### ru
+- Суб-админы переживают перезагрузку: identity-запросы (я, свои сессии, свой пароль и 2FA) больше не требуют прав, и Ctrl+R на любой странице работает вместо смерти на «нет прав».
+- Навигация подсвечивает один раздел: открытая страница админ-бота больше не зажигает и «Настройки».
+
 ## 1.2.6
 ### en
 - Admin bot: a second bot with its own token — the panel in Telegram for the owner and sub-admins. The owner links by code from the new settings page, sub-admins request access and the owner approves; every command enforces the grants matrix, mutating actions ask twice, broadcasts reach linked admins, everything lands in audit. The Mini App opens the full admin panel inside Telegram.

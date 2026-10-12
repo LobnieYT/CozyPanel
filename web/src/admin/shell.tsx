@@ -64,7 +64,7 @@ export function Shell() {
           </div>
           <nav className="nav" aria-label={t("shell.sections")}>
             {nav.map((n) => (
-              <Link key={n.to} to={n.to} className="nav-item" activeProps={{ className: "active", "aria-current": "page" }} activeOptions={{ exact: n.to === "/" }} title={t(`nav.${n.key}`)}>
+              <Link key={n.to} to={n.to} className="nav-item" activeProps={{ className: "active", "aria-current": "page" }} activeOptions={{ exact: true }} title={t(`nav.${n.key}`)}>
                 <n.icon size={18} aria-hidden />
                 <span className="nav-label">{t(`nav.${n.key}`)}</span>
                 {n.to === "/users" && overview.data ? <span className="nav-count num">{num(overview.data.users_total)}</span> : null}
@@ -99,7 +99,7 @@ function MobileNav() {
   return (
     <nav className="mnav glass" aria-label={t("shell.sections")}>
       {nav.slice(0, MOBILE_MAIN).map((n) => (
-        <Link key={n.to} to={n.to} activeProps={{ className: "active", "aria-current": "page" }} activeOptions={{ exact: n.to === "/" }}>
+        <Link key={n.to} to={n.to} activeProps={{ className: "active", "aria-current": "page" }} activeOptions={{ exact: true }}>
           <n.icon size={20} aria-hidden />
           <span>{t(`navShort.${n.key}`)}</span>
         </Link>

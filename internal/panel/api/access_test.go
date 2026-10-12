@@ -183,6 +183,13 @@ func TestAccessMatrixHTTP(t *testing.T) {
 	if code := call(http.MethodGet, "/api/v1/admins", creds[ownerID], ""); code != http.StatusOK {
 		t.Fatalf("owner list admins: %d", code)
 	}
+	// Identity alone ("auth") needs no grants: a cold load fetches /auth/me with an
+	// empty cache, and denying it locked every sub-admin out on Ctrl+R (1.2.7).
+	for id, name := range map[int64]string{viewerID: "viewer", opID: "operator", ownerID: "owner"} {
+		if code := call(http.MethodGet, "/api/v1/auth/me", creds[id], ""); code != http.StatusOK {
+			t.Fatalf("%s reload me: %d, want 200", name, code)
+		}
+	}
 	// Every operation tag is either identity (auth), owner-only (admins) or a
 	// section of the matrix: an unknown tag must never silently pass or fail.
 	known := map[string]bool{"auth": true, "admins": true}
