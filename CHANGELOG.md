@@ -3,6 +3,13 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.8
+### en
+- Admin bot broadcast survives angle brackets: the text goes out escaped, so placeholders like <name> no longer kill the send chat by chat with "can't parse entities".
+
+### ru
+- Рассылка админ-бота переживает угловые скобки: текст уходит экранированным, и плейсхолдеры вида <имя> больше не убивают отправку с «can't parse entities».
+
 ## 1.2.7
 ### en
 - Sub-admins survive a reload: identity calls (me, own sessions, own password and 2FA) no longer need grants, so Ctrl+R on any page works instead of dying on "no access".

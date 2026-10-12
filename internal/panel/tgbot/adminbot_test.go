@@ -174,6 +174,45 @@ func TestAdminBotLink(t *testing.T) {
 		t.Fatalf("broadcast by non-owner: %q", text(send))
 	}
 
+	// Broadcast with angle brackets goes out escaped: Telegram parses every
+	// message as HTML, and a raw "<name>" dies with "can't parse entities".
+	n = tg.count()
+	tell(ownerChat, "/broadcast Hi <имя>")
+	calls = tg.wait(t, n, "sendMessage")
+	var goID string
+	tg.until(t, n, func(cs []call) bool {
+		for _, c := range cs {
+			for _, data := range buttons(c) {
+				if data == "ab:bc:go" {
+					goID = data
+					return true
+				}
+			}
+		}
+		return false
+	})
+	if goID == "" {
+		t.Fatal("no broadcast confirm button")
+	}
+	n = tg.count()
+	tg.push(Update{CallbackQuery: &CallbackQuery{ID: "cb2", From: User{ID: ownerChat}, Message: &Message{MessageID: 8, Chat: Chat{ID: ownerChat, Type: "private"}}, Data: goID}})
+	calls = tg.wait(t, n, "sendMessage")
+	sent, failed := false, false
+	for _, c := range calls {
+		if c.method != "sendMessage" {
+			continue
+		}
+		if strings.Contains(text(c), "<имя>") {
+			failed = true
+		}
+		if strings.Contains(text(c), "&lt;имя&gt;") {
+			sent = true
+		}
+	}
+	if !sent || failed {
+		t.Fatalf("broadcast escaping: sent=%v raw survivors=%v", sent, failed)
+	}
+
 	// Unlink drops the chat; commands need a link again.
 	n = tg.count()
 	tell(opChat, "/unlink")

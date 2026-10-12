@@ -592,9 +592,13 @@ func (b *AdminBot) Broadcast(ctx context.Context, text string) (int, error) {
 	}
 	b.bcast = BroadcastProgress{Total: len(targets), Started: b.d.Now()}
 	b.mu.Unlock()
+	// Plain text, always: the owner types whatever, including <angle> placeholders,
+	// and Telegram parses the message as HTML. An unescaped send dies with
+	// "can't parse entities" and the broadcast silently fails chat by chat.
+	body := html.EscapeString(text)
 	for _, chat := range targets {
 		out.Bulk(chat, func(ctx context.Context, c *Client) error {
-			_, err := c.Send(ctx, chat, text, nil, false)
+			_, err := c.Send(ctx, chat, body, nil, false)
 			return err
 		}, func(err error) {
 			b.mu.Lock()
