@@ -402,9 +402,11 @@ func (h *handlers) updateUser(ctx context.Context, in *patchUserInput) (*userOut
 }
 
 func (h *handlers) deleteUser(ctx context.Context, in *userIDInput) (*struct{}, error) {
+	avatar, _ := h.avatarOf(ctx, in.ID)
 	if err := h.d.Users.Delete(ctx, in.ID); err != nil {
 		return nil, mapDomainErr(err)
 	}
+	h.removeAvatarFile(avatar)
 	h.audit(ctx, sessionOf(ctx).AdminID, "user.delete", "user", strconv.FormatInt(in.ID, 10), nil)
 	return nil, nil
 }

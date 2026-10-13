@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"cozy/internal/panel/store"
 )
 
 // files restores the files/ tree (TLS material) over the data dir. Node
@@ -86,6 +88,82 @@ func (a *applier) applyFiles(dataDir, stagingDir string) error {
 	})
 	if err != nil {
 		return fail(err)
+	}
+	return nil
+}
+
+// applyAvatars restores the avatars over the data dir when users are imported.
+// Names are random per upload, so staged files never clobber live ones with
+// different content; files neither staged nor referenced by the imported users
+// are dropped, so a restore does not pile up orphans. Symlinks are refused
+// like everywhere else in the archive.
+func applyAvatars(st *store.Store, dataDir, stagingDir string) error {
+	if dataDir == "" {
+		return nil
+	}
+	src := filepath.Join(stagingDir, "files", "avatars")
+	if _, err := os.Stat(src); err != nil {
+		return nil
+	}
+	dst := filepath.Join(dataDir, "avatars")
+	if err := os.MkdirAll(dst, 0o700); err != nil {
+		return err
+	}
+	staged := map[string]bool{}
+	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("link refused: %s", path)
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		if rel != filepath.Base(rel) {
+			return fmt.Errorf("nested file refused: %s", rel)
+		}
+		staged[rel] = true
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(dst, rel), raw, 0o600)
+	})
+	if err != nil {
+		return err
+	}
+	keep := map[string]bool{}
+	rows, err := st.DB.Query(`SELECT avatar FROM users WHERE avatar IS NOT NULL AND avatar != ''`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		keep[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(dst)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || staged[e.Name()] || keep[e.Name()] {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dst, e.Name())); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 	return nil
 }

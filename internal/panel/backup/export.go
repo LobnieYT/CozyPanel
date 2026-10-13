@@ -124,6 +124,10 @@ func describe(ctx context.Context, st *store.Store, dataDir, version, filesDir s
 		if err := stageFiles(filepath.Join(dataDir, "tls"), filepath.Join(filesDir, "tls")); err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
+		// Avatars ride the users section: same tree, own directory.
+		if err := stageFiles(filepath.Join(dataDir, "avatars"), filepath.Join(filesDir, "avatars")); err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
 	}
 	return m, nil
 }

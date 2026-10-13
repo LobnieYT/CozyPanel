@@ -163,3 +163,58 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("distinct: %d %v", distinct, err)
 	}
 }
+
+func TestAvatarsRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	src := openStore(t, ctx)
+	seed(t, ctx, src)
+	srcDir := t.TempDir()
+	if err := os.MkdirAll(srcDir+"/avatars", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(srcDir+"/avatars/ab12.png", []byte("PNGDATA"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := src.DB.ExecContext(ctx, `UPDATE users SET avatar = 'ab12.png' WHERE id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	path, _, err := Export(ctx, src, srcDir, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
+	dst := openStore(t, ctx)
+	dstDir := t.TempDir()
+	if err := os.MkdirAll(dstDir+"/avatars", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dstDir+"/avatars/stale.png", []byte("OLD"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	staged, err := func() (*Staged, error) {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return OpenArchive(f, MaxArchive)
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Close()
+	if _, err := Apply(ctx, dst, dstDir, staged, ApplyRequest{Sections: []string{SectionUsers}, Strategy: StrategyReplace}, "test"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(dstDir + "/avatars/ab12.png")
+	if err != nil || string(raw) != "PNGDATA" {
+		t.Fatalf("restored avatar: %q %v", raw, err)
+	}
+	if _, err := os.Stat(dstDir + "/avatars/stale.png"); !os.IsNotExist(err) {
+		t.Fatal("stale avatar survives the restore")
+	}
+	var name string
+	if err := dst.DB.QueryRowContext(ctx, `SELECT avatar FROM users WHERE id = 1`).Scan(&name); err != nil || name != "ab12.png" {
+		t.Fatalf("avatar row: %q %v", name, err)
+	}
+}

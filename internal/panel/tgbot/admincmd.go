@@ -23,6 +23,8 @@ type adminWords struct {
 	help, helpOwner                   string
 	needLink, needOwner, linked       string
 	askLogin                          string
+	menuHead, askQuery, askBcast      string
+	noRequests                        string
 	noAccess, closed                  string
 	requestSent, requestApproved      string
 	requestRefused, requestGone       string
@@ -49,10 +51,14 @@ func adminText(lang string) adminWords {
 		return adminWords{
 			commands:        "Панель",
 			menuApp:         "Панель",
-			help:            "Команды:\n/stats — сводка\n/user <имя> — найти подписку\n/nodes — ноды\n/unlink — отвязать этот чат",
-			helpOwner:       "\n/broadcast <текст> — всем привязанным админам",
+			help:            "Команды:\n/stats — сводка\n/user «имя» — найти подписку\n/nodes — ноды\n/unlink — отвязать этот чат",
+			helpOwner:       "\n/broadcast «текст» — всем привязанным админам",
 			needLink:        "Этот чат не привязан. Отправьте /start — владелец подтвердит заявку.",
 			askLogin:        "Пришлите ваш логин администратора — владелец подтвердит заявку.",
+			menuHead:        "Панель Cozy — выбери действие.",
+			askQuery:        "Кого ищем? Пришли имя, контакт или ID.",
+			askBcast:        "Текст рассылки?",
+			noRequests:      "Заявок нет.",
 			needOwner:       "Нужен владелец.",
 			linked:          "Чат привязан. /help — команды.",
 			noAccess:        "Нет прав на этот раздел.",
@@ -94,10 +100,14 @@ func adminText(lang string) adminWords {
 	return adminWords{
 		commands:        "Panel",
 		menuApp:         "Panel",
-		help:            "Commands:\n/stats — summary\n/user <name> — find a subscription\n/nodes — nodes\n/unlink — unlink this chat",
-		helpOwner:       "\n/broadcast <text> — to every linked admin",
+		help:            "Commands:\n/stats — summary\n/user \"name\" — find a subscription\n/nodes — nodes\n/unlink — unlink this chat",
+		helpOwner:       "\n/broadcast \"text\" — to every linked admin",
 		needLink:        "This chat is not linked. Send /start — the owner approves requests.",
 		askLogin:        "Send your admin login — the owner approves requests.",
+		menuHead:        "Cozy panel — pick an action.",
+		askQuery:        "Who? Send a name, contact or ID.",
+		askBcast:        "Broadcast text?",
+		noRequests:      "No requests.",
 		needOwner:       "The owner is needed.",
 		linked:          "Chat linked. /help for commands.",
 		noAccess:        "No access to this section.",
@@ -210,6 +220,29 @@ func (b *AdminBot) onAdminMessage(ctx context.Context, out *Outbox, m *Message) 
 	case name == "/help":
 		b.cmdHelp(ctx, out, w, chat)
 		return
+	case name == "/menu":
+		if admin, err := b.identity(ctx, chat); err != nil {
+			b.say(out, chat, w.needLink, nil)
+		} else {
+			b.sendMenu(ctx, out, chat, admin)
+		}
+		return
+	}
+	if what := b.takeAwait(chat, strings.HasPrefix(text, "/")); what != "" {
+		admin, err := b.identity(ctx, chat)
+		if err != nil {
+			b.say(out, chat, w.needLink, nil)
+			return
+		}
+		switch what {
+		case "find":
+			b.cmdUser(ctx, out, w, chat, admin, text)
+		case "broadcast":
+			b.cmdBroadcast(ctx, out, w, chat, admin, text)
+		default:
+			b.cmdHelp(ctx, out, w, chat)
+		}
+		return
 	}
 	admin, err := b.identity(ctx, chat)
 	if err != nil {
@@ -244,11 +277,7 @@ func (b *AdminBot) cmdHelp(ctx context.Context, out *Outbox, w adminWords, chat 
 		b.say(out, chat, w.needLink, nil)
 		return
 	}
-	text := w.help
-	if admin.IsOwner != 0 {
-		text += w.helpOwner
-	}
-	b.say(out, chat, text, nil)
+	b.say(out, chat, menuHelpText(admin, b.AdminMenuConfig(ctx), w), nil)
 }
 
 // --- linking ---
@@ -277,8 +306,8 @@ func (b *AdminBot) cmdStart(ctx context.Context, out *Outbox, w adminWords, chat
 		b.say(out, chat, w.linked, nil)
 		return
 	}
-	if _, err := b.identity(ctx, chat); err == nil {
-		b.cmdHelp(ctx, out, w, chat)
+	if admin, err := b.identity(ctx, chat); err == nil {
+		b.sendMenu(ctx, out, chat, admin)
 		return
 	}
 	// Unlinked /start states the next step; any other text names the claimed login.
@@ -414,6 +443,16 @@ func (b *AdminBot) onAdminPress(ctx context.Context, c *Client, out *Outbox, q *
 			return
 		}
 		b.showUser(ctx, c, out, w, chat, admin, u, q)
+	case "m":
+		if len(parts) != 3 {
+			return
+		}
+		b.menuTap(ctx, c, out, w, q, chat, admin, parts[2])
+	case "page":
+		if len(parts) != 3 {
+			return
+		}
+		b.pageTap(ctx, c, out, w, q, chat, admin, parts[2])
 	case "cf", "do":
 		if len(parts) < 4 {
 			return
@@ -830,7 +869,8 @@ func (b *AdminBot) cmdBroadcast(ctx context.Context, out *Outbox, w adminWords, 
 		return
 	}
 	if text == "" {
-		b.say(out, chat, w.broadcastUsage, nil)
+		b.awaitAsk(chat, "broadcast")
+		b.say(out, chat, w.askBcast, nil)
 		return
 	}
 	targets, err := b.adminTargets(ctx)
@@ -871,4 +911,74 @@ func (b *AdminBot) doBroadcast(ctx context.Context, c *Client, out *Outbox, w ad
 	}
 	b.safeAudit(ctx, admin.ID, "adminbot.broadcast", "", "", map[string]any{"queued": n})
 	b.say(out, chat, render(w.broadcastSent, map[string]string{"n": strconv.Itoa(n)}), nil)
+}
+
+// menuTap runs a menu button. Grants are checked again: the menu filters, the
+// tap enforces.
+func (b *AdminBot) menuTap(ctx context.Context, c *Client, out *Outbox, w adminWords, q *CallbackQuery, chat int64, admin db.Admin, action string) {
+	b.answer(c, q.ID, "")
+	switch action {
+	case AdminActStats:
+		b.cmdStats(ctx, out, w, chat, admin)
+	case AdminActFind:
+		if !b.check(out, w, chat, admin, "users", false) {
+			return
+		}
+		b.awaitAsk(chat, "find")
+		b.say(out, chat, w.askQuery, nil)
+	case AdminActNodes:
+		b.cmdNodes(ctx, out, w, chat, admin)
+	case AdminActBcast:
+		if admin.IsOwner == 0 {
+			b.say(out, chat, w.noAccess, nil)
+			return
+		}
+		b.awaitAsk(chat, "broadcast")
+		b.say(out, chat, w.askBcast, nil)
+	case AdminActRequests:
+		b.listRequests(ctx, out, w, chat, admin)
+	case AdminActUnlink:
+		b.cmdUnlink(ctx, out, w, chat, admin)
+	case AdminActHelp:
+		b.say(out, chat, menuHelpText(admin, b.AdminMenuConfig(ctx), w), nil)
+	default:
+		b.say(out, chat, w.unknown, nil)
+	}
+}
+
+// pageTap sends the owner's page text.
+func (b *AdminBot) pageTap(ctx context.Context, c *Client, out *Outbox, w adminWords, q *CallbackQuery, chat int64, admin db.Admin, id string) {
+	b.answer(c, q.ID, "")
+	cfg := b.AdminMenuConfig(ctx)
+	for _, btn := range cfg.Buttons {
+		if btn.ID == id && btn.On && btn.Action == "page" {
+			b.say(out, chat, btn.Text, nil)
+			return
+		}
+	}
+	b.say(out, chat, w.unknown, nil)
+}
+
+// listRequests shows pending link requests with approve buttons (owner only).
+func (b *AdminBot) listRequests(ctx context.Context, out *Outbox, w adminWords, chat int64, admin db.Admin) {
+	if admin.IsOwner == 0 {
+		b.say(out, chat, w.noAccess, nil)
+		return
+	}
+	reqs := b.LinkRequests()
+	if len(reqs) == 0 {
+		b.say(out, chat, w.noRequests, nil)
+		return
+	}
+	for _, r := range reqs {
+		who := "@" + r.Username
+		if r.Username == "" {
+			who = r.FirstName
+		}
+		kb := &Keyboard{InlineKeyboard: [][]Button{
+			{{Text: "✅", CallbackData: "ab:approve:" + strconv.FormatInt(r.TgID, 10)},
+				{Text: "🚫", CallbackData: "ab:refuse:" + strconv.FormatInt(r.TgID, 10)}},
+		}}
+		b.say(out, chat, w.approveAsk+" <b>"+esc(who)+"</b> → <b>"+esc(r.Login)+"</b>", kb)
+	}
 }

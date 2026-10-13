@@ -85,6 +85,9 @@ type AdminBot struct {
 	requests map[int64]adminRequest
 	// Pending broadcasts: chat → text waiting for the owner's confirm tap.
 	pending map[int64]string
+	// Awaiting free text: chat → what the next message answers ("find",
+	// "broadcast"). Two-step menu buttons set it; any command clears it.
+	awaiting map[int64]awaitKind
 
 	running sync.WaitGroup
 }
@@ -99,6 +102,14 @@ type adminRequest struct {
 // requestTTL: a link request the owner never answers dies on its own.
 const requestTTL = time.Hour
 
+// awaitTTL: a two-step menu answer expected for this long, then forgotten.
+const awaitTTL = 10 * time.Minute
+
+type awaitKind struct {
+	what string // "find" or "broadcast"
+	at   time.Time
+}
+
 func NewAdminBot(d AdminDeps) *AdminBot {
 	if d.API == "" {
 		d.API = DefaultAPI
@@ -106,7 +117,7 @@ func NewAdminBot(d AdminDeps) *AdminBot {
 	if d.Limits == (Limits{}) {
 		d.Limits = DefaultLimits
 	}
-	return &AdminBot{d: d, reload: make(chan struct{}, 1), input: map[int64][]time.Time{}, requests: map[int64]adminRequest{}, pending: map[int64]string{}}
+	return &AdminBot{d: d, reload: make(chan struct{}, 1), input: map[int64][]time.Time{}, requests: map[int64]adminRequest{}, pending: map[int64]string{}, awaiting: map[int64]awaitKind{}}
 }
 
 // Status of the running admin bot.

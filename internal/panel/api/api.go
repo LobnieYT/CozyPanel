@@ -210,6 +210,8 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h.registerBackups(mux)
 	h.registerAdminBot()
 	h.registerAdminTG(mux, d.AdminSPA)
+	h.registerAvatars()
+	h.registerAvatarFile(mux)
 	h.registerUsers()
 	h.registerCatalog()
 	h.registerInbounds()

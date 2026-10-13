@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { CalendarPlus, ChevronRight, Plus, Power, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { errorText, type Tariff, type User } from "../../api/client";
+import { errorText, basePath, type Tariff, type User } from "../../api/client";
 import { userActions, useGrants, useTariffs, useUserMutation, useUsers } from "../../api/hooks";
 import { Confirm } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
@@ -179,8 +179,29 @@ export function UsersPage() {
   );
 }
 
-function Usage({ u }: { u: User }) {
-  const used = u.used_up + u.used_down;
+/**
+ * A 32px photo thumbnail in the list: the uploaded file, the initials when there is
+ * none (a 404 falls back, no extra API call). Listens for uploads from the drawer so
+ * the fresh photo shows without waiting for a refetch.
+ */
+function RowAvatar({ id, name }: { id: number; name: string }) {
+  const [failed, setFailed] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  useEffect(() => {
+    const onAvatar = (e: Event) => {
+      if ((e as CustomEvent<{ id: number }>).detail?.id === id) {
+        setFailed(false);
+        setNonce(Date.now());
+      }
+    };
+    window.addEventListener("cozy:avatar", onAvatar);
+    return () => window.removeEventListener("cozy:avatar", onAvatar);
+  }, [id]);
+  if (failed) return <Avatar name={name} seed={id} />;
+  return <img src={basePath + `/api/v1/users/${id}/avatar` + (nonce ? `?v=${nonce}` : "")} alt="" width={32} height={32} loading="lazy" onError={() => setFailed(true)} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flex: "none" }} />;
+}
+
+function Usage({ u }: { u: User }) {  const used = u.used_up + u.used_down;
   if (u.traffic_limit == null) {
     return (
       <div className="usage inf min-w-[160px]">
@@ -233,7 +254,7 @@ const UserRow = memo(function UserRow({ u, tariff, selected, onToggle, onOpen }:
       </td>
       <td>
         <div className="flex min-w-[200px] items-center gap-3">
-          <Avatar name={u.name} seed={u.id} />
+          <RowAvatar id={u.id} name={u.name} />
           <div className="min-w-0">
             <div className="truncate font-medium">
               <Link from="/users" to="/users" search={(s) => ({ ...s, user: u.id, create: undefined })} className="row-link" onClick={(e) => e.stopPropagation()}>
@@ -285,7 +306,7 @@ const UserCard = memo(function UserCard({ u, tariff }: { u: User; tariff?: Tarif
   const e = expiryText(u.expires_at);
   return (
     <Link from="/users" to="/users" search={(s) => ({ ...s, user: u.id, create: undefined })} className="panel-soft cv-auto grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3 text-left">
-      <Avatar name={u.name} seed={u.id} />
+      <RowAvatar id={u.id} name={u.name} />
       <div className="min-w-0">
         <div className="truncate font-medium">
           {u.name}

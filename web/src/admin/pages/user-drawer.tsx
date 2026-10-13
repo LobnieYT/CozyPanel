@@ -1,13 +1,14 @@
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import { CalendarPlus, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { errorText, type User } from "../../api/client";
-import { onePeriod, userActions, useGrants, useUser, useUserMutation } from "../../api/hooks";
+import { CalendarPlus, Camera, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { basePath, csrf, errorText, type User } from "../../api/client";
+import { onePeriod, qk, userActions, useGrants, useUser, useUserMutation } from "../../api/hooks";
 import { Confirm, Drawer } from "../../components/overlay";
 import { useToast } from "../../components/toast";
 import { QueryBoundary } from "../../components/query";
 import { Avatar, Button, Skeleton, StatePill } from "../../components/ui";
-import { t } from "../../i18n";
+import { t, tMaybe } from "../../i18n";
 import { ago, dateShort } from "../../lib/format";
 import { GrantsSection } from "./user/grants";
 import { PoolsSection, TariffSection, TrafficSection } from "./user/traffic";
@@ -23,7 +24,7 @@ export function UserDrawer({ id, onClose }: { id?: number; onClose: () => void }
       open={!!id}
       onOpenChange={(v) => !v && onClose()}
       title={u?.name ?? t("userDrawer.fallbackTitle")}
-      lead={u ? <Avatar name={u.name} seed={u.id} size="lg" /> : undefined}
+      lead={u ? <DrawerAvatar key={u.id} id={u.id} name={u.name} /> : undefined}
       meta={
         u ? (
           <>
@@ -52,8 +53,7 @@ export function UserDrawer({ id, onClose }: { id?: number; onClose: () => void }
   );
 }
 
-function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {
-  const toast = useToast();
+function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {  const toast = useToast();
   const extend = useUserMutation(userActions.extend);
   const reset = useUserMutation(userActions.reset);
   const update = useUserMutation(userActions.update);
@@ -151,10 +151,104 @@ function UserBody({ u, onDeleted }: { u: User; onDeleted: () => void }) {
               toast.ok(t("userDrawer.deleted", { name: u.name }));
               onDeleted();
             },
-            onError: fail,
+              onError: fail,
           })
         }
       />
     </>
+  );
+}
+
+/**
+ * The user's photo in the drawer header: the uploaded file, the initials when there
+ * is none (a 404 from the avatar endpoint falls back, no extra API call). The camera
+ * button picks a jpeg/png (2 MB max client-side) and POSTs it as base64.
+ */
+function DrawerAvatar({ id, name }: { id: number; name: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("users", true);
+  const [failed, setFailed] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const src = basePath + `/api/v1/users/${id}/avatar` + (nonce ? `?v=${nonce}` : "");
+  const label = t(failed ? "userDrawer.avatar.upload" : "userDrawer.avatar.replace");
+
+  const onFile = async (f: File | undefined) => {
+    if (!f || busy) return;
+    if (f.type !== "image/jpeg" && f.type !== "image/png") {
+      toast.error(t("userDrawer.avatar.badType"));
+      return;
+    }
+    if (f.size > 2 * 1024 * 1024) {
+      toast.error(t("userDrawer.avatar.tooBig"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("read"));
+        r.readAsDataURL(f);
+      });
+      const image = dataUrl.includes(",") ? dataUrl.slice(dataUrl.indexOf(",") + 1) : dataUrl;
+      const token = csrf();
+      const res = await fetch(basePath + `/api/v1/users/${id}/avatar`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...(token ? { "X-CSRF-Token": token } : {}) },
+        body: JSON.stringify({ image }),
+      });
+      if (!res.ok) {
+        let code = "server";
+        try {
+          const body = (await res.json()) as { detail?: string };
+          if (body.detail) code = body.detail;
+        } catch {
+          /* keep generic */
+        }
+        throw new Error(tMaybe(`errors.api.${code}`) ?? code);
+      }
+      setFailed(false);
+      const v = Date.now();
+      setNonce(v);
+      window.dispatchEvent(new CustomEvent("cozy:avatar", { detail: { id } }));
+      await qc.invalidateQueries({ queryKey: qk.user(id) });
+      await qc.invalidateQueries({ queryKey: qk.users });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("errors.generic"));
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <span style={{ position: "relative", display: "inline-block", flex: "none" }}>
+      {failed ? (
+        <Avatar name={name} seed={id} size="lg" />
+      ) : (
+        <img src={src} alt="" width={52} height={52} onError={() => setFailed(true)} style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+      )}
+      {writable ? (
+        <>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            aria-label={label}
+            title={label}
+            style={{ position: "absolute", right: -4, bottom: -4, width: 24, height: 24, borderRadius: "50%", background: "var(--glass-strong)", border: "1px solid var(--hairline)" }}
+          >
+            <Camera size={14} aria-hidden />
+          </button>
+          <input ref={inputRef} type="file" accept="image/jpeg,image/png" hidden aria-label={label} onChange={(e) => void onFile(e.target.files?.[0])} />
+        </>
+      ) : null}
+    </span>
   );
 }

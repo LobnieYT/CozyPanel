@@ -3,6 +3,17 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.2.9
+### en
+- Import strategy pills show the pressed choice; the nav highlights exactly one section even with search in the address.
+- Admin bot menu: buttons instead of commands (stats, find, nodes, broadcast, requests, unlink, help), two-step find and broadcast, and a Menu & Texts tab mirroring the subscriber bot. Literal `<>` placeholders in texts are refused at save: they used to silence /start and /help for good.
+- User avatars: upload in the user card, thumbnails in the card and the list, travelling inside backups.
+
+### ru
+- Кнопки стратегии импорта показывают выбор; навигация подсвечивает ровно один раздел даже с поиском в адресе.
+- Меню админ-бота: кнопки вместо команд (статистика, поиск, ноды, рассылка, заявки, отвязка, помощь), двухшаговые поиск и рассылка, вкладка «Меню и тексты» как у бота подписок. Буквальные `<>` в текстах отклоняются при сохранении: раньше они навсегда гасили /start и /help.
+- Аватарки пользователей: загрузка в карточке, миниатюры в карточке и списке, едут внутри бекапов.
+
 ## 1.2.8
 ### en
 - Admin bot broadcast survives angle brackets: the text goes out escaped, so placeholders like <name> no longer kill the send chat by chat with "can't parse entities".

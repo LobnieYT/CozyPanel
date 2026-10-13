@@ -102,6 +102,11 @@ func Apply(ctx context.Context, st *store.Store, dataDir string, s *Staged, req 
 			return nil, err
 		}
 	}
+	if want[SectionUsers] {
+		if err := applyAvatars(st, dataDir, s.Dir); err != nil {
+			return nil, err
+		}
+	}
 	_ = version
 	return out, nil
 }

@@ -34,24 +34,27 @@ type adminBotChatView struct {
 }
 
 type adminBotView struct {
-	Enabled    bool               `json:"enabled"`
-	TokenSet   bool               `json:"token_set"`
-	TokenHint  string             `json:"token_hint,omitempty"`
-	Running    bool               `json:"running"`
-	Error      string             `json:"error,omitempty"`
-	Bot        *TelegramBot       `json:"bot,omitempty"`
-	Linked     []adminBotChatView `json:"linked"`
-	Route      TelegramRoute      `json:"route"`
-	Broadcast  *TelegramBroadcast `json:"broadcast,omitempty"`
-	MiniAppURL string             `json:"mini_app_url,omitempty"`
+	Enabled      bool               `json:"enabled"`
+	TokenSet     bool               `json:"token_set"`
+	TokenHint    string             `json:"token_hint,omitempty"`
+	Running      bool               `json:"running"`
+	Error        string             `json:"error,omitempty"`
+	Bot          *TelegramBot       `json:"bot,omitempty"`
+	Linked       []adminBotChatView `json:"linked"`
+	Route        TelegramRoute      `json:"route"`
+	Broadcast    *TelegramBroadcast `json:"broadcast,omitempty"`
+	MiniAppURL   string             `json:"mini_app_url,omitempty"`
+	Menu         tgbot.AdminMenu    `json:"menu"`
+	MenuDefaults tgbot.AdminMenu    `json:"menu_defaults"`
 }
 
 type adminBotOutput struct{ Body adminBotView }
 
 type patchAdminBotInput struct {
 	Body struct {
-		Enabled *bool   `json:"enabled,omitempty"`
-		Token   *string `json:"token,omitempty" maxLength:"100" doc:"Токен от @BotFather; пустая строка — удалить"`
+		Enabled *bool            `json:"enabled,omitempty"`
+		Token   *string          `json:"token,omitempty" maxLength:"100" doc:"Токен от @BotFather; пустая строка — удалить"`
+		Menu    *tgbot.AdminMenu `json:"menu,omitempty" doc:"Кнопки и тексты меню"`
 		Route   *struct {
 			Mode   string  `json:"mode" enum:"direct,node,proxy"`
 			NodeID int64   `json:"node_id,omitempty" minimum:"0"`
@@ -157,7 +160,10 @@ func (h *handlers) adminBotView(ctx context.Context) (adminBotView, error) {
 		if route, err = h.d.AdminBot.LoadAdminRoute(ctx); err != nil {
 			return v, err
 		}
+		v.Menu = h.d.AdminBot.AdminMenuConfig(ctx)
 	}
+	lang, _ := h.d.Settings.Lang(ctx)
+	v.MenuDefaults = tgbot.DefaultAdminMenu(lang)
 	v.Route = TelegramRoute{Mode: route.Mode, NodeID: route.NodeID, Proxy: tgbot.MaskProxy(route.Proxy)}
 	return v, nil
 }
@@ -220,6 +226,11 @@ func (h *handlers) updateAdminBot(ctx context.Context, in *patchAdminBotInput) (
 	if b.Enabled != nil && *b.Enabled && token == "" {
 		return nil, tgFieldErr("enabled", "tg_no_token")
 	}
+	if b.Menu != nil {
+		if err := b.Menu.Validate(); err != nil {
+			return nil, tgFieldErr("menu", err.Error())
+		}
+	}
 	err = h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		set := settings.New(q)
 		if b.Route != nil {
@@ -240,7 +251,15 @@ func (h *handlers) updateAdminBot(ctx context.Context, in *patchAdminBotInput) (
 			}
 		}
 		if b.Enabled != nil {
-			return settings.Set(ctx, set, tgbot.KeyAdminEnabled, *b.Enabled)
+			if err := settings.Set(ctx, set, tgbot.KeyAdminEnabled, *b.Enabled); err != nil {
+				return err
+			}
+		}
+		if b.Menu != nil {
+			if err := settings.Set(ctx, set, tgbot.KeyAdminMenu, *b.Menu); err != nil {
+				return err
+			}
+			details["menu"] = true
 		}
 		return nil
 	})

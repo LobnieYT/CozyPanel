@@ -135,6 +135,8 @@
       "bad_json": "Not JSON",
       "bad_backup": "Not a Cozy backup or a broken one",
       "backup_too_big": "File over 2 GB",
+      "bad_image": "Need a jpeg or png under 2 MB",
+      "no_data_dir": "Data dir unknown",
       "bad_request": "Bad request",
       "invalid": "Check the entered data",
       "account_closed": "Account disabled or expired",
@@ -553,7 +555,13 @@
     "saving": "saving…",
     "noteLabel": "Note about the user",
     "notePlaceholder": "E.g.: pays via Telegram, renew on the 1st",
-    "noteSaved": "Note saved"
+    "noteSaved": "Note saved",
+    "avatar": {
+      "upload": "Upload photo",
+      "replace": "Replace photo",
+      "tooBig": "Photo must be under 2 MB",
+      "badType": "Need a jpeg or png"
+    }
   },
   "tariffs": {
     "subtitle": "Templates for granting access in one click. Changing a plan does not touch subscriptions already issued.",
@@ -1300,7 +1308,44 @@
     "broadcastSent": "Queued: {n}",
     "broadcasting": "broadcasting: {done} of {total}",
     "broadcastOff": "The bot is not running — no broadcast",
-    "broadcastHint": "Only linked chats get it"
+    "broadcastHint": "Only linked chats get it",
+    "menu": {
+      "title": "Menu & texts",
+      "sub": "Buttons under the bot's message and the menu and help texts",
+      "showButton": "Show “{name}”",
+      "buttonLabel": "Button label",
+      "sameRow": "same row as the previous one",
+      "action": "Action",
+      "buttonUrl": "Button link",
+      "pageText": "Page text",
+      "pagePlaceholder": "E.g. rules, contacts, payment details",
+      "addLink": "Link button",
+      "addPage": "Text page",
+      "newLink": "🔗 Link",
+      "newPage": "📄 Page",
+      "moveUp": "Up",
+      "moveDown": "Down",
+      "deleteButton": "Delete “{name}”",
+      "lang": "Bot language",
+      "langHint": "Language of the built-in labels. Button labels change in the list above",
+      "textMenu": "Menu text",
+      "textHelp": "Help text",
+      "textsHint": "Empty field — the built-in text",
+      "save": "Save menu",
+      "saved": "Menu saved",
+      "reset": "Reset to built-in",
+      "actionLabel": {
+        "stats": "Statistics",
+        "find": "Find a user",
+        "nodes": "Nodes",
+        "broadcast": "Broadcast",
+        "requests": "Requests",
+        "unlink": "Unlink",
+        "help": "Help",
+        "url": "Custom link",
+        "page": "Custom text page"
+      }
+    }
   },
   "apiPage": {
     "title": "API",

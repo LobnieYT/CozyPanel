@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bot, ChevronLeft, Link2, Megaphone, Send, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Bot, ChevronLeft, Link2, Megaphone, Plus, Send, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { basePath, csrf } from "../../api/client";
 import { meQuery, qk, useNodes } from "../../api/hooks";
@@ -11,6 +11,7 @@ import { Button, Field, PageHeader, Pill, Segmented, Skeleton } from "../../comp
 import { Switch } from "../../components/switch";
 import { t, tMaybe } from "../../i18n";
 import { ago } from "../../lib/format";
+import { useDraft } from "../../lib/draft";
 
 type RouteMode = "direct" | "node" | "proxy";
 
@@ -35,9 +36,29 @@ type AdminBotView = {
   route: { mode: RouteMode; node_id?: number; proxy?: string };
   broadcast?: { total: number; sent: number; failed: number; started: number; active: boolean };
   mini_app_url?: string;
+  menu?: AdminBotMenu;
+  menu_defaults?: AdminBotMenu;
 };
 
 type JoinRequest = { tg_id: number; username: string; first_name: string; login: string; requested_at: string };
+
+type AdminBotAction = "stats" | "find" | "nodes" | "broadcast" | "requests" | "unlink" | "help" | "url" | "page";
+
+type AdminBotMenuButton = {
+  id: string;
+  action: AdminBotAction;
+  label: string;
+  on: boolean;
+  row: boolean;
+  url?: string;
+  text?: string;
+};
+
+type AdminBotMenu = {
+  lang: "ru" | "en";
+  buttons: AdminBotMenuButton[];
+  texts: { menu: string; help: string };
+};
 
 async function raw(path: string, init?: RequestInit): Promise<Response> {
   // Absolute paths ignore the <base href="/<secret>/"> the server injects: without the
@@ -155,6 +176,7 @@ function AdminBotBody({ v }: { v: AdminBotView }) {
           <SetupCard v={v} />
           <LinkCodeCard />
           <BroadcastCard v={v} />
+          <MenuTextsCard v={v} />
         </>
       }
       right={
@@ -506,6 +528,139 @@ function BroadcastCard({ v }: { v: AdminBotView }) {
           <Send size={16} aria-hidden /> {t("adminBot.broadcastButton")}
         </Button>
         <span className="text-xs text-[var(--ink-500)]">{busy ? t("adminBot.broadcasting", { done: v.broadcast!.sent, total: v.broadcast!.total }) : !v.running ? t("adminBot.broadcastOff") : t("adminBot.broadcastHint")}</span>
+      </div>
+    </section>
+  );
+}
+
+const ADMIN_BOT_ACTIONS: AdminBotAction[] = ["stats", "find", "nodes", "broadcast", "requests", "unlink", "help", "url", "page"];
+
+function adminActionLabel(a: string): string {
+  return tMaybe(`adminBot.menu.actionLabel.${a}`) ?? a;
+}
+
+/**
+ * The admin bot's menu and texts, mirroring the user bot's Menu&Texts tab: buttons
+ * with on/off, labels, row toggles, action select and url/text fields, plus the lang
+ * and the two texts. Saved with PATCH {menu}; the view is refetched on success.
+ */
+function MenuTextsCard({ v }: { v: AdminBotView }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const fallback: AdminBotMenu = { lang: "ru", buttons: [], texts: { menu: "", help: "" } };
+  const source = v.menu ?? v.menu_defaults ?? fallback;
+  const { draft, setDraft, dirty, reset } = useDraft<AdminBotMenu>(source);
+  const save = useMutation({
+    mutationFn: async () => patchView({ menu: draft }),
+    onSuccess: (next) => {
+      qc.setQueryData(VIEW_KEY, next);
+      toast.ok(t("adminBot.menu.saved"));
+      void qc.invalidateQueries({ queryKey: VIEW_KEY });
+    },
+    onError: (e) => toast.error(failText(e)),
+  });
+  const set = (i: number, patch: Partial<AdminBotMenuButton>) => setDraft({ ...draft, buttons: draft.buttons.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+  const move = (i: number, d: -1 | 1) => {
+    const list = [...draft.buttons];
+    [list[i], list[i + d]] = [list[i + d]!, list[i]!];
+    setDraft({ ...draft, buttons: list });
+  };
+  const add = (action: "url" | "page") => {
+    setDraft({
+      ...draft,
+      buttons: [...draft.buttons, { id: `c${Date.now().toString(36)}`, action, label: action === "url" ? t("adminBot.menu.newLink") : t("adminBot.menu.newPage"), on: true, row: false, url: action === "url" ? "https://" : undefined, text: action === "page" ? "" : undefined }],
+    });
+  };
+  const custom = (b: AdminBotMenuButton) => b.action === "url" || b.action === "page";
+  if (!v.menu && !v.menu_defaults) return null;
+  return (
+    <section className="card glass reveal">
+      <div className="card-head">
+        <div>
+          <h2 className="card-title">{t("adminBot.menu.title")}</h2>
+          <div className="card-sub">{t("adminBot.menu.sub")}</div>
+        </div>
+        {v.menu_defaults ? (
+          <Button size="sm" variant="ghost" onClick={() => setDraft(v.menu_defaults!)} disabled={save.isPending}>
+            {t("adminBot.menu.reset")}
+          </Button>
+        ) : null}
+      </div>
+      <Field label={t("adminBot.menu.lang")} hint={t("adminBot.menu.langHint")}>
+        <Segmented
+          label={t("adminBot.menu.lang")}
+          value={draft.lang}
+          onChange={(lang) => setDraft({ ...draft, lang })}
+          options={[
+            { value: "ru", label: "Русский" },
+            { value: "en", label: "English" },
+          ]}
+        />
+      </Field>
+      <ul className="flex flex-col gap-2">
+        {draft.buttons.map((b, i) => (
+          <li key={b.id} className="panel-soft p-3">
+            <div className="flex items-center gap-2">
+              <Switch checked={b.on} label={t("adminBot.menu.showButton", { name: b.label })} onChange={(on) => set(i, { on })} />
+              <input className="input h-10 min-w-0 flex-1" value={b.label} maxLength={40} onChange={(e) => set(i, { label: e.target.value })} aria-label={t("adminBot.menu.buttonLabel")} />
+              <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(i, -1)} aria-label={t("adminBot.menu.moveUp")}>
+                <ArrowUp size={16} />
+              </button>
+              <button type="button" className="icon-btn" disabled={i === draft.buttons.length - 1} onClick={() => move(i, 1)} aria-label={t("adminBot.menu.moveDown")}>
+                <ArrowDown size={16} />
+              </button>
+              {custom(b) ? (
+                <button type="button" className="icon-btn" onClick={() => setDraft({ ...draft, buttons: draft.buttons.filter((_, j) => j !== i) })} aria-label={t("adminBot.menu.deleteButton", { name: b.label })}>
+                  <Trash2 size={16} />
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select className="input h-10 max-w-[240px]" value={b.action} onChange={(e) => set(i, { action: e.target.value as AdminBotAction })} aria-label={t("adminBot.menu.action")}>
+                {ADMIN_BOT_ACTIONS.map((a) => (
+                  <option key={a} value={a}>
+                    {adminActionLabel(a)}
+                  </option>
+                ))}
+              </select>
+              {i > 0 ? (
+                <label className="flex items-center gap-1.5 text-xs text-[var(--ink-500)]">
+                  <input type="checkbox" className="check" checked={b.row} onChange={(e) => set(i, { row: e.target.checked })} /> {t("adminBot.menu.sameRow")}
+                </label>
+              ) : null}
+            </div>
+            {b.action === "url" ? <input className="input mono mt-2" value={b.url ?? ""} onChange={(e) => set(i, { url: e.target.value })} placeholder="https://… / tg://…" aria-label={t("adminBot.menu.buttonUrl")} /> : null}
+            {b.action === "page" ? (
+              <textarea className="input mt-2" value={b.text ?? ""} maxLength={3000} onChange={(e) => set(i, { text: e.target.value })} placeholder={t("adminBot.menu.pagePlaceholder")} aria-label={t("adminBot.menu.pageText")} />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="chip-btn" onClick={() => add("url")} disabled={draft.buttons.length >= 20}>
+          <Plus size={14} className="mr-1 inline" aria-hidden />
+          {t("adminBot.menu.addLink")}
+        </button>
+        <button type="button" className="chip-btn" onClick={() => add("page")} disabled={draft.buttons.length >= 20}>
+          <Plus size={14} className="mr-1 inline" aria-hidden />
+          {t("adminBot.menu.addPage")}
+        </button>
+      </div>
+      <Field label={t("adminBot.menu.textMenu")} htmlFor="ab-text-menu" hint={t("adminBot.menu.textsHint")}>
+        <textarea id="ab-text-menu" className="input" rows={3} maxLength={3000} value={draft.texts.menu} placeholder={v.menu_defaults?.texts.menu ?? ""} onChange={(e) => setDraft({ ...draft, texts: { ...draft.texts, menu: e.target.value } })} />
+      </Field>
+      <Field label={t("adminBot.menu.textHelp")} htmlFor="ab-text-help" hint={t("adminBot.menu.textsHint")}>
+        <textarea id="ab-text-help" className="input" rows={3} maxLength={3000} value={draft.texts.help} placeholder={v.menu_defaults?.texts.help ?? ""} onChange={(e) => setDraft({ ...draft, texts: { ...draft.texts, help: e.target.value } })} />
+      </Field>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()}>
+          {t("adminBot.menu.save")}
+        </Button>
+        {dirty ? (
+          <Button variant="ghost" onClick={reset}>
+            {t("telegram.discard")}
+          </Button>
+        ) : null}
       </div>
     </section>
   );
