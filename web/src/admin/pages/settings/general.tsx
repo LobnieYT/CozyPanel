@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { RefreshCw } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { api, errorText, unwrap, type Schemas } from "../../../api/client";
+import { ApiError, api, basePath, csrf, errorText, unwrap, type Schemas } from "../../../api/client";
 import { qk, useGrants, useUpdates } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { StaleNotice } from "../../../components/query";
@@ -256,6 +256,128 @@ export function UpdatesCard() {
         loading={request.isPending}
         onConfirm={() => request.mutate()}
       />
+    </section>
+  );
+}
+
+/** Extra settings fields the generated TS types do not know yet (schema.d.ts is frozen). */
+type MonitorExtra = {
+  alert_enabled?: boolean;
+  alert_cpu_percent?: number;
+  alert_mem_percent?: number;
+  alert_minutes?: number;
+  alert_cooldown_hours?: number;
+};
+
+async function patchSettingsRaw(body: Record<string, unknown>): Promise<Schemas["SettingsView"]> {
+  // Absolute paths ignore the <base href="/<secret>/"> the server injects: without the
+  // prefix the request lands on the domain root, where nothing is mounted (404).
+  const res = await fetch(basePath + "/api/v1/settings", {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...(csrf() ? { "X-CSRF-Token": csrf() } : {}) },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let data: unknown = undefined;
+    try {
+      data = await res.json();
+    } catch {
+      /* keep generic */
+    }
+    throw new ApiError(res.status, data);
+  }
+  return (await res.json()) as Schemas["SettingsView"];
+}
+
+/** Load alerts the admin bot sends when a node runs hot: thresholds and quiet times. */
+export function MonitoringCard({ s }: { s: Schemas["SettingsView"] }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { can } = useGrants();
+  const writable = can("settings", true);
+  const extra = s as unknown as MonitorExtra;
+  const { draft: form, setDraft: setForm } = useDraft({
+    cpu: String(extra.alert_cpu_percent ?? 90),
+    mem: String(extra.alert_mem_percent ?? 90),
+    minutes: String(extra.alert_minutes ?? 10),
+    cooldown: String(extra.alert_cooldown_hours ?? 6),
+  });
+  const save = useMutation({
+    mutationFn: patchSettingsRaw,
+    onSuccess: (data) => {
+      qc.setQueryData(qk.settings, data);
+      toast.ok(t("settings.monitoring.saved"));
+    },
+    onError: (e) => {
+      if (!(e instanceof ApiError && Object.keys(e.fields).length)) toast.error(errorText(e));
+    },
+  });
+  const errors = fieldErrors(save.error);
+  const toggle = useMutation({
+    mutationFn: patchSettingsRaw,
+    onSuccess: (data) => {
+      qc.setQueryData(qk.settings, data);
+      toast.ok(t("settings.monitoring.saved"));
+    },
+    onError: (e) => toast.error(errorText(e)),
+  });
+  const cpu = Number(form.cpu);
+  const mem = Number(form.mem);
+  const minutes = Number(form.minutes);
+  const cooldown = Number(form.cooldown);
+  const valid =
+    Number.isInteger(cpu) && cpu >= 50 && cpu <= 100 && Number.isInteger(mem) && mem >= 50 && mem <= 100 && Number.isInteger(minutes) && minutes >= 1 && minutes <= 60 && Number.isInteger(cooldown) && cooldown >= 1 && cooldown <= 72;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!valid || !writable) return;
+    save.mutate({ alert_cpu_percent: cpu, alert_mem_percent: mem, alert_minutes: minutes, alert_cooldown_hours: cooldown });
+  };
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value.replace(/[^0-9]/g, "") }));
+  const enabled = extra.alert_enabled ?? false;
+  return (
+    <section id="monitoring" className="card glass reveal" style={{ "--i": 5 } as React.CSSProperties}>
+      <div className="card-head">
+        <div>
+          <h2 className="card-title">{t("settings.monitoring.title")}</h2>
+          <div className="card-sub">{t("settings.monitoring.sub")}</div>
+        </div>
+      </div>
+      <ul className="row-list">
+        <li className="flex items-start justify-between gap-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium">{t("settings.monitoring.enabled")}</div>
+            <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.monitoring.enabledHint")}</div>
+          </div>
+          <Switch checked={enabled} label={t("settings.monitoring.enabled")} disabled={toggle.isPending || !writable} onChange={(v) => writable && toggle.mutate({ alert_enabled: v })} />
+        </li>
+      </ul>
+      <form onSubmit={submit} noValidate>
+        <div className="grid gap-x-3 sm:grid-cols-2">
+          <Field label={t("settings.monitoring.cpu")} htmlFor="m-cpu" hint={t("settings.monitoring.cpuHint")} error={errors.alert_cpu_percent}>
+            <input id="m-cpu" className="input mono max-w-[120px]" inputMode="numeric" value={form.cpu} onChange={set("cpu")} aria-invalid={!!errors.alert_cpu_percent} />
+          </Field>
+          <Field label={t("settings.monitoring.mem")} htmlFor="m-mem" hint={t("settings.monitoring.memHint")} error={errors.alert_mem_percent}>
+            <input id="m-mem" className="input mono max-w-[120px]" inputMode="numeric" value={form.mem} onChange={set("mem")} aria-invalid={!!errors.alert_mem_percent} />
+          </Field>
+          <Field label={t("settings.monitoring.minutes")} htmlFor="m-min" hint={t("settings.monitoring.minutesHint")} error={errors.alert_minutes}>
+            <input id="m-min" className="input mono max-w-[120px]" inputMode="numeric" value={form.minutes} onChange={set("minutes")} aria-invalid={!!errors.alert_minutes} />
+          </Field>
+          <Field label={t("settings.monitoring.cooldown")} htmlFor="m-cool" hint={t("settings.monitoring.cooldownHint")} error={errors.alert_cooldown_hours}>
+            <input id="m-cool" className="input mono max-w-[120px]" inputMode="numeric" value={form.cooldown} onChange={set("cooldown")} aria-invalid={!!errors.alert_cooldown_hours} />
+          </Field>
+        </div>
+        {!valid ? (
+          <p className="mb-3 text-xs text-[var(--berry-600)]" role="alert">
+            {t("settings.monitoring.invalid")}
+          </p>
+        ) : null}
+        {writable ? (
+          <Button type="submit" variant="primary" loading={save.isPending} disabled={!valid}>
+            {t("common.save")}
+          </Button>
+        ) : null}
+      </form>
     </section>
   );
 }

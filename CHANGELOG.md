@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.0
+### en
+- Users section in the admin bot: list with state filters and counts, full-text search, rich cards (traffic, term, online, devices, tariff), extend variants (days, billing months, exact date, forever), enable/disable, traffic reset, reissue and delete with confirms, device limit, tariff switch, inbounds toggle, note/contact edits, Telegram unlink, pools and packages readout, per-key links behind a warning tap, avatars. Plus /users list and guided /new creation.
+- Resource alerts: the bot writes linked admins when a node (panel host included) holds CPU or RAM over the threshold — 90% for 5 minutes by default, repeat at most every 6 hours, recovery notice on return to normal. Thresholds in settings.
+
+### ru
+- Раздел пользователей в админ-боте: список с фильтрами и счётчиками, полнотекстовый поиск, богатые карточки (трафик, срок, онлайн, устройства, тариф), продление вариантами (дни, месяцы, дата, бессрочно), вкл/выкл, сброс трафика, перевыпуск и удаление с подтверждениями, лимит устройств, смена тарифа, тумблер подключений, правки заметки/контакта, отвязка TG, чтение пулов и пакетов, ссылки по тапу с варнингом, аватарки. Плюс список /users и guided-создание /new.
+- Алерты ресурсов: бот пишет привязанным админам, когда нода (включая хост панели) держит CPU или RAM выше порога — по умолчанию 90% пять минут, повтор не чаще шести часов, нотис о возврате в норму. Пороги в настройках.
+
 ## 1.2.9
 ### en
 - Import strategy pills show the pressed choice; the nav highlights exactly one section even with search in the address.

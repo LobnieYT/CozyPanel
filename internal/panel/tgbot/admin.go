@@ -24,6 +24,7 @@ import (
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store"
 	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subs"
 )
 
 // The admin bot is a second, separate bot with its own token: the panel in
@@ -66,6 +67,12 @@ type AdminDeps struct {
 	}
 	Now    func() time.Time
 	Limits Limits // zero: DefaultLimits
+	// SubBase is https://host:port/<sub path> for subscription links.
+	SubBase func(ctx context.Context) string
+	// SubConfig builds the subscription config for per-key links.
+	SubConfig func(ctx context.Context) (subs.Config, error)
+	// DataDir holds user avatars.
+	DataDir string
 	// Tunnel reaches addr through node id, for RouteNode; nil: the panel has no nodes.
 	Tunnel func(ctx context.Context, nodeID int64, addr string) (net.Conn, error)
 }
@@ -88,6 +95,8 @@ type AdminBot struct {
 	// Awaiting free text: chat → what the next message answers ("find",
 	// "broadcast"). Two-step menu buttons set it; any command clears it.
 	awaiting map[int64]awaitKind
+	// Pending user creates: chat → name/contact waiting for a tariff tap.
+	creating map[int64]createState
 
 	running sync.WaitGroup
 }
@@ -110,6 +119,13 @@ type awaitKind struct {
 	at   time.Time
 }
 
+// createState is a user being created: name/contact wait for a tariff tap.
+type createState struct {
+	name    string
+	contact string
+	at      time.Time
+}
+
 func NewAdminBot(d AdminDeps) *AdminBot {
 	if d.API == "" {
 		d.API = DefaultAPI
@@ -117,7 +133,7 @@ func NewAdminBot(d AdminDeps) *AdminBot {
 	if d.Limits == (Limits{}) {
 		d.Limits = DefaultLimits
 	}
-	return &AdminBot{d: d, reload: make(chan struct{}, 1), input: map[int64][]time.Time{}, requests: map[int64]adminRequest{}, pending: map[int64]string{}, awaiting: map[int64]awaitKind{}}
+	return &AdminBot{d: d, reload: make(chan struct{}, 1), input: map[int64][]time.Time{}, requests: map[int64]adminRequest{}, pending: map[int64]string{}, awaiting: map[int64]awaitKind{}, creating: map[int64]createState{}}
 }
 
 // Status of the running admin bot.
@@ -682,6 +698,27 @@ func (b *AdminBot) MiniAppURL(ctx context.Context) string {
 		return ""
 	}
 	return base + "/tg"
+}
+
+// NotifyAdmins sends one text to every linked admin chat, outside the
+// broadcast progress counters.
+func (b *AdminBot) NotifyAdmins(text string) {
+	out := b.out.Load()
+	if out == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	targets, err := b.adminTargets(ctx)
+	if err != nil {
+		return
+	}
+	for _, chat := range targets {
+		out.Bulk(chat, func(ctx context.Context, c *Client) error {
+			_, err := c.Send(ctx, chat, text, nil, false)
+			return err
+		}, func(err error) {})
+	}
 }
 
 // NotifyChat queues a service message; silently dropped while the bot is off.

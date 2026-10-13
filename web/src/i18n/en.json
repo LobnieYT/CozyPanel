@@ -959,6 +959,22 @@
     "certOwnNote": "Renewed by your own tools: the panel picks a new file up without a restart.",
     "certOwnButton": "Own certificate",
     "certReplace": "Replace",
+    "monitoring": {
+      "title": "Monitoring",
+      "sub": "The admin bot writes when a node's CPU or RAM stays high",
+      "enabled": "Warn about load",
+      "enabledHint": "Writes to linked admins when the excess lasts longer than the minutes below.",
+      "cpu": "CPU threshold, %",
+      "cpuHint": "50–100.",
+      "mem": "RAM threshold, %",
+      "memHint": "50–100.",
+      "minutes": "Hold excess, min",
+      "minutesHint": "1–60: how many minutes in a row the load stays above thresholds.",
+      "cooldown": "Repeat pause, h",
+      "cooldownHint": "1–72: repeat per node no more often.",
+      "saved": "Monitoring saved",
+      "invalid": "Check the numbers: CPU and RAM 50–100, minutes 1–60, pause 1–72"
+    },
     "tabs": {
       "general": "General",
       "subscription": "Subscription",
@@ -1309,6 +1325,8 @@
     "broadcasting": "broadcasting: {done} of {total}",
     "broadcastOff": "The bot is not running — no broadcast",
     "broadcastHint": "Only linked chats get it",
+    "monitorLink": "Tune thresholds",
+    "monitorSub": "CPU and RAM thresholds live in settings, “General”",
     "menu": {
       "title": "Menu & texts",
       "sub": "Buttons under the bot's message and the menu and help texts",

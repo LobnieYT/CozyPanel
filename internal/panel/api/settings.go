@@ -14,6 +14,7 @@ import (
 	"cozy/internal/panel/acme"
 	"cozy/internal/panel/dnscheck"
 	"cozy/internal/panel/domain"
+	"cozy/internal/panel/nodealert"
 	"cozy/internal/panel/secure"
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store/db"
@@ -22,26 +23,31 @@ import (
 )
 
 type SettingsView struct {
-	Brand        string   `json:"brand"`
-	SupportURL   string   `json:"support_url"`
-	PayContact   string   `json:"pay_contact" doc:"Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст"`
-	PublicHost   string   `json:"public_host"`
-	Domain       string   `json:"domain"`
-	PanelPort    int      `json:"panel_port"`
-	SubPort      int      `json:"sub_port" doc:"Отдельный порт подписок; 0 — порт панели. Порт панели отдаёт подписки в любом случае"`
-	SubPortError string   `json:"sub_port_error,omitempty" doc:"sub_port_busy — сохранённый порт занят на сервере, подписки пока идут через порт панели"`
-	QuietHourUTC int      `json:"quiet_hour_utc" doc:"Час (UTC), когда пополняется пул слотов: переподключение QUIC-клиентов"`
-	AdminURL     string   `json:"admin_url"`
-	SubBaseURL   string   `json:"sub_base_url"`
-	SubGroupMain string   `json:"sub_group_main" doc:"Главная группа в Clash-приложениях"`
-	SubGroupAuto string   `json:"sub_group_auto" doc:"Группа автовыбора самого быстрого подключения"`
-	SubRules     string   `json:"sub_rules" doc:"Свои правила Clash: по строке TYPE,VALUE,TARGET[,no-resolve]; # — комментарий"`
-	RuleTargets  []string `json:"rule_targets" doc:"Куда правило может направить трафик: DIRECT, REJECT, REJECT-DROP, PROXY и группы"`
-	SubRouting   string   `json:"sub_routing" enum:"ru_direct,all" doc:"Маршруты в Clash-приложениях: ru_direct — российские сайты и IP напрямую по геобазам mihomo, all — всё через VPN"`
-	Fingerprint  string   `json:"client_fingerprint" doc:"Отпечаток TLS (uTLS) у клиентов, если у подключения не задан свой: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized или своё значение"`
-	AutoPort     bool     `json:"auto_port" doc:"Переносить подключение на другой порт, если клиенты перестали до него доходить"`
-	AutoSNI      bool     `json:"auto_sni" doc:"Менять сайт маскировки REALITY, если он перестал подходить"`
-	EgressIPv6   bool     `json:"egress_ipv6" doc:"Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода"`
+	Brand         string   `json:"brand"`
+	SupportURL    string   `json:"support_url"`
+	PayContact    string   `json:"pay_contact" doc:"Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст"`
+	PublicHost    string   `json:"public_host"`
+	Domain        string   `json:"domain"`
+	PanelPort     int      `json:"panel_port"`
+	SubPort       int      `json:"sub_port" doc:"Отдельный порт подписок; 0 — порт панели. Порт панели отдаёт подписки в любом случае"`
+	SubPortError  string   `json:"sub_port_error,omitempty" doc:"sub_port_busy — сохранённый порт занят на сервере, подписки пока идут через порт панели"`
+	QuietHourUTC  int      `json:"quiet_hour_utc" doc:"Час (UTC), когда пополняется пул слотов: переподключение QUIC-клиентов"`
+	AdminURL      string   `json:"admin_url"`
+	SubBaseURL    string   `json:"sub_base_url"`
+	SubGroupMain  string   `json:"sub_group_main" doc:"Главная группа в Clash-приложениях"`
+	SubGroupAuto  string   `json:"sub_group_auto" doc:"Группа автовыбора самого быстрого подключения"`
+	SubRules      string   `json:"sub_rules" doc:"Свои правила Clash: по строке TYPE,VALUE,TARGET[,no-resolve]; # — комментарий"`
+	RuleTargets   []string `json:"rule_targets" doc:"Куда правило может направить трафик: DIRECT, REJECT, REJECT-DROP, PROXY и группы"`
+	SubRouting    string   `json:"sub_routing" enum:"ru_direct,all" doc:"Маршруты в Clash-приложениях: ru_direct — российские сайты и IP напрямую по геобазам mihomo, all — всё через VPN"`
+	Fingerprint   string   `json:"client_fingerprint" doc:"Отпечаток TLS (uTLS) у клиентов, если у подключения не задан свой: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized или своё значение"`
+	AutoPort      bool     `json:"auto_port" doc:"Переносить подключение на другой порт, если клиенты перестали до него доходить"`
+	AutoSNI       bool     `json:"auto_sni" doc:"Менять сайт маскировки REALITY, если он перестал подходить"`
+	EgressIPv6    bool     `json:"egress_ipv6" doc:"Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода"`
+	AlertEnabled  bool     `json:"alert_enabled" doc:"Админ-бот пишет привязанным админам, когда у ноды заканчиваются CPU или RAM"`
+	AlertCPU      int      `json:"alert_cpu_percent" doc:"Порог CPU %, держится минутами"`
+	AlertMem      int      `json:"alert_mem_percent" doc:"Порог RAM %, держится минутами"`
+	AlertMinutes  int      `json:"alert_minutes" doc:"Сколько минут подряд держится превышение"`
+	AlertCooldown int      `json:"alert_cooldown_hours" doc:"Повтор по той же ноде не чаще, часов"`
 	// Devices: see domain.Devices.
 	DeviceBinding bool        `json:"device_binding" doc:"Привязывать подписку к устройствам: у каждого устройства свои ключи"`
 	RequireHWID   bool        `json:"device_require_hwid" doc:"Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)"`
@@ -67,6 +73,11 @@ type patchSettingsInput struct {
 		AutoPort      *bool   `json:"auto_port,omitempty"`
 		AutoSNI       *bool   `json:"auto_sni,omitempty"`
 		EgressIPv6    *bool   `json:"egress_ipv6,omitempty"`
+		AlertEnabled  *bool   `json:"alert_enabled,omitempty"`
+		AlertCPU      *int    `json:"alert_cpu_percent,omitempty" minimum:"50" maximum:"100"`
+		AlertMem      *int    `json:"alert_mem_percent,omitempty" minimum:"50" maximum:"100"`
+		AlertMinutes  *int    `json:"alert_minutes,omitempty" minimum:"1" maximum:"60"`
+		AlertCooldown *int    `json:"alert_cooldown_hours,omitempty" minimum:"1" maximum:"72"`
 		DeviceBinding *bool   `json:"device_binding,omitempty"`
 		RequireHWID   *bool   `json:"device_require_hwid,omitempty"`
 		DefaultLang   *string `json:"default_lang,omitempty" enum:"auto,ru,en"`
@@ -150,6 +161,29 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 	}
 	if v.EgressIPv6, err = h.d.Settings.On(ctx, settings.EgressIPv6); err != nil {
 		return v, err
+	}
+	if v.AlertEnabled, err = h.d.Settings.On(ctx, nodealert.Enabled); err != nil {
+		return v, err
+	}
+	if v.AlertCPU, _, err = settings.Get[int](ctx, h.d.Settings, nodealert.KeyCPU); err != nil {
+		return v, err
+	} else if v.AlertCPU == 0 {
+		v.AlertCPU = nodealert.DefCPU
+	}
+	if v.AlertMem, _, err = settings.Get[int](ctx, h.d.Settings, nodealert.KeyMem); err != nil {
+		return v, err
+	} else if v.AlertMem == 0 {
+		v.AlertMem = nodealert.DefMem
+	}
+	if v.AlertMinutes, _, err = settings.Get[int](ctx, h.d.Settings, nodealert.KeyMinutes); err != nil {
+		return v, err
+	} else if v.AlertMinutes == 0 {
+		v.AlertMinutes = nodealert.DefMinutes
+	}
+	if v.AlertCooldown, _, err = settings.Get[int](ctx, h.d.Settings, nodealert.KeyCooldown); err != nil {
+		return v, err
+	} else if v.AlertCooldown == 0 {
+		v.AlertCooldown = nodealert.DefCooldown
 	}
 	if v.DeviceBinding, err = h.d.Settings.On(ctx, settings.DeviceBinding); err != nil {
 		return v, err
@@ -333,8 +367,19 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 				return err
 			}
 		}
+		for key, v := range map[string]*int{
+			nodealert.KeyCPU: b.AlertCPU, nodealert.KeyMem: b.AlertMem,
+			nodealert.KeyMinutes: b.AlertMinutes, nodealert.KeyCooldown: b.AlertCooldown,
+		} {
+			if v == nil {
+				continue
+			}
+			if err := settings.Set(ctx, set, key, *v); err != nil {
+				return err
+			}
+		}
 		for key, v := range map[string]*bool{settings.KeyAutoPort: b.AutoPort, settings.KeyAutoSNI: b.AutoSNI,
-			settings.KeyDeviceBinding: b.DeviceBinding, settings.KeyRequireHWID: b.RequireHWID, settings.KeyEgressIPv6: b.EgressIPv6} {
+			settings.KeyDeviceBinding: b.DeviceBinding, settings.KeyRequireHWID: b.RequireHWID, settings.KeyEgressIPv6: b.EgressIPv6, nodealert.KeyEnabled: b.AlertEnabled} {
 			if v != nil {
 				if err := settings.Set(ctx, set, key, *v); err != nil {
 					return err

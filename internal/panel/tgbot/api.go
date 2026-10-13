@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -178,6 +181,66 @@ func (c *Client) Send(ctx context.Context, chat int64, text string, kb *Keyboard
 	}
 	err := c.call(ctx, "sendMessage", in, &m)
 	return m, err
+}
+
+// SendPhoto posts a picture with an optional caption. Photo bytes cannot ride
+// the JSON calls: multipart it is.
+func (c *Client) SendPhoto(ctx context.Context, chat int64, caption string, raw []byte) (Message, error) {
+	var m Message
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	if err := mw.WriteField("chat_id", strconv.FormatInt(chat, 10)); err != nil {
+		return m, err
+	}
+	if caption != "" {
+		if err := mw.WriteField("caption", caption); err != nil {
+			return m, err
+		}
+		if err := mw.WriteField("parse_mode", "HTML"); err != nil {
+			return m, err
+		}
+	}
+	fw, err := mw.CreateFormFile("photo", "avatar.jpg")
+	if err != nil {
+		return m, err
+	}
+	if _, err := fw.Write(raw); err != nil {
+		return m, err
+	}
+	if err := mw.Close(); err != nil {
+		return m, err
+	}
+	timeout := c.callTimeout
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(tctx, http.MethodPost, c.base+"/bot"+c.token+"/sendPhoto", &buf)
+	if err != nil {
+		return m, err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return m, ErrUnreachable
+	}
+	defer resp.Body.Close()
+	var r struct {
+		OK          bool            `json:"ok"`
+		Result      json.RawMessage `json:"result"`
+		ErrorCode   int             `json:"error_code"`
+		Description string          `json:"description"`
+	}
+	if data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)); err != nil {
+		return m, ErrUnreachable
+	} else if err := json.Unmarshal(data, &r); err != nil {
+		return m, ErrUnreachable
+	}
+	if !r.OK {
+		return m, &APIError{Code: r.ErrorCode, Description: r.Description}
+	}
+	if err := json.Unmarshal(r.Result, &m); err != nil {
+		return m, err
+	}
+	return m, nil
 }
 
 // Edit replaces a message's text and buttons. An edit to the same content is not an error.

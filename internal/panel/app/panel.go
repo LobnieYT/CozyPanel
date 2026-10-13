@@ -24,6 +24,7 @@ import (
 	"cozy/internal/panel/dnscheck"
 	"cozy/internal/panel/domain"
 	"cozy/internal/panel/netcfg"
+	"cozy/internal/panel/nodealert"
 	"cozy/internal/panel/nodesync"
 	"cozy/internal/panel/server"
 	"cozy/internal/panel/settings"
@@ -44,6 +45,7 @@ type Panel struct {
 	Tuner     *autotune.Tuner // nil without nodes
 	Telegram  *tgbot.Bot
 	AdminBot  *tgbot.AdminBot
+	Alerts    *nodealert.Watcher
 	Updates   *updates.Checker
 	server    *server.Server
 	spa       *server.SPA
@@ -181,34 +183,6 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		// Telegram apps refuse a Mini App on a self-signed certificate.
 		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" }, Tunnel: tunnel})
 	deps.Telegram = p.Telegram
-	p.AdminBot = tgbot.NewAdminBot(tgbot.AdminDeps{Store: st, Settings: set, Users: deps.Users, Devices: deps.Devices,
-		Online: deps.Online, Health: func(id int64) (bool, string) {
-			if p.Nodes == nil {
-				return false, ""
-			}
-			h, ok := p.Nodes.Health(id)
-			if !ok {
-				return false, ""
-			}
-			return h.OK, h.Error
-		},
-		AdminBase: func(ctx context.Context) string {
-			ep, err := set.Endpoint(ctx)
-			if err != nil {
-				return ""
-			}
-			paths, err := set.Paths(ctx)
-			if err != nil {
-				return ""
-			}
-			if ep.Host == "" || paths.Admin == "" {
-				return ""
-			}
-			return "https://" + net.JoinHostPort(ep.Host, strconv.Itoa(ep.Port)) + "/" + paths.Admin
-		},
-		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" },
-		API:     o.TelegramAPI, Log: o.Log, Now: o.Now, Tunnel: tunnel})
-	deps.AdminBot = p.AdminBot
 	p.Updates = updates.New(o.DataDir, o.Version, o.Releases, o.Log, o.Now)
 	deps.Updates = p.Updates
 	deps.Warp = warp.Client{API: o.WarpAPI}
@@ -313,6 +287,55 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 
 	adminMux := http.NewServeMux()
 	deps.AdminSPA = p.spa
+	p.AdminBot = tgbot.NewAdminBot(tgbot.AdminDeps{Store: st, Settings: set, Users: deps.Users, Devices: deps.Devices,
+		Online: deps.Online, Health: func(id int64) (bool, string) {
+			if p.Nodes == nil {
+				return false, ""
+			}
+			h, ok := p.Nodes.Health(id)
+			if !ok {
+				return false, ""
+			}
+			return h.OK, h.Error
+		},
+		AdminBase: func(ctx context.Context) string {
+			ep, err := set.Endpoint(ctx)
+			if err != nil {
+				return ""
+			}
+			paths, err := set.Paths(ctx)
+			if err != nil {
+				return ""
+			}
+			if ep.Host == "" || paths.Admin == "" {
+				return ""
+			}
+			return "https://" + net.JoinHostPort(ep.Host, strconv.Itoa(ep.Port)) + "/" + paths.Admin
+		},
+		MiniApp: func() bool { return o.Certs != nil && o.Certs.Status().Kind == "letsencrypt" },
+		API:     o.TelegramAPI, Log: o.Log, Now: o.Now, Tunnel: tunnel,
+		SubBase: subBase, SubConfig: subCfg, DataDir: o.DataDir})
+	deps.AdminBot = p.AdminBot
+	p.Alerts = nodealert.New(nodealert.Deps{Store: st, Settings: set, Now: o.Now, Log: o.Log,
+		Health: func(id int64) (nodesync.HealthView, bool) {
+			if p.Nodes == nil {
+				return nodesync.HealthView{}, false
+			}
+			return p.Nodes.Health(id)
+		},
+		Nodes: func(ctx context.Context) ([]nodealert.Node, error) {
+			rows, err := st.Q.ListNodes(ctx)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]nodealert.Node, 0, len(rows))
+			for _, n := range rows {
+				out = append(out, nodealert.Node{ID: n.ID, Name: n.Name, Enabled: n.Enabled != 0})
+			}
+			return out, nil
+		},
+		Notify: func(ctx context.Context, text string) { p.AdminBot.NotifyAdmins(text) },
+	})
 	apiHandler, _, err := api.New(deps)
 	if err != nil {
 		return nil, err
@@ -365,7 +388,7 @@ func (p *Panel) Run(ctx context.Context) {
 	if p.Tuner != nil {
 		workers = append(workers, p.Tuner.Run)
 	}
-	workers = append(workers, p.Telegram.Run, p.AdminBot.Run, p.Updates.Run,
+	workers = append(workers, p.Telegram.Run, p.AdminBot.Run, p.Alerts.Run, p.Updates.Run,
 		func(ctx context.Context) {
 			every(ctx, 5*time.Second, func() {
 				if _, err := p.Apply(ctx); err != nil {

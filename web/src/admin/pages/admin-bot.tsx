@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Bot, ChevronLeft, Link2, Megaphone, Plus, Send, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Bot, ChevronLeft, ChevronRight, Link2, Megaphone, Plus, Send, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { basePath, csrf } from "../../api/client";
 import { meQuery, qk, useNodes } from "../../api/hooks";
@@ -173,6 +173,7 @@ function AdminBotBody({ v }: { v: AdminBotView }) {
       left={
         <>
           <StatusCard v={v} />
+          <MonitorCard />
           <SetupCard v={v} />
           <LinkCodeCard />
           <BroadcastCard v={v} />
@@ -243,8 +244,24 @@ function StatusCard({ v }: { v: AdminBotView }) {
   );
 }
 
-function SetupCard({ v }: { v: AdminBotView }) {
-  const qc = useQueryClient();
+/** Load alerts live here too: thresholds live in settings, this is just a link. */
+function MonitorCard() {
+  return (
+    <section className="card glass reveal">
+      <div className="card-head">
+        <div>
+          <h2 className="card-title">{t("settings.monitoring.title")}</h2>
+          <div className="card-sub">{t("adminBot.monitorSub")}</div>
+        </div>
+        <Link to="/settings" search={{ tab: "general" }} hash="monitoring" className="btn btn-glass btn-sm">
+          {t("adminBot.monitorLink")} <ChevronRight size={16} aria-hidden />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function SetupCard({ v }: { v: AdminBotView }) {  const qc = useQueryClient();
   const toast = useToast();
   const nodes = useNodes();
   const [token, setToken] = useState("");

@@ -43,7 +43,29 @@ type adminWords struct {
 	noBound                           string
 	disableVerb, enableVerb           string
 	extendVerb, resetVerb, unbindVerb string
+	deleteVerb, reissueVerb           string
+	tariffVerb, tgunlinkVerb          string
+	foreverVerb                       string
 	unknown                           string
+	usersTitle                        string
+	trToday, trWeek                   string
+	fAll, fActive, fExpiring          string
+	fLimited, fExpired, fDisabled     string
+	back                              string
+	moreActions                       string
+	newAskName, newAskContact         string
+	newAskTariff, userCreated         string
+	dateAsk, dateBad                  string
+	billAsk, billBad                  string
+	linkWarn, keysWarn                string
+	linkTitle, keysTitle              string
+	noKeys, noTg                      string
+	tariffPick, limitPick             string
+	expPick, inbPick                  string
+	inbEmpty, avatarNone              string
+	poolsTitle, grantsTitle           string
+	noteAsk, contactAsk               string
+	applied                           string
 }
 
 func adminText(lang string) adminWords {
@@ -51,7 +73,7 @@ func adminText(lang string) adminWords {
 		return adminWords{
 			commands:        "Панель",
 			menuApp:         "Панель",
-			help:            "Команды:\n/stats — сводка\n/user «имя» — найти подписку\n/nodes — ноды\n/unlink — отвязать этот чат",
+			help:            "Команды:\n/stats — сводка\n/users — список\n/user «имя» — найти подписку\n/new — новый пользователь\n/nodes — ноды\n/unlink — отвязать этот чат",
 			helpOwner:       "\n/broadcast «текст» — всем привязанным админам",
 			needLink:        "Этот чат не привязан. Отправьте /start — владелец подтвердит заявку.",
 			askLogin:        "Пришлите ваш логин администратора — владелец подтвердит заявку.",
@@ -94,13 +116,54 @@ func adminText(lang string) adminWords {
 			extendVerb:      "Продлить на 30 дней",
 			resetVerb:       "Сбросить трафик",
 			unbindVerb:      "Отвязать устройство",
+			deleteVerb:      "Удалить",
+			foreverVerb:     "Бессрочно",
+			reissueVerb:     "Перевыпустить",
+			tariffVerb:      "Сменить тариф",
+			tgunlinkVerb:    "Отвязать TG",
 			unknown:         "Не понял. /help — команды.",
+			usersTitle:      "Пользователи",
+			trToday:         "Сегодня: ↑{up} ↓{down}",
+			trWeek:          "7 дней: ↑{up} ↓{down} {bars}",
+			fAll:            "Все",
+			fActive:         "Активные",
+			fExpiring:       "Истекают",
+			fLimited:        "Лимит",
+			fExpired:        "Истекли",
+			fDisabled:       "Выкл",
+			back:            "« Назад",
+			moreActions:     "Ещё действия",
+			newAskName:      "Имя нового пользователя?",
+			newAskContact:   "Контакт? Пришли текст или «-», чтобы пропустить.",
+			newAskTariff:    "Тариф?",
+			userCreated:     "Создан.",
+			dateAsk:         "Дата в виде ДД.ММ.ГГГГ?",
+			dateBad:         "Не понял дату. Нужно ДД.ММ.ГГГГ.",
+			billAsk:         "День оплаты 1–31? Пришли 0, чтобы убрать.",
+			billBad:         "Нужно число 0–31.",
+			linkWarn:        "⚠️ Ссылка останется в истории чата. Показать?",
+			keysWarn:        "⚠️ Ключи останутся в истории чата. Показать?",
+			linkTitle:       "Ссылка подписки",
+			keysTitle:       "Ключи",
+			noKeys:          "Нет подключений со ссылками.",
+			noTg:            "Telegram не привязан.",
+			tariffPick:      "Тариф?",
+			limitPick:       "Лимит устройств?",
+			expPick:         "На сколько продлить?",
+			inbPick:         "Подключения (тап — вкл/выкл):",
+			inbEmpty:        "Нельзя выключить все.",
+			avatarNone:      "Аватарки нет.",
+			poolsTitle:      "Пулы и пакеты",
+			grantsTitle:     "Пакеты",
+			noteAsk:         "Текст заметки?",
+			contactAsk:      "Новый контакт?",
+			applied:         "Готово.",
 		}
 	}
 	return adminWords{
 		commands:        "Panel",
 		menuApp:         "Panel",
-		help:            "Commands:\n/stats — summary\n/user \"name\" — find a subscription\n/nodes — nodes\n/unlink — unlink this chat",
+		help:            "Commands:\n/stats — summary\n/users — list\n/user \"name\" — find a subscription\n/new — new user\n/nodes — nodes\n/unlink — unlink this chat",
 		helpOwner:       "\n/broadcast \"text\" — to every linked admin",
 		needLink:        "This chat is not linked. Send /start — the owner approves requests.",
 		askLogin:        "Send your admin login — the owner approves requests.",
@@ -143,7 +206,48 @@ func adminText(lang string) adminWords {
 		extendVerb:      "Extend 30 days",
 		resetVerb:       "Reset traffic",
 		unbindVerb:      "Unbind device",
+		deleteVerb:      "Delete",
+		foreverVerb:     "Forever",
+		reissueVerb:     "Reissue",
+		tariffVerb:      "Change tariff",
+		tgunlinkVerb:    "Unlink TG",
 		unknown:         "Did not get it. /help for commands.",
+		usersTitle:      "Users",
+		trToday:         "Today: ↑{up} ↓{down}",
+		trWeek:          "7 days: ↑{up} ↓{down} {bars}",
+		fAll:            "All",
+		fActive:         "Active",
+		fExpiring:       "Expiring",
+		fLimited:        "Limited",
+		fExpired:        "Expired",
+		fDisabled:       "Off",
+		back:            "« Back",
+		moreActions:     "More actions",
+		newAskName:      "New user name?",
+		newAskContact:   "Contact? Send text or “-” to skip.",
+		newAskTariff:    "Tariff?",
+		userCreated:     "Created.",
+		dateAsk:         "Date as DD.MM.YYYY?",
+		dateBad:         "Did not get the date. Need DD.MM.YYYY.",
+		billAsk:         "Billing day 1–31? Send 0 to clear.",
+		billBad:         "Need a number 0–31.",
+		linkWarn:        "⚠️ The link stays in chat history. Show?",
+		keysWarn:        "⚠️ Keys stay in chat history. Show?",
+		linkTitle:       "Subscription link",
+		keysTitle:       "Keys",
+		noKeys:          "No linkable connections.",
+		noTg:            "Telegram not linked.",
+		tariffPick:      "Tariff?",
+		limitPick:       "Device limit?",
+		expPick:         "Extend for?",
+		inbPick:         "Connections (tap toggles):",
+		inbEmpty:        "Cannot switch them all off.",
+		avatarNone:      "No avatar.",
+		poolsTitle:      "Pools and packages",
+		grantsTitle:     "Packages",
+		noteAsk:         "Note text?",
+		contactAsk:      "New contact?",
+		applied:         "Done.",
 	}
 }
 
@@ -234,11 +338,18 @@ func (b *AdminBot) onAdminMessage(ctx context.Context, out *Outbox, m *Message) 
 			b.say(out, chat, w.needLink, nil)
 			return
 		}
-		switch what {
+		kind, arg, _ := strings.Cut(what, ":")
+		switch kind {
 		case "find":
 			b.cmdUser(ctx, out, w, chat, admin, text)
 		case "broadcast":
 			b.cmdBroadcast(ctx, out, w, chat, admin, text)
+		case "note", "contact", "expdate", "billday":
+			b.consumeAwait(ctx, out, w, chat, admin, kind, arg, text)
+		case "newname":
+			b.consumeAwait(ctx, out, w, chat, admin, kind, "", text)
+		case "newcontact":
+			b.consumeAwait(ctx, out, w, chat, admin, kind, "", text)
 		default:
 			b.cmdHelp(ctx, out, w, chat)
 		}
@@ -266,6 +377,14 @@ func (b *AdminBot) onAdminMessage(ctx context.Context, out *Outbox, m *Message) 
 		b.cmdBroadcast(ctx, out, w, chat, admin, strings.TrimSpace(strings.TrimPrefix(text, "/broadcast")))
 	case name == "/unlink":
 		b.cmdUnlink(ctx, out, w, chat, admin)
+	case name == "/users":
+		b.cmdUsers(ctx, out, w, chat, admin, "all", 0)
+	case name == "/new":
+		if !b.check(out, w, chat, admin, "users", true) {
+			return
+		}
+		b.awaitAsk(chat, "newname")
+		b.say(out, chat, w.newAskName, nil)
 	default:
 		b.cmdHelp(ctx, out, w, chat)
 	}
@@ -473,6 +592,138 @@ func (b *AdminBot) onAdminPress(ctx context.Context, c *Client, out *Outbox, q *
 			return
 		}
 		b.doBroadcast(ctx, c, out, w, q, chat, admin, parts[2])
+	case "ul":
+		if len(parts) != 4 {
+			return
+		}
+		page, _ := strconv.Atoi(parts[3])
+		b.cmdUsers(ctx, out, w, chat, admin, parts[2], page)
+	case "uf":
+		if len(parts) != 3 {
+			return
+		}
+		b.cmdUsers(ctx, out, w, chat, admin, parts[2], 0)
+	case "ux":
+		if len(parts) != 4 {
+			return
+		}
+		b.userSection(ctx, c, out, w, q, chat, admin, parts[2], parts[3])
+	case "xe":
+		if len(parts) != 3 {
+			return
+		}
+		b.extendView(ctx, out, w, chat, admin, parts[2])
+	case "x":
+		if len(parts) != 4 {
+			return
+		}
+		days, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			return
+		}
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		b.doExtendDays(ctx, out, w, chat, admin, uid, days)
+	case "xm":
+		if len(parts) != 4 {
+			return
+		}
+		m, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			return
+		}
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		b.doExtendMonths(ctx, out, w, chat, admin, uid, m)
+	case "xp":
+		if len(parts) != 4 {
+			return
+		}
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		tid, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			return
+		}
+		u, err := b.d.Users.Get(ctx, uid)
+		if err != nil {
+			b.answer(c, q.ID, w.userNotFound)
+			return
+		}
+		_ = u
+		b.askConfirm(ctx, c, out, w, q, admin, "tariff", strconv.FormatInt(uid, 10)+":"+strconv.FormatInt(tid, 10))
+	case "xl":
+		if len(parts) != 4 {
+			return
+		}
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		b.doLimit(ctx, out, w, chat, admin, uid, parts[3])
+	case "xi":
+		if len(parts) != 4 {
+			return
+		}
+		uid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		inbid, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			return
+		}
+		b.doToggleInbound(ctx, out, w, chat, admin, uid, inbid)
+	case "xn":
+		if len(parts) != 3 {
+			return
+		}
+		tid, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return
+		}
+		b.createFromStash(ctx, out, w, chat, admin, tid)
+	case "xw":
+		if len(parts) != 3 {
+			return
+		}
+		b.revealLinkTap(ctx, c, out, w, q, chat, admin, parts[2])
+	case "xk":
+		if len(parts) != 3 {
+			return
+		}
+		b.revealKeysTap(ctx, c, out, w, q, chat, admin, parts[2])
+	case "xv":
+		if len(parts) != 3 {
+			return
+		}
+		b.avatarTap(ctx, c, out, w, q, chat, admin, parts[2])
+	case "xnote":
+		if len(parts) != 3 {
+			return
+		}
+		b.askFreeText(ctx, c, out, w, q, chat, admin, "note:"+parts[2], w.noteAsk)
+	case "xcontact":
+		if len(parts) != 3 {
+			return
+		}
+		b.askFreeText(ctx, c, out, w, q, chat, admin, "contact:"+parts[2], w.contactAsk)
+	case "xdate":
+		if len(parts) != 3 {
+			return
+		}
+		b.askFreeText(ctx, c, out, w, q, chat, admin, "expdate:"+parts[2], w.dateAsk)
+	case "xbill":
+		if len(parts) != 3 {
+			return
+		}
+		b.askFreeText(ctx, c, out, w, q, chat, admin, "billday:"+parts[2], w.billAsk)
 	default:
 		b.answer(c, q.ID, w.unknown)
 	}
@@ -663,48 +914,6 @@ func (b *AdminBot) cmdUser(ctx context.Context, out *Outbox, w adminWords, chat 
 	b.say(out, chat, text, kb)
 }
 
-func userCardTitle(w adminWords, u db.User) string {
-	return render(w.userTitle, map[string]string{"id": strconv.FormatInt(u.ID, 10), "name": u.Name})
-}
-
-func (b *AdminBot) showUser(ctx context.Context, c *Client, out *Outbox, w adminWords, chat int64, admin db.Admin, u db.User, q *CallbackQuery) {
-	if !b.check(out, w, chat, admin, "users", false) {
-		if q != nil && c != nil {
-			b.answer(c, q.ID, w.noAccess)
-		}
-		return
-	}
-	online := ""
-	if b.onlineOf(ctx, u.ID) {
-		online = "\n🟢 online"
-	}
-	limit := "∞"
-	if u.TrafficLimit.Valid {
-		limit = fmtBytes(u.TrafficLimit.Int64)
-	}
-	text := userCardTitle(w, u) + "\n" + userStateText(u) + " " + esc(u.Contact) +
-		"\n📊 " + fmtBytes(u.UsedUp+u.UsedDown) + " / " + limit +
-		"\n📅 " + fmtDate(u.ExpiresAt.Int64) + online
-	toggle, toggleOp := w.disableVerb, "disable"
-	if u.Status == "disabled" {
-		toggle, toggleOp = w.enableVerb, "enable"
-	}
-	kb := &Keyboard{InlineKeyboard: [][]Button{
-		{{Text: toggle, CallbackData: "ab:cf:" + toggleOp + ":" + strconv.FormatInt(u.ID, 10)},
-			{Text: w.extendVerb, CallbackData: "ab:cf:extend:" + strconv.FormatInt(u.ID, 10)}},
-		{{Text: w.resetVerb, CallbackData: "ab:cf:reset:" + strconv.FormatInt(u.ID, 10)},
-			{Text: w.unbindVerb, CallbackData: "ab:unb:" + strconv.FormatInt(u.ID, 10)}},
-	}}
-	if q == nil {
-		b.say(out, chat, text, kb)
-		return
-	}
-	out.Reply(chat, "ab:user:"+strconv.FormatInt(u.ID, 10), 1, func(ctx context.Context, c *Client) error {
-		_, err := c.Send(ctx, chat, text, kb, false)
-		return err
-	})
-}
-
 func opVerb(w adminWords, op string) string {
 	switch op {
 	case "disable":
@@ -717,6 +926,16 @@ func opVerb(w adminWords, op string) string {
 		return w.resetVerb
 	case "unbind":
 		return w.unbindVerb
+	case "delete":
+		return w.deleteVerb
+	case "reissue":
+		return w.reissueVerb
+	case "tariff":
+		return w.tariffVerb
+	case "tgunlink":
+		return w.tgunlinkVerb
+	case "forever":
+		return w.foreverVerb
 	}
 	return op
 }
@@ -785,6 +1004,41 @@ func (b *AdminBot) doAction(ctx context.Context, c *Client, out *Outbox, w admin
 			return
 		}
 		done, auditAction = w.actUnbound, "adminbot.user_unbind"
+	case "delete":
+		old := b.avatarNameOf(ctx, uid)
+		if err := b.d.Users.Delete(ctx, uid); err != nil {
+			return
+		}
+		b.dropAvatarFile(old)
+		done, auditAction = w.applied, "adminbot.user_delete"
+	case "reissue":
+		if _, err := b.d.Users.Reissue(ctx, uid); err != nil {
+			return
+		}
+		done, auditAction = w.applied, "adminbot.user_reissue"
+	case "tariff":
+		parts := strings.Split(arg, ":")
+		if len(parts) != 2 {
+			return
+		}
+		tid, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return
+		}
+		if _, err := b.d.Users.Update(ctx, uid, domain.Patch{TariffID: &tid}); err != nil {
+			return
+		}
+		done, auditAction = w.applied, "adminbot.user_tariff"
+	case "tgunlink":
+		if err := b.d.Store.Q.UnlinkTg(ctx, uid); err != nil {
+			return
+		}
+		done, auditAction = w.applied, "adminbot.user_tgunlink"
+	case "forever":
+		if _, err := b.d.Users.Update(ctx, uid, domain.Patch{ClearExpiry: true}); err != nil {
+			return
+		}
+		done, auditAction = w.applied, "adminbot.user_forever"
 	default:
 		return
 	}
