@@ -146,3 +146,74 @@ func TestMigration0024SlotTraffic(t *testing.T) {
 		t.Fatalf("slot_traffic after migrate up again: %v", err)
 	}
 }
+
+// Migration 0025 on a database that has lived through 0024: bound devices gain an
+// empty own name, bans are one row per user and device id, deleting the user takes
+// its bans, and the rollback drops the table and the column.
+func TestMigration0025DeviceNamesBans(t *testing.T) {
+	ctx := context.Background()
+	conn, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "old.db"))+"?_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	fsys, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, conn, fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 24); err != nil {
+		t.Fatal(err)
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := conn.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	exec("INSERT INTO slots (id, name, uuid, secret, state, created_at) VALUES (7, 's000007', 'u7', 'x', 'assigned', 1)")
+	exec("INSERT INTO users (id, name, sub_token, period_start, created_at, updated_at) VALUES (1, 'a', 'tok', 1, 1, 1)")
+	exec("INSERT INTO bound_devices (user_id, hwid, slot_id, created_at, last_seen) VALUES (1, 'hw1', 7, 1, 1)")
+
+	if _, err := p.UpTo(ctx, 25); err != nil {
+		t.Fatal(err)
+	}
+	var name string
+	if err := conn.QueryRowContext(ctx, "SELECT name FROM bound_devices WHERE hwid = 'hw1'").Scan(&name); err != nil || name != "" {
+		t.Fatalf("the own name of an old device: %q %v", name, err)
+	}
+	exec("UPDATE bound_devices SET name = 'планшет' WHERE hwid = 'hw1'")
+	exec("INSERT INTO device_bans (user_id, hwid, label, banned_at) VALUES (1, 'hw1', 'планшет', 2)")
+	if _, err := conn.ExecContext(ctx, "INSERT INTO device_bans (user_id, hwid, label, banned_at) VALUES (1, 'hw1', 'x', 3)"); err == nil {
+		t.Fatal("a second ban of the same device id went in")
+	}
+	if _, err := conn.ExecContext(ctx, "INSERT INTO device_bans (user_id, hwid, label, banned_at) VALUES (1, '', 'x', 3)"); err == nil {
+		t.Fatal("a ban without a device id went in")
+	}
+	// The ban follows the user: deleting the user deletes the ban.
+	exec("DELETE FROM bound_devices WHERE hwid = 'hw1'")
+	exec("DELETE FROM users WHERE id = 1")
+	var n int
+	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM device_bans").Scan(&n); err != nil || n != 0 {
+		t.Fatalf("bans of the deleted user: %d %v", n, err)
+	}
+	// And back: the rollback drops the table and the column.
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT * FROM device_bans"); err == nil {
+		t.Fatal("device_bans is still there after the rollback")
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT name FROM bound_devices"); err == nil {
+		t.Fatal("bound_devices.name is still there after the rollback")
+	}
+	if _, err := p.Up(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM device_bans").Scan(&n); err != nil {
+		t.Fatalf("device_bans after migrate up again: %v", err)
+	}
+}
