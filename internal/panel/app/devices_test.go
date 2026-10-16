@@ -88,6 +88,7 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 		Devices []struct {
 			ID    int64  `json:"id"`
 			Model string `json:"model"`
+			Used  int64  `json:"used"`
 		} `json:"devices"`
 	}
 	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &info) != nil || !info.Binding || len(info.Devices) != 3 || info.Devices[0].Model != "Pixel 9" {
@@ -95,6 +96,30 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 	}
 	if strings.Contains(string(body), "phone-0123456789") {
 		t.Fatal("the page must not show device ids")
+	}
+	for _, d := range info.Devices {
+		if d.Used != 0 {
+			t.Fatalf("uncounted device %d shows used %d", d.ID, d.Used)
+		}
+	}
+	if _, err := h.st.DB.ExecContext(ctx, "INSERT INTO slot_traffic (slot_id, up, down) SELECT slot_id, 200, 300 FROM bound_devices WHERE hwid = 'phone-0123456789'"); err != nil {
+		t.Fatal(err)
+	}
+	resp, body = h.do(http.MethodGet, sub+"/info", nil, nil)
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &info) != nil {
+		t.Fatalf("info again: %d %s", resp.StatusCode, body)
+	}
+	withUsed := 0
+	for _, d := range info.Devices {
+		if d.Used != 0 {
+			withUsed++
+			if d.Used != 500 {
+				t.Fatalf("device %d used %d, want 500", d.ID, d.Used)
+			}
+		}
+	}
+	if withUsed != 1 {
+		t.Fatalf("devices with used traffic: %d, want 1", withUsed)
 	}
 	unbind := sub + "/devices/" + strconv.FormatInt(info.Devices[0].ID, 10) + "/unbind"
 	if resp, _ := h.do(http.MethodPost, unbind, nil, map[string]string{"Sec-Fetch-Site": "cross-site"}); resp.StatusCode != http.StatusNotFound {
