@@ -217,3 +217,82 @@ func TestMigration0025DeviceNamesBans(t *testing.T) {
 		t.Fatalf("device_bans after migrate up again: %v", err)
 	}
 }
+
+// Migration 0026 on a database that has lived through 0025: the last unbind time moves
+// to the unbind history, bans gain a pause column, tariffs and users gain the device
+// mode, and the rollback restores the last unbind, drops the pauses and keeps the
+// admin's bans.
+func TestMigration0026UnbindRules(t *testing.T) {
+	ctx := context.Background()
+	conn, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "old.db"))+"?_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	fsys, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, conn, fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 25); err != nil {
+		t.Fatal(err)
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := conn.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	exec("INSERT INTO slots (id, name, uuid, secret, state, created_at) VALUES (7, 's000007', 'u7', 'x', 'assigned', 1)")
+	exec("INSERT INTO users (id, name, sub_token, period_start, created_at, updated_at) VALUES (1, 'a', 'tok', 1, 1, 1)")
+	exec("UPDATE users SET unbound_at = 100 WHERE id = 1")
+	exec("INSERT INTO device_bans (user_id, hwid, label, banned_at) VALUES (1, 'hw1', 'old', 50)")
+	exec("INSERT INTO device_bans (user_id, hwid, label, banned_at) VALUES (1, 'hw2', 'stays', 51)")
+
+	if _, err := p.UpTo(ctx, 26); err != nil {
+		t.Fatal(err)
+	}
+	var at int64
+	if err := conn.QueryRowContext(ctx, "SELECT at FROM device_unbinds WHERE user_id = 1").Scan(&at); err != nil || at != 100 {
+		t.Fatalf("the moved unbind time: %d %v", at, err)
+	}
+	var mode string
+	if err := conn.QueryRowContext(ctx, "SELECT device_mode FROM users WHERE id = 1").Scan(&mode); err != nil || mode != "bound" {
+		t.Fatalf("the default device mode: %q %v", mode, err)
+	}
+	if _, err := conn.ExecContext(ctx, "UPDATE users SET device_mode = 'sideways' WHERE id = 1"); err == nil {
+		t.Fatal("a device mode outside bound|online went in")
+	}
+	exec("UPDATE device_bans SET until = 200 WHERE hwid = 'hw1'")
+	// And back: the last unbind is restored, pauses are dropped, the admin's ban stays.
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var unbound int64
+	if err := conn.QueryRowContext(ctx, "SELECT unbound_at FROM users WHERE id = 1").Scan(&unbound); err != nil || unbound != 100 {
+		t.Fatalf("the restored unbind time: %d %v", unbound, err)
+	}
+	var n int
+	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM device_bans").Scan(&n); err != nil || n != 1 {
+		t.Fatalf("bans after the rollback: %d %v", n, err)
+	}
+	var hwid string
+	if err := conn.QueryRowContext(ctx, "SELECT hwid FROM device_bans").Scan(&hwid); err != nil || hwid != "hw2" {
+		t.Fatalf("the surviving ban: %q %v", hwid, err)
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT until FROM device_bans"); err == nil {
+		t.Fatal("device_bans.until is still there after the rollback")
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT device_mode FROM users"); err == nil {
+		t.Fatal("users.device_mode is still there after the rollback")
+	}
+	if _, err := p.Up(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRowContext(ctx, "SELECT count(*) FROM device_unbinds").Scan(&n); err != nil {
+		t.Fatalf("device_unbinds after migrate up again: %v", err)
+	}
+}
