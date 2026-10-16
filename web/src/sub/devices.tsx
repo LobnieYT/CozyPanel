@@ -1,19 +1,89 @@
 import { Laptop, Layers, Smartphone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Pill } from "../components/ui";
-import { t } from "../i18n";
+import { t, tMaybe } from "../i18n";
 import { desktopOS, deviceDetails, deviceLabel } from "../lib/devices";
 import { ago, bytes, dateShort, time } from "../lib/format";
 import { request } from "./net";
 import type { Device, Info } from "./types";
 
 function deviceName(d: Device): string {
-  return d.shared ? t("sub.sharedPlace") : deviceLabel(d, t("sub.device"));
+  if (d.name) return d.name;
+  if (d.shared) return t("sub.sharedPlace");
+  return deviceLabel(d, t("sub.device"));
+}
+
+/** Rename the device inline: its own name, empty for the app's report. */
+function RenameForm({ d, subURL, done }: { d: Device; subURL: string; done: (reload: boolean) => void }) {
+  const [name, setName] = useState(d.name);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    const clean = name.trim();
+    if (clean === d.name) {
+      done(false);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const r = await request(`${subURL}/devices/${d.id}/name`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: clean }),
+      });
+      if (!r.ok) {
+        const b = (await r.json().catch(() => ({}))) as { code?: string };
+        setError((b.code && tMaybe(`sub.nameErrors.${b.code}`)) || t("sub.renameFailed"));
+      } else {
+        done(true);
+      }
+    } catch {
+      setError(t("sub.renameFailed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-2 rounded-2xl bg-[var(--hover)] p-3">
+      <label className="mb-1 block text-[13px] text-[var(--ink-700)]" htmlFor={`rename-${d.id}`}>
+        {t("sub.renameField")}
+      </label>
+      <input
+        id={`rename-${d.id}`}
+        className="input"
+        value={name}
+        maxLength={40}
+        placeholder={d.shared ? t("sub.sharedPlace") : deviceLabel(d, t("sub.device"))}
+        autoFocus
+        disabled={busy}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void save();
+          if (e.key === "Escape") done(false);
+        }}
+      />
+      {error ? (
+        <p className="mt-1 text-[13px] text-[var(--berry-600)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-2 flex justify-end gap-2">
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => done(false)}>
+          {t("common.cancel")}
+        </Button>
+        <Button size="sm" loading={busy} onClick={() => void save()}>
+          {t("common.save")}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 /** The subscriber's own devices: each holds a place; one may be unbound a day. */
 export function Devices({ info, subURL, reload }: { info: Info; subURL: string; reload: () => Promise<void> }) {
   const [confirm, setConfirm] = useState<number | null>(null);
+  const [renaming, setRenaming] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // The button that opened the confirmation: focus goes back to it, not to the page's top.
@@ -92,12 +162,34 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
                       </div>
                     ) : null}
                   </div>
-                  {confirm === d.id ? null : (
-                    <Button id={`unbind-${d.id}`} size="sm" disabled={busy || !!wait} onClick={() => ask(d.id)} aria-label={t("sub.unbindLabel", { name })}>
-                      {t("sub.unbind")}
-                    </Button>
+                  {confirm === d.id || renaming === d.id ? null : (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => setRenaming(d.id)}
+                        aria-label={t("sub.renameLabel", { name })}
+                        aria-expanded={renaming === d.id}
+                      >
+                        {t("sub.rename")}
+                      </Button>
+                      <Button id={`unbind-${d.id}`} size="sm" disabled={busy || !!wait} onClick={() => ask(d.id)} aria-label={t("sub.unbindLabel", { name })}>
+                        {t("sub.unbind")}
+                      </Button>
+                    </div>
                   )}
                 </div>
+                {renaming === d.id ? (
+                  <RenameForm
+                    d={d}
+                    subURL={subURL}
+                    done={(changed) => {
+                      setRenaming(null);
+                      if (changed) void reload().then(() => document.getElementById("devices-title")?.focus());
+                    }}
+                  />
+                ) : null}
                 {confirm === d.id ? (
                   <div className="mt-2 rounded-2xl bg-[var(--hover)] p-3" role="group" aria-label={t("sub.unbindLabel", { name })}>
                     <p className="text-[13px] text-[var(--ink-700)]">{t("sub.unbindWarn")}</p>

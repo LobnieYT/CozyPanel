@@ -1,13 +1,13 @@
-import { Laptop, Layers, Smartphone, Unlink } from "lucide-react";
+import { Ban, Laptop, Layers, Pencil, Smartphone, Unlink } from "lucide-react";
 import { useState } from "react";
-import { errorText, type Schemas, type User } from "../../../api/client";
-import { useBoundDevices, useDevices, useGrants, userActions, useSettings, useUserMutation } from "../../../api/hooks";
+import { ApiError, errorText, type Schemas, type User } from "../../../api/client";
+import { useBoundDevices, useDeviceBans, useDevices, useGrants, userActions, useSettings, useUserMutation } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
 import { useToast } from "../../../components/toast";
 import { ErrorState, Skeleton } from "../../../components/ui";
 import { t } from "../../../i18n";
 import { desktopOS, deviceDetails, deviceLabel } from "../../../lib/devices";
-import { ago, bytes, maskIP } from "../../../lib/format";
+import { ago, bytes, dateShort, maskIP } from "../../../lib/format";
 import { Section } from "./section";
 
 export function DevicesSection({ u }: { u: User }) {
@@ -90,22 +90,68 @@ export function DevicesSection({ u }: { u: User }) {
 }
 
 type BoundDevice = Schemas["BoundDeviceView"];
+type DeviceBan = Schemas["DeviceBanView"];
 
-/** What to call a bound device: its model, else its system, else the app. */
+const DEVICE_NAME_MAX = 40;
+
+/** What to call a bound device: its own name, else the app's report. */
 function deviceName(d: BoundDevice): string {
-  return d.hwid ? deviceLabel(d, t("userDrawer.device")) : t("userDrawer.sharedPlace");
+  if (d.name) return d.name;
+  if (!d.hwid) return t("userDrawer.sharedPlace");
+  return deviceLabel(d, t("userDrawer.device"));
 }
+
+/** The name the app reports: the rename field's placeholder. */
+function reportedName(d: BoundDevice): string {
+  if (!d.hwid) return t("userDrawer.sharedPlace");
+  return deviceLabel(d, t("userDrawer.device"));
+}
+
+type Pick = { kind: "unbind" | "ban" | "rename"; d: BoundDevice } | { kind: "unban"; ban: DeviceBan };
 
 function BoundDevices({ u }: { u: User }) {
   const settings = useSettings();
   const bound = useBoundDevices(u.id);
   const unbind = useUserMutation(userActions.unbindDevice);
+  const rename = useUserMutation(userActions.renameDevice);
+  const ban = useUserMutation(userActions.banDevice);
+  const unban = useUserMutation(userActions.unbanDevice);
   const { can } = useGrants();
   const writable = can("users", true);
   const toast = useToast();
-  const [pick, setPick] = useState<BoundDevice | null>(null);
+  const [pick, setPick] = useState<Pick | null>(null);
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
   const list = bound.data ?? [];
   if (!settings.data?.device_binding && list.length === 0) return null;
+  const startRename = (d: BoundDevice) => {
+    setName(d.name);
+    setNameError("");
+    setPick({ kind: "rename", d });
+  };
+  const doRename = () => {
+    if (pick?.kind !== "rename") return;
+    const clean = name.trim();
+    if (clean === pick.d.name) {
+      setPick(null);
+      return;
+    }
+    setNameError("");
+    rename.mutate(
+      { id: u.id, device: pick.d.id, name: clean },
+      {
+        onSuccess: (saved) => {
+          toast.ok(t(clean ? "userDrawer.deviceRenamed" : "userDrawer.deviceNameCleared", { name: saved.name || reportedName(pick.d) }));
+          setPick(null);
+        },
+        onError: (e) => {
+          if (e instanceof ApiError && e.fields.name) setNameError(e.fields.name);
+          else toast.error(errorText(e));
+        },
+      },
+    );
+  };
+  const unpick = pick?.kind === "unbind" ? pick.d : null;
   return (
     <>
       <h4 className="mb-2 flex justify-between gap-2 text-xs font-medium text-[var(--ink-500)]">
@@ -140,31 +186,42 @@ function BoundDevices({ u }: { u: User }) {
                   ) : null}
                 </div>
                 {writable ? (
-                  <button type="button" className="icon-btn" aria-label={t("userDrawer.unbindLabel", { name: deviceName(d) })} title={t("userDrawer.unbind")} onClick={() => setPick(d)}>
-                    <Unlink size={16} />
-                  </button>
+                  <div className="flex gap-1">
+                    <button type="button" className="icon-btn" aria-label={t("userDrawer.renameDeviceLabel", { name: deviceName(d) })} title={t("userDrawer.renameDevice")} onClick={() => startRename(d)}>
+                      <Pencil size={16} />
+                    </button>
+                    {d.hwid ? (
+                      <button type="button" className="icon-btn" aria-label={t("userDrawer.banLabel", { name: deviceName(d) })} title={t("userDrawer.ban")} onClick={() => setPick({ kind: "ban", d })}>
+                        <Ban size={16} />
+                      </button>
+                    ) : null}
+                    <button type="button" className="icon-btn" aria-label={t("userDrawer.unbindLabel", { name: deviceName(d) })} title={t("userDrawer.unbind")} onClick={() => setPick({ kind: "unbind", d })}>
+                      <Unlink size={16} />
+                    </button>
+                  </div>
                 ) : null}
               </li>
             );
           })}
         </ul>
       )}
+      <DeviceBans u={u} onUnban={(ban) => setPick({ kind: "unban", ban })} />
       <p className="mt-2 text-xs text-[var(--ink-500)]">{settings.data?.device_require_hwid ? t("userDrawer.boundNoteStrict") : t("userDrawer.boundNote")}</p>
       <Confirm
-        open={pick !== null}
+        open={unpick !== null}
         onOpenChange={(v) => !v && setPick(null)}
-        title={t("userDrawer.unbindTitle", { name: pick ? deviceName(pick) : "" })}
-        text={pick && !pick.hwid ? t("userDrawer.unbindSharedText") : t("userDrawer.unbindText")}
+        title={t("userDrawer.unbindTitle", { name: unpick ? deviceName(unpick) : "" })}
+        text={unpick && !unpick.hwid ? t("userDrawer.unbindSharedText") : t("userDrawer.unbindText")}
         confirm={t("userDrawer.unbind")}
         danger
         loading={unbind.isPending}
         onConfirm={() =>
-          pick &&
+          unpick &&
           unbind.mutate(
-            { id: u.id, device: pick.id },
+            { id: u.id, device: unpick.id },
             {
               onSuccess: () => {
-                toast.ok(t("userDrawer.unbound", { name: deviceName(pick) }));
+                toast.ok(t("userDrawer.unbound", { name: deviceName(unpick) }));
                 setPick(null);
               },
               onError: (e) => toast.error(errorText(e)),
@@ -172,6 +229,110 @@ function BoundDevices({ u }: { u: User }) {
           )
         }
       />
+      <Confirm
+        open={pick?.kind === "ban"}
+        onOpenChange={(v) => !v && setPick(null)}
+        title={t("userDrawer.banTitle", { name: pick?.kind === "ban" ? deviceName(pick.d) : "" })}
+        text={t("userDrawer.banText")}
+        confirm={t("userDrawer.ban")}
+        danger
+        loading={ban.isPending}
+        onConfirm={() =>
+          pick?.kind === "ban" &&
+          ban.mutate(
+            { id: u.id, device: pick.d.id },
+            {
+              onSuccess: () => {
+                toast.ok(t("userDrawer.banned", { name: deviceName(pick.d) }));
+                setPick(null);
+              },
+              onError: (e) => toast.error(errorText(e)),
+            },
+          )
+        }
+      />
+      <Confirm
+        open={pick?.kind === "unban"}
+        onOpenChange={(v) => !v && setPick(null)}
+        title={t("userDrawer.unbanTitle", { name: pick?.kind === "unban" ? pick.ban.label || pick.ban.hwid : "" })}
+        text={t("userDrawer.unbanText")}
+        confirm={t("userDrawer.unban")}
+        loading={unban.isPending}
+        onConfirm={() =>
+          pick?.kind === "unban" &&
+          unban.mutate(
+            { id: u.id, ban: pick.ban.id },
+            {
+              onSuccess: () => {
+                toast.ok(t("userDrawer.unbanned", { name: pick.ban.label || pick.ban.hwid }));
+                setPick(null);
+              },
+              onError: (e) => toast.error(errorText(e)),
+            },
+          )
+        }
+      />
+      <Confirm
+        open={pick?.kind === "rename"}
+        onOpenChange={(v) => !v && setPick(null)}
+        title={t("userDrawer.renameDeviceTitle", { name: pick?.kind === "rename" ? reportedName(pick.d) : "" })}
+        text={
+          <>
+            <p className="mb-2">{t("userDrawer.renameDeviceHint")}</p>
+            <input
+              className="input"
+              value={name}
+              maxLength={DEVICE_NAME_MAX}
+              placeholder={pick?.kind === "rename" ? reportedName(pick.d) : ""}
+              aria-label={t("userDrawer.renameDeviceField")}
+              autoFocus
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") doRename();
+              }}
+            />
+            {nameError ? <p className="mt-1 text-[13px] text-[var(--berry-600)]">{nameError}</p> : null}
+          </>
+        }
+        confirm={t("userDrawer.renameDevice")}
+        loading={rename.isPending}
+        onConfirm={doRename}
+      />
+    </>
+  );
+}
+
+/** Device ids blocked from the subscription, each with its unblock button. */
+function DeviceBans({ u, onUnban }: { u: User; onUnban: (ban: DeviceBan) => void }) {
+  const bans = useDeviceBans(u.id);
+  const { can } = useGrants();
+  const writable = can("users", true);
+  const list = bans.data ?? [];
+  if (list.length === 0) return null;
+  return (
+    <>
+      <h4 className="mt-4 mb-2 text-xs font-medium text-[var(--ink-500)]">{t("userDrawer.bansTitle")}</h4>
+      <ul className="flex flex-col gap-2">
+        {list.map((b) => (
+          <li key={b.id} className="panel-soft grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 p-2">
+            <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--hover)] text-[var(--berry-600)]" aria-hidden>
+              <Ban size={18} />
+            </span>
+            <div className="min-w-0">
+              <div className="truncate text-[13px] font-medium">{b.label || b.hwid}</div>
+              <div className="truncate text-xs text-[var(--ink-500)]">
+                {b.admin ? `${b.admin} · ` : ""}
+                {dateShort(b.banned_at)}
+              </div>
+            </div>
+            {writable ? (
+              <button type="button" className="icon-btn" aria-label={t("userDrawer.unbanLabel", { name: b.label || b.hwid })} title={t("userDrawer.unban")} onClick={() => onUnban(b)}>
+                <Unlink size={16} />
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </>
   );
 }
