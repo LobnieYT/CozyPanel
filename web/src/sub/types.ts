@@ -23,7 +23,7 @@ export type Info = {
   pools?: { name: string; limit?: number; used: number; extra?: number }[];
 };
 
-export type Device = { id: number; os: string; os_version: string; model: string; app: string; shared: boolean; created_at: string; last_seen: string; used?: number };
+export type Device = { id: number; name: string; os: string; os_version: string; model: string; app: string; shared: boolean; created_at: string; last_seen: string; used?: number };
 
 /** One of the subscriptions a Telegram account owns (the Mini App's /tg/session). */
 export type TgSub = { token: string; name: string };

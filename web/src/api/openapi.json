@@ -249,7 +249,7 @@
         ],
         "type": "object"
       },
-      "BoundDeviceView": {
+            "BoundDeviceView":       {
         "additionalProperties": false,
         "properties": {
           "app": {
@@ -277,6 +277,10 @@
           "model": {
             "type": "string"
           },
+          "name": {
+            "description": "Своё имя устройства; пусто — имя от приложения",
+            "type": "string"
+          },
           "online": {
             "type": "boolean"
           },
@@ -299,6 +303,7 @@
         },
         "required": [
           "id",
+          "name",
           "hwid",
           "os",
           "os_version",
@@ -310,6 +315,64 @@
           "last_seen",
           "traffic_up",
           "traffic_down"
+        ],
+        "type": "object"
+      },
+      "RenameDeviceOutputBody":       {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "RenameDeviceInputBody":       {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Своё имя устройства; пусто — имя от приложения",
+            "maxLength": 40,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "DeviceBanView":       {
+        "additionalProperties": false,
+        "properties": {
+          "admin": {
+            "description": "Кто заблокировал; пусто — ключ API или удалённый админ",
+            "type": "string"
+          },
+          "banned_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "hwid": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "label": {
+            "description": "Как устройство называлось, когда его заблокировали",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "hwid",
+          "label",
+          "admin",
+          "banned_at"
         ],
         "type": "object"
       },
@@ -7831,7 +7894,7 @@
         ]
       }
     },
-    "/api/v1/users/{id}/bound-devices/{device}": {
+        "/api/v1/users/{id}/bound-devices/{device}":     {
       "delete": {
         "operationId": "unbind-device",
         "parameters": [
@@ -7872,6 +7935,215 @@
           }
         },
         "summary": "Отвязать устройство: его ключи сгорают",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "rename-device",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "device",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameDeviceInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameDeviceOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Своё имя устройства; пусто — имя от приложения",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/device-bans/{ban}":     {
+      "delete": {
+        "operationId": "unban-device",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ban",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Разблокировать устройство",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/device-bans":     {
+      "get": {
+        "operationId": "device-bans",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceBanView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Заблокированные устройства подписки",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/bound-devices/{device}/ban":     {
+      "post": {
+        "operationId": "ban-device",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "device",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceBanView"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Заблокировать устройство: отключается сразу и больше не привязывается",
         "tags": [
           "users"
         ]

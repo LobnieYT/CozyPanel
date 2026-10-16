@@ -175,6 +175,66 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 		t.Fatalf("the admin unbinds without the daily limit: %d", resp.StatusCode)
 	}
 
+	rename := api + "/" + strconv.FormatInt(bound[1].ID, 10)
+	if resp, body := h.do(http.MethodPatch, rename, map[string]string{"name": "  Планшет  "}, map[string]string{"X-CSRF-Token": h.csrf}); resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"name":"Планшет"`) {
+		t.Fatalf("rename: %d %s", resp.StatusCode, body)
+	}
+	if resp, _ := h.do(http.MethodPatch, rename, map[string]string{"name": strings.Repeat("a", 41)}, map[string]string{"X-CSRF-Token": h.csrf}); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("a long name: %d", resp.StatusCode)
+	}
+	resp, body = h.do(http.MethodGet, api, nil, nil)
+	var named []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	if json.Unmarshal(body, &named) != nil {
+		t.Fatalf("admin list: %s", body)
+	}
+	for _, b := range named {
+		if b.ID == bound[1].ID && b.Name != "Планшет" {
+			t.Fatalf("the name in the list: %q", b.Name)
+		}
+	}
+
+	ban := api + "/" + strconv.FormatInt(bound[2].ID, 10) + "/ban"
+	resp, body = h.do(http.MethodPost, ban, nil, map[string]string{"X-CSRF-Token": h.csrf})
+	var banned []struct {
+		ID    int64  `json:"id"`
+		HWID  string `json:"hwid"`
+		Label string `json:"label"`
+	}
+	if resp.StatusCode != http.StatusCreated || json.Unmarshal(body, &banned) != nil || len(banned) != 1 || banned[0].HWID == "" {
+		t.Fatalf("ban: %d %s", resp.StatusCode, body)
+	}
+	bansAPI := "/" + adminPath + "/api/v1/users/" + strconv.FormatInt(u.ID, 10) + "/device-bans"
+	resp, body = h.do(http.MethodGet, bansAPI, nil, nil)
+	var bans []struct {
+		ID    int64  `json:"id"`
+		Label string `json:"label"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bans) != nil || len(bans) != 1 {
+		t.Fatalf("bans: %d %s", resp.StatusCode, body)
+	}
+	if resp, links := fetch(bound[2].HWID); resp.StatusCode != http.StatusOK || !strings.Contains(links, "127.0.0.1:1") {
+		t.Fatalf("a banned device fetches keys: %d %.80s", resp.StatusCode, links)
+	}
+	if resp, _ := h.do(http.MethodDelete, bansAPI+"/"+strconv.FormatInt(bans[0].ID, 10), nil, map[string]string{"X-CSRF-Token": h.csrf}); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("unban: %d", resp.StatusCode)
+	}
+	if resp, links := fetch(bound[2].HWID); resp.StatusCode != http.StatusOK || strings.Contains(links, "127.0.0.1:1") {
+		t.Fatalf("after the unban: %d %.80s", resp.StatusCode, links)
+	}
+	renameSub := sub + "/devices/" + strconv.FormatInt(info.Devices[2].ID, 10) + "/name"
+	if resp, body := h.do(http.MethodPost, renameSub, map[string]string{"name": "Ноут"}, map[string]string{"Sec-Fetch-Site": "same-origin"}); resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"name":"Ноут"`) {
+		t.Fatalf("rename from the page: %d %s", resp.StatusCode, body)
+	}
+	if resp, _ := h.do(http.MethodPost, renameSub, map[string]string{"name": "x"}, map[string]string{"Sec-Fetch-Site": "cross-site"}); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("rename from another site: %d", resp.StatusCode)
+	}
+	if resp, body := h.do(http.MethodPost, renameSub, map[string]string{"name": strings.Repeat("a", 41)}, map[string]string{"Sec-Fetch-Site": "same-origin"}); resp.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(string(body), "device_name_long") {
+		t.Fatalf("a long name from the page: %d %s", resp.StatusCode, body)
+	}
+
 	// Strict mode: an app without an id gets no keys.
 	if err := settings.Set(ctx, set, settings.KeyRequireHWID, true); err != nil {
 		t.Fatal(err)

@@ -1314,6 +1314,8 @@ export interface components {
             /** Format: date-time */
             last_seen: string;
             model: string;
+            /** @description Своё имя устройства; пусто — имя от приложения */
+            name: string;
             online: boolean;
             os: string;
             os_version: string;
@@ -1327,6 +1329,24 @@ export interface components {
              * @description Байты от устройства с тех пор, как оно привязано
              */
             traffic_up: number;
+        };
+        RenameDeviceOutputBody: {
+            name: string;
+        };
+        RenameDeviceInputBody: {
+            /** @description Своё имя устройства; пусто — имя от приложения */
+            name: string;
+        };
+        DeviceBanView: {
+            /** @description Кто заблокировал; пусто — ключ API или удалённый админ */
+            admin: string;
+            /** Format: date-time */
+            banned_at: string;
+            hwid: string;
+            /** Format: int64 */
+            id: number;
+            /** @description Как устройство называлось, когда его заблокировали */
+            label: string;
         };
         BroadcastInputBody: {
             /** @description Обычный текст; {brand} — название сервиса */

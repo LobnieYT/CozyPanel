@@ -54,6 +54,8 @@ type Config struct {
 type Binder interface {
 	Bind(ctx context.Context, u db.User, in domain.DeviceInfo, requireHWID bool) (db.Slot, error)
 	Unbind(ctx context.Context, userID, deviceID int64, bySubscriber bool) error
+	Rename(ctx context.Context, userID, deviceID int64, name string) (string, error)
+	Banned(ctx context.Context, userID int64, hwid string) (bool, error)
 }
 
 type Handler struct {
@@ -107,9 +109,11 @@ func (h *Handler) clientIP(r *http.Request) string {
 }
 
 var unbindPath = regexp.MustCompile(`^devices/([0-9]{1,18})/unbind$`)
+var renamePath = regexp.MustCompile(`^devices/([0-9]{1,18})/name$`)
 
-// ServeHTTP handles "/<token>", "/<token>/info", "POST /<token>/devices/<id>/unbind" (the
-// subscription page) and the page assets under the sub prefix.
+// ServeHTTP handles "/<token>", "/<token>/info", "POST /<token>/devices/<id>/unbind" and
+// "POST /<token>/devices/<id>/name" (the subscription page) and the page assets under
+// the sub prefix.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
 	token, rest, _ := strings.Cut(p, "/")
@@ -118,8 +122,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	unbind := unbindPath.FindStringSubmatch(rest)
+	rename := renamePath.FindStringSubmatch(rest)
 	switch {
-	case r.Method == http.MethodPost && unbind != nil:
+	case r.Method == http.MethodPost && (unbind != nil || rename != nil):
 	case r.Method != http.MethodGet && r.Method != http.MethodHead:
 		server.NotFound(w)
 		return
@@ -142,6 +147,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if unbind != nil {
 		id, _ := strconv.ParseInt(unbind[1], 10, 64)
 		h.unbind(w, r, u, id)
+		return
+	}
+	if rename != nil {
+		id, _ := strconv.ParseInt(rename[1], 10, 64)
+		h.rename(w, r, u, id)
 		return
 	}
 	cfg, err := h.cfg(r.Context())
@@ -175,7 +185,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	slot, err := h.slotFor(r, u, cfg)
 	switch {
-	case errors.Is(err, domain.ErrDeviceLimit), errors.Is(err, domain.ErrNoHWID):
+	case errors.Is(err, domain.ErrDeviceLimit), errors.Is(err, domain.ErrNoHWID), errors.Is(err, domain.ErrDeviceBanned):
 		h.stub(w, u, cfg, format, err)
 		return
 	case err != nil:
@@ -282,9 +292,16 @@ func forApp(ins []db.Inbound, app App, state string) []db.Inbound {
 }
 
 // slotFor is whose keys this request gets: its device's own with binding on, the user's
-// otherwise.
+// otherwise. A banned id gets no keys either way.
 func (h *Handler) slotFor(r *http.Request, u db.User, cfg Config) (db.Slot, error) {
 	if !cfg.Binding || h.devices == nil {
+		if hwid := r.Header.Get("X-Hwid"); hwid != "" && h.devices != nil {
+			if banned, err := h.devices.Banned(r.Context(), u.ID, hwid); err != nil {
+				return db.Slot{}, err
+			} else if banned {
+				return db.Slot{}, domain.ErrDeviceBanned
+			}
+		}
 		if !u.SlotID.Valid {
 			return db.Slot{}, errors.New("user has no slot")
 		}
@@ -382,6 +399,7 @@ type Info struct {
 // DeviceItem is a bound device as the subscription page lists it.
 type DeviceItem struct {
 	ID        int64     `json:"id"`
+	Name      string    `json:"name" doc:"The device's own name; empty: the one the app reports"`
 	OS        string    `json:"os"`
 	OSVersion string    `json:"os_version"`
 	Model     string    `json:"model"`
@@ -420,7 +438,7 @@ func (h *Handler) info(ctx context.Context, w http.ResponseWriter, u db.User, pr
 			}
 		}
 		for _, d := range devs {
-			out.Bound = append(out.Bound, DeviceItem{ID: d.ID, OS: d.Os, OSVersion: d.OsVersion, Model: d.Model, App: d.App, Shared: d.Hwid == "",
+			out.Bound = append(out.Bound, DeviceItem{ID: d.ID, Name: d.Name, OS: d.Os, OSVersion: d.OsVersion, Model: d.Model, App: d.App, Shared: d.Hwid == "",
 				CreatedAt: time.Unix(d.CreatedAt, 0).UTC(), LastSeen: time.Unix(d.LastSeen, 0).UTC(), Used: used[d.ID]})
 		}
 		if t := domain.NextUnbind(u, now); !t.IsZero() {
@@ -489,6 +507,40 @@ func (h *Handler) unbind(w http.ResponseWriter, r *http.Request, u db.User, id i
 // sameOrigin: the browser says the request comes from this very site.
 func sameOrigin(r *http.Request) bool { return server.FetchSite(r.Header, r.Host) == server.SiteSame }
 
+// rename gives a bound device its owner's name from the subscription page. Only the
+// page itself may do it (a POST from another site is refused).
+func (h *Handler) rename(w http.ResponseWriter, r *http.Request, u db.User, id int64) {
+	if !sameOrigin(r) || h.devices == nil {
+		server.NotFound(w)
+		return
+	}
+	var in struct {
+		Name string `json:"name"`
+	}
+	if json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&in) != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	name, err := h.devices.Rename(r.Context(), u.ID, id, in.Name)
+	switch {
+	case err == nil:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"name": name})
+	case errors.Is(err, domain.ErrNotFound):
+		server.NotFound(w)
+	default:
+		var fe *domain.FieldError
+		if errors.As(err, &fe) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]string{"code": fe.Code})
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
 // stub answers a device that gets no keys: one placeholder server named after the reason,
 // so the app shows it where the servers would be, and the headers Happ-like apps read.
 func (h *Handler) stub(w http.ResponseWriter, u db.User, cfg Config, format string, reason error) {
@@ -511,6 +563,11 @@ func (h *Handler) stub(w http.ResponseWriter, u db.User, cfg Config, format stri
 			name = "⛔ The app does not send a device ID — install Happ, Koala Clash or INCY"
 		}
 		w.Header().Set("X-Hwid-Not-Supported", "true")
+	case errors.Is(reason, domain.ErrDeviceBanned):
+		name = "⛔ Устройство заблокировано"
+		if en {
+			name = "⛔ This device is blocked"
+		}
 	default:
 		w.Header().Set("X-Hwid-Max-Devices-Reached", "true")
 	}

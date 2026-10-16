@@ -270,6 +270,10 @@ func (h *handlers) registerUsers() {
 	huma.Register(h.api, huma.Operation{OperationID: "user-keys", Method: http.MethodGet, Path: "/api/v1/users/{id}/keys", Summary: "Ключи пользователя: по ссылке на подключение", Tags: tags}, h.userKeys)
 	huma.Register(h.api, huma.Operation{OperationID: "user-bound-devices", Method: http.MethodGet, Path: "/api/v1/users/{id}/bound-devices", Summary: "Устройства, привязанные к подписке", Tags: tags}, h.boundDevices)
 	huma.Register(h.api, huma.Operation{OperationID: "unbind-device", Method: http.MethodDelete, Path: "/api/v1/users/{id}/bound-devices/{device}", Summary: "Отвязать устройство: его ключи сгорают", Tags: tags, DefaultStatus: http.StatusNoContent}, h.unbindDevice)
+	huma.Register(h.api, huma.Operation{OperationID: "rename-device", Method: http.MethodPatch, Path: "/api/v1/users/{id}/bound-devices/{device}", Summary: "Своё имя устройства; пусто — имя от приложения", Tags: tags}, h.renameDevice)
+	huma.Register(h.api, huma.Operation{OperationID: "ban-device", Method: http.MethodPost, Path: "/api/v1/users/{id}/bound-devices/{device}/ban", Summary: "Заблокировать устройство: отключается сразу и больше не привязывается", Tags: tags, DefaultStatus: http.StatusCreated}, h.banDevice)
+	huma.Register(h.api, huma.Operation{OperationID: "device-bans", Method: http.MethodGet, Path: "/api/v1/users/{id}/device-bans", Summary: "Заблокированные устройства подписки", Tags: tags}, h.deviceBans)
+	huma.Register(h.api, huma.Operation{OperationID: "unban-device", Method: http.MethodDelete, Path: "/api/v1/users/{id}/device-bans/{ban}", Summary: "Разблокировать устройство", Tags: tags, DefaultStatus: http.StatusNoContent}, h.unbanDevice)
 }
 
 func mapDomainErr(err error) error {
@@ -280,6 +284,8 @@ func mapDomainErr(err error) error {
 		return huma.Error503ServiceUnavailable("no_free_slots")
 	case errors.Is(err, domain.ErrBadBillingDay):
 		return huma.Error422UnprocessableEntity("bad_billing_day", &huma.ErrorDetail{Location: "body.billing_day", Message: "bad_billing_day"})
+	case errors.Is(err, domain.ErrBanShared):
+		return huma.Error422UnprocessableEntity("device_no_hwid")
 	}
 	var fe *domain.FieldError
 	if errors.As(err, &fe) {
@@ -432,6 +438,7 @@ func (h *handlers) extendUser(ctx context.Context, in *extendInput) (*userOutput
 // BoundDeviceView is a device bound to a subscription, as the admin sees it.
 type BoundDeviceView struct {
 	ID          int64     `json:"id"`
+	Name        string    `json:"name" doc:"Своё имя устройства; пусто — имя от приложения"`
 	HWID        string    `json:"hwid" doc:"ID устройства от приложения; пусто — общее место приложений без ID"`
 	OS          string    `json:"os"`
 	OSVersion   string    `json:"os_version"`
@@ -480,7 +487,7 @@ func (h *handlers) boundDevices(ctx context.Context, in *userIDInput) (*boundDev
 	out := &boundDevicesOutput{Body: []BoundDeviceView{}}
 	for _, d := range devs {
 		up, down := traffic[d.ID][0], traffic[d.ID][1]
-		out.Body = append(out.Body, BoundDeviceView{ID: d.ID, HWID: d.Hwid, OS: d.Os, OSVersion: d.OsVersion, Model: d.Model, App: d.App, LastIP: d.LastIp,
+		out.Body = append(out.Body, BoundDeviceView{ID: d.ID, Name: d.Name, HWID: d.Hwid, OS: d.Os, OSVersion: d.OsVersion, Model: d.Model, App: d.App, LastIP: d.LastIp,
 			Online: len(env.liveIPs([]string{name[d.ID]})) > 0, CreatedAt: time.Unix(d.CreatedAt, 0).UTC(), LastSeen: time.Unix(d.LastSeen, 0).UTC(),
 			TrafficUp: up, TrafficDown: down})
 	}
@@ -492,6 +499,90 @@ func (h *handlers) unbindDevice(ctx context.Context, in *unbindInput) (*struct{}
 		return nil, mapDomainErr(err)
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "user.unbind_device", "user", strconv.FormatInt(in.ID, 10), map[string]any{"device": in.Device})
+	return nil, nil
+}
+
+type renameDeviceInput struct {
+	ID     int64 `path:"id" minimum:"1"`
+	Device int64 `path:"device" minimum:"1"`
+	Body   struct {
+		Name string `json:"name" maxLength:"40" doc:"Своё имя устройства; пусто — имя от приложения"`
+	}
+}
+
+type renameDeviceOutput struct {
+	Body struct {
+		Name string `json:"name"`
+	}
+}
+
+func (h *handlers) renameDevice(ctx context.Context, in *renameDeviceInput) (*renameDeviceOutput, error) {
+	name, err := h.d.Devices.Rename(ctx, in.ID, in.Device, in.Body.Name)
+	if err != nil {
+		return nil, mapDomainErr(err)
+	}
+	h.audit(ctx, sessionOf(ctx).AdminID, "user.rename_device", "user", strconv.FormatInt(in.ID, 10), map[string]any{"device": in.Device, "name": name})
+	return &renameDeviceOutput{Body: struct {
+		Name string `json:"name"`
+	}{Name: name}}, nil
+}
+
+// DeviceBanView is a device id the admin keeps out of a subscription.
+type DeviceBanView struct {
+	ID     int64     `json:"id"`
+	HWID   string    `json:"hwid"`
+	Label  string    `json:"label" doc:"Как устройство называлось, когда его заблокировали"`
+	Admin  string    `json:"admin" doc:"Кто заблокировал; пусто — ключ API или удалённый админ"`
+	Banned time.Time `json:"banned_at"`
+}
+
+type deviceBansOutput struct{ Body []DeviceBanView }
+
+type unbanInput struct {
+	ID  int64 `path:"id" minimum:"1"`
+	Ban int64 `path:"ban" minimum:"1"`
+}
+
+func banView(b db.DeviceBan, admin string) DeviceBanView {
+	return DeviceBanView{ID: b.ID, HWID: b.Hwid, Label: b.Label, Admin: admin, Banned: time.Unix(b.BannedAt, 0).UTC()}
+}
+
+func (h *handlers) banDevice(ctx context.Context, in *unbindInput) (*deviceBansOutput, error) {
+	ban, err := h.d.Devices.Ban(ctx, in.ID, in.Device, sessionOf(ctx).AdminID)
+	if err != nil {
+		return nil, mapDomainErr(err)
+	}
+	admin := ""
+	if ban.AdminID.Valid {
+		if a, err := h.d.Store.Q.GetAdmin(ctx, ban.AdminID.Int64); err == nil {
+			admin = a.Username
+		}
+	}
+	h.audit(ctx, sessionOf(ctx).AdminID, "user.ban_device", "user", strconv.FormatInt(in.ID, 10), map[string]any{"device": in.Device, "ban": ban.ID, "label": ban.Label})
+	return &deviceBansOutput{Body: []DeviceBanView{banView(ban, admin)}}, nil
+}
+
+func (h *handlers) deviceBans(ctx context.Context, in *userIDInput) (*deviceBansOutput, error) {
+	if _, err := h.d.Users.Get(ctx, in.ID); err != nil {
+		return nil, mapDomainErr(err)
+	}
+	rows, err := h.d.Store.Q.ListDeviceBans(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := &deviceBansOutput{Body: []DeviceBanView{}}
+	for _, b := range rows {
+		out.Body = append(out.Body, banView(db.DeviceBan{ID: b.ID, UserID: b.UserID, Hwid: b.Hwid, Label: b.Label, AdminID: b.AdminID, BannedAt: b.BannedAt}, b.AdminName))
+	}
+	return out, nil
+}
+
+func (h *handlers) unbanDevice(ctx context.Context, in *unbanInput) (*struct{}, error) {
+	ban, err := h.d.Devices.Unban(ctx, in.ID, in.Ban)
+	if err != nil {
+		return nil, mapDomainErr(err)
+	}
+	h.audit(ctx, sessionOf(ctx).AdminID, "user.unban_device", "user", strconv.FormatInt(in.ID, 10), map[string]any{"ban": in.Ban, "label": ban.Label})
 	return nil, nil
 }
 
