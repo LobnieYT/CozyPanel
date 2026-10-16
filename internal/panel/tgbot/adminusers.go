@@ -356,12 +356,22 @@ func (b *AdminBot) devicesView(ctx context.Context, out *Outbox, w adminWords, c
 		}
 	}
 	if devs, err := b.d.Store.Q.ListBoundDevices(ctx, u.ID); err == nil {
+		used := map[int64]int64{}
+		if rows, err := b.d.Store.Q.ListBoundDeviceTraffic(ctx, u.ID); err == nil {
+			for _, r := range rows {
+				used[r.DeviceID] = r.Up + r.Down
+			}
+		}
 		for _, d := range devs {
 			st := fmtDateTime(d.LastSeen)
 			if b.boundLive(ctx, d.SlotID) {
 				st = "online"
 			}
-			lines = append(lines, "📱 "+esc(boundLabel(d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID))+" · "+st)
+			line := "📱 " + esc(boundLabel(d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID)) + " · " + st
+			if n := used[d.ID]; n > 0 {
+				line += " · " + fmtBytes(n)
+			}
+			lines = append(lines, line)
 		}
 	}
 	kb := &Keyboard{InlineKeyboard: [][]Button{
