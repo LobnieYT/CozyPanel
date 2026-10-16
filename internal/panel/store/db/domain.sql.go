@@ -241,7 +241,7 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy,
                    period_days, period_start, expires_at, inbounds, sub_token, slot_id, created_at, updated_at, billing_day)
 VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
-RETURNING id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at
+RETURNING id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at, avatar
 `
 
 type CreateUserParams struct {
@@ -309,6 +309,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.BillingDay,
 		&i.UnboundAt,
+		&i.Avatar,
 	)
 	return i, err
 }
@@ -433,7 +434,7 @@ func (q *Queries) GetTariff(ctx context.Context, id int64) (Tariff, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at FROM users WHERE id = ?
+SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at, avatar FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
@@ -465,12 +466,13 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.UpdatedAt,
 		&i.BillingDay,
 		&i.UnboundAt,
+		&i.Avatar,
 	)
 	return i, err
 }
 
 const getUserBySubToken = `-- name: GetUserBySubToken :one
-SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at FROM users WHERE sub_token = ?
+SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at, avatar FROM users WHERE sub_token = ?
 `
 
 func (q *Queries) GetUserBySubToken(ctx context.Context, subToken string) (User, error) {
@@ -502,6 +504,7 @@ func (q *Queries) GetUserBySubToken(ctx context.Context, subToken string) (User,
 		&i.UpdatedAt,
 		&i.BillingDay,
 		&i.UnboundAt,
+		&i.Avatar,
 	)
 	return i, err
 }
@@ -822,7 +825,7 @@ func (q *Queries) ListUserSlots(ctx context.Context, userID int64) ([]string, er
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at FROM users ORDER BY id DESC
+SELECT id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at, avatar FROM users ORDER BY id DESC
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -860,6 +863,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.UpdatedAt,
 			&i.BillingDay,
 			&i.UnboundAt,
+			&i.Avatar,
 		); err != nil {
 			return nil, err
 		}
@@ -1240,7 +1244,7 @@ UPDATE users
 SET name = ?, contact = ?, note = ?, tags = ?, status = ?, tariff_id = ?, traffic_limit = ?, device_limit = ?,
     reset_strategy = ?, period_days = ?, period_start = ?, expires_at = ?, inbounds = ?, updated_at = ?, billing_day = ?
 WHERE id = ?
-RETURNING id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at
+RETURNING id, name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy, period_days, period_start, used_up, used_down, total_up, total_down, expires_at, inbounds, sub_token, slot_id, online_at, created_at, updated_at, billing_day, unbound_at, avatar
 `
 
 type UpdateUserParams struct {
@@ -1308,6 +1312,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.BillingDay,
 		&i.UnboundAt,
+		&i.Avatar,
 	)
 	return i, err
 }

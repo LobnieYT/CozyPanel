@@ -176,7 +176,7 @@ func (q *Queries) ListTgLinks(ctx context.Context) ([]ListTgLinksRow, error) {
 }
 
 const listTgLinksOf = `-- name: ListTgLinksOf :many
-SELECT u.id, u.name, u.contact, u.note, u.tags, u.status, u.tariff_id, u.traffic_limit, u.device_limit, u.reset_strategy, u.period_days, u.period_start, u.used_up, u.used_down, u.total_up, u.total_down, u.expires_at, u.inbounds, u.sub_token, u.slot_id, u.online_at, u.created_at, u.updated_at, u.billing_day, u.unbound_at FROM tg_links l JOIN users u ON u.id = l.user_id WHERE l.tg_id = ? ORDER BY l.created_at, u.id
+SELECT u.id, u.name, u.contact, u.note, u.tags, u.status, u.tariff_id, u.traffic_limit, u.device_limit, u.reset_strategy, u.period_days, u.period_start, u.used_up, u.used_down, u.total_up, u.total_down, u.expires_at, u.inbounds, u.sub_token, u.slot_id, u.online_at, u.created_at, u.updated_at, u.billing_day, u.unbound_at, u.avatar FROM tg_links l JOIN users u ON u.id = l.user_id WHERE l.tg_id = ? ORDER BY l.created_at, u.id
 `
 
 // The subscriptions a Telegram account owns, oldest link first.
@@ -215,6 +215,7 @@ func (q *Queries) ListTgLinksOf(ctx context.Context, tgID int64) ([]User, error)
 			&i.UpdatedAt,
 			&i.BillingDay,
 			&i.UnboundAt,
+			&i.Avatar,
 		); err != nil {
 			return nil, err
 		}

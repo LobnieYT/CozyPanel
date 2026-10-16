@@ -10,6 +10,25 @@ import (
 	"database/sql"
 )
 
+const addSlotTraffic = `-- name: AddSlotTraffic :exec
+INSERT INTO slot_traffic (slot_id, up, down)
+SELECT id, ?, ? FROM slots WHERE name = ?
+ON CONFLICT (slot_id) DO UPDATE SET up = slot_traffic.up + excluded.up, down = slot_traffic.down + excluded.down
+`
+
+type AddSlotTrafficParams struct {
+	Up   int64
+	Down int64
+	Name string
+}
+
+// Adds one batch to its slot; an unknown slot name inserts nothing, so slots
+// of nobody never leave a row behind.
+func (q *Queries) AddSlotTraffic(ctx context.Context, arg AddSlotTrafficParams) error {
+	_, err := q.db.ExecContext(ctx, addSlotTraffic, arg.Up, arg.Down, arg.Name)
+	return err
+}
+
 const countBoundDevices = `-- name: CountBoundDevices :one
 SELECT count(*) FROM bound_devices WHERE user_id = ?
 `
@@ -142,6 +161,41 @@ func (q *Queries) GetBoundDeviceByID(ctx context.Context, arg GetBoundDeviceByID
 		&i.LastSeen,
 	)
 	return i, err
+}
+
+const listBoundDeviceTraffic = `-- name: ListBoundDeviceTraffic :many
+SELECT d.id AS device_id, COALESCE(t.up, 0) AS up, COALESCE(t.down, 0) AS down
+FROM bound_devices d LEFT JOIN slot_traffic t ON t.slot_id = d.slot_id WHERE d.user_id = ?
+`
+
+type ListBoundDeviceTrafficRow struct {
+	DeviceID int64
+	Up       int64
+	Down     int64
+}
+
+// What each of a user's bound devices used since it was bound.
+func (q *Queries) ListBoundDeviceTraffic(ctx context.Context, userID int64) ([]ListBoundDeviceTrafficRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBoundDeviceTraffic, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBoundDeviceTrafficRow{}
+	for rows.Next() {
+		var i ListBoundDeviceTrafficRow
+		if err := rows.Scan(&i.DeviceID, &i.Up, &i.Down); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listBoundDevices = `-- name: ListBoundDevices :many

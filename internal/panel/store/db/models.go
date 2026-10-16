@@ -22,6 +22,13 @@ type Admin struct {
 	IsOwner       int64
 }
 
+type AdminNotice struct {
+	NodeID int64
+	Kind   string
+	Period int64
+	SentAt int64
+}
+
 type ApiKey struct {
 	ID         int64
 	AdminID    int64
@@ -190,6 +197,12 @@ type SlotCounter struct {
 	Last int64
 }
 
+type SlotTraffic struct {
+	SlotID int64
+	Up     int64
+	Down   int64
+}
+
 type SubFetch struct {
 	UserID    int64
 	Ip        string
@@ -214,6 +227,16 @@ type TariffPool struct {
 	TariffID     int64
 	PoolID       int64
 	TrafficLimit int64
+}
+
+type TgAdminChat struct {
+	TgID      int64
+	AdminID   int64
+	Username  string
+	FirstName string
+	Blocked   int64
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 type TgChat struct {
@@ -312,6 +335,7 @@ type User struct {
 	UpdatedAt     int64
 	BillingDay    sql.NullInt64
 	UnboundAt     int64
+	Avatar        string
 }
 
 type UserPool struct {
