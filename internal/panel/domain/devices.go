@@ -50,6 +50,8 @@ var (
 	ErrDeviceLimit    = errors.New("device_limit")    // the user's places are taken
 	ErrNoHWID         = errors.New("no_hwid")         // the app sends no device id and one is required
 	ErrUnbindCooldown = errors.New("unbind_cooldown") // the subscriber unbound a device less than a day ago
+	ErrDeviceBanned   = errors.New("device_banned")   // the admin banned this device id from the user
+	ErrBanShared      = errors.New("device_no_hwid")  // the shared place is anyone's: nothing to ban
 )
 
 func NewDevices(st *store.Store, pool *Pool, changes Changes, now func() time.Time) *Devices {
@@ -133,6 +135,14 @@ func (d *Devices) bind(ctx context.Context, u db.User, hwid string, in DeviceInf
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
+		}
+		if hwid != "" {
+			// A banned id stays out: it takes no place and burns no slot.
+			if _, err := q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: u.ID, Hwid: hwid}); err == nil {
+				return ErrDeviceBanned
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
 		}
 		// A user who cannot connect (turned off, term over) registers no new device and takes
 		// no slot: the link itself is enough to ask, and it may be in anyone's hands. The
@@ -300,4 +310,110 @@ func burnDevices(ctx context.Context, q *db.Queries, userID, now int64) error {
 		}
 	}
 	return q.DeleteBoundDevicesOf(ctx, userID)
+}
+
+// Rename gives a bound device its own name; empty goes back to the one its app
+// reports. It returns the name as stored.
+func (d *Devices) Rename(ctx context.Context, userID, deviceID int64, name string) (string, error) {
+	name, err := CleanDeviceName(name)
+	if err != nil {
+		return "", err
+	}
+	n, err := d.st.Q.SetBoundDeviceName(ctx, db.SetBoundDeviceNameParams{Name: name, ID: deviceID, UserID: userID})
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return "", ErrNotFound
+	}
+	return name, nil
+}
+
+// DeviceLabel is what a device is called: its own name, else what the app reported.
+func DeviceLabel(dev db.BoundDevice) string {
+	if dev.Name != "" {
+		return dev.Name
+	}
+	if dev.Model != "" {
+		return dev.Model
+	}
+	if sys := strings.TrimSpace(dev.Os + " " + dev.OsVersion); sys != "" {
+		return sys
+	}
+	if app, _, _ := strings.Cut(strings.TrimSpace(dev.App), " "); app != "" {
+		return strings.Replace(app, "/", " ", 1)
+	}
+	return ""
+}
+
+// Ban cuts a device off and keeps its id out of the user: the slot burns, the row
+// goes, and the ban row stops the id from binding to the same user again. The same
+// id on another user is not affected. adminID 0 is an API key.
+func (d *Devices) Ban(ctx context.Context, userID, deviceID, adminID int64) (db.DeviceBan, error) {
+	now := d.now().Unix()
+	var ban db.DeviceBan
+	err := d.st.Tx(ctx, func(q *db.Queries) error {
+		if _, err := q.GetUser(ctx, userID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		dev, err := q.GetBoundDeviceByID(ctx, db.GetBoundDeviceByIDParams{ID: deviceID, UserID: userID})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if dev.Hwid == "" {
+			return ErrBanShared
+		}
+		admin := sql.NullInt64{}
+		if adminID > 0 {
+			admin = sql.NullInt64{Int64: adminID, Valid: true}
+		}
+		ban, err = q.CreateDeviceBan(ctx, db.CreateDeviceBanParams{UserID: userID, Hwid: dev.Hwid, Label: DeviceLabel(dev), AdminID: admin, BannedAt: now})
+		if err != nil {
+			return err
+		}
+		if err := q.BurnSlot(ctx, db.BurnSlotParams{BurnedAt: sql.NullInt64{Int64: now, Valid: true}, ID: dev.SlotID}); err != nil {
+			return err
+		}
+		return q.DeleteBoundDevice(ctx, dev.ID)
+	})
+	if err != nil {
+		return db.DeviceBan{}, err
+	}
+	d.changes.PoliciesChanged() // the burned slot is refused from now on
+	return ban, nil
+}
+
+// Unban lets a banned device id bind to the user again: on its next fetch it takes
+// a free place as a new device.
+func (d *Devices) Unban(ctx context.Context, userID, banID int64) (db.DeviceBan, error) {
+	ban, err := d.st.Q.DeleteDeviceBan(ctx, db.DeleteDeviceBanParams{ID: banID, UserID: userID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return db.DeviceBan{}, ErrNotFound
+		}
+		return db.DeviceBan{}, err
+	}
+	return ban, nil
+}
+
+// Banned is whether the admin banned a device id from the user. An invalid id is
+// nobody's: it never matches a ban.
+func (d *Devices) Banned(ctx context.Context, userID int64, hwid string) (bool, error) {
+	if !ValidHWID(hwid) {
+		return false, nil
+	}
+	_, err := d.st.Q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: userID, Hwid: hwid})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
