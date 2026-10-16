@@ -35,7 +35,11 @@ type adminWords struct {
 	confirmAsk, cancelled             string
 	actDisabled, actEnabled           string
 	actExtended, actReset, actUnbound string
+	actBanned, actUnbanned            string
 	unbindPick                        string
+	banPick                           string
+	unbansVerb, unbansTitle, noBans   string
+	unbanVerb                         string
 	nodesTitle, noNodes               string
 	broadcastAsk, broadcastSent       string
 	broadcastUsage                    string
@@ -43,6 +47,7 @@ type adminWords struct {
 	noBound                           string
 	disableVerb, enableVerb           string
 	extendVerb, resetVerb, unbindVerb string
+	banVerb                           string
 	deleteVerb, reissueVerb           string
 	tariffVerb, tgunlinkVerb          string
 	foreverVerb                       string
@@ -103,7 +108,13 @@ func adminText(lang string) adminWords {
 			actExtended:     "Продлён.",
 			actReset:        "Трафик сброшен.",
 			actUnbound:      "Устройство отвязано.",
+			actBanned:       "Устройство заблокировано.",
+			actUnbanned:     "Устройство разблокировано.",
 			unbindPick:      "Какое отвязать?",
+			banPick:         "Какое заблокировать?",
+			unbansVerb:      "Забаненные",
+			unbansTitle:     "Заблокированные устройства:",
+			noBans:          "Забаненных устройств нет.",
 			nodesTitle:      "Ноды:",
 			noNodes:         "Нод нет.",
 			broadcastAsk:    "Разослать {n} админам?\n\n{text}",
@@ -116,6 +127,8 @@ func adminText(lang string) adminWords {
 			extendVerb:      "Продлить на 30 дней",
 			resetVerb:       "Сбросить трафик",
 			unbindVerb:      "Отвязать устройство",
+			banVerb:         "Заблокировать устройство",
+			unbanVerb:       "Разблокировать",
 			deleteVerb:      "Удалить",
 			foreverVerb:     "Бессрочно",
 			reissueVerb:     "Перевыпустить",
@@ -193,7 +206,13 @@ func adminText(lang string) adminWords {
 		actExtended:     "Extended.",
 		actReset:        "Traffic reset.",
 		actUnbound:      "Device unbound.",
+		actBanned:       "Device blocked.",
+		actUnbanned:     "Device unblocked.",
 		unbindPick:      "Which one to unbind?",
+		banPick:         "Which one to block?",
+		unbansVerb:      "Blocked",
+		unbansTitle:     "Blocked devices:",
+		noBans:          "No blocked devices.",
 		nodesTitle:      "Nodes:",
 		noNodes:         "No nodes.",
 		broadcastAsk:    "Send to {n} admins?\n\n{text}",
@@ -206,6 +225,8 @@ func adminText(lang string) adminWords {
 		extendVerb:      "Extend 30 days",
 		resetVerb:       "Reset traffic",
 		unbindVerb:      "Unbind device",
+		banVerb:         "Block device",
+		unbanVerb:       "Unblock",
 		deleteVerb:      "Delete",
 		foreverVerb:     "Forever",
 		reissueVerb:     "Reissue",
@@ -587,6 +608,16 @@ func (b *AdminBot) onAdminPress(ctx context.Context, c *Client, out *Outbox, q *
 			return
 		}
 		b.pickUnbind(ctx, c, out, w, q, chat, admin, parts[2])
+	case "ban":
+		if len(parts) != 3 {
+			return
+		}
+		b.pickBan(ctx, c, out, w, q, chat, admin, parts[2])
+	case "unbans":
+		if len(parts) != 3 {
+			return
+		}
+		b.bansView(ctx, c, out, w, q, chat, admin, parts[2])
 	case "bc":
 		if len(parts) != 3 {
 			return
@@ -926,6 +957,10 @@ func opVerb(w adminWords, op string) string {
 		return w.resetVerb
 	case "unbind":
 		return w.unbindVerb
+	case "ban":
+		return w.banVerb
+	case "unban":
+		return w.unbanVerb
 	case "delete":
 		return w.deleteVerb
 	case "reissue":
@@ -1004,6 +1039,34 @@ func (b *AdminBot) doAction(ctx context.Context, c *Client, out *Outbox, w admin
 			return
 		}
 		done, auditAction = w.actUnbound, "adminbot.user_unbind"
+	case "ban":
+		parts := strings.Split(arg, ":")
+		if len(parts) != 2 {
+			return
+		}
+		dev, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return
+		}
+		if _, err := b.d.Devices.Ban(ctx, uid, dev, admin.ID); err != nil {
+			b.answer(c, q.ID, w.unknown)
+			return
+		}
+		done, auditAction = w.actBanned, "adminbot.user_ban_device"
+	case "unban":
+		parts := strings.Split(arg, ":")
+		if len(parts) != 2 {
+			return
+		}
+		ban, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return
+		}
+		if _, err := b.d.Devices.Unban(ctx, uid, ban); err != nil {
+			b.answer(c, q.ID, w.unknown)
+			return
+		}
+		done, auditAction = w.actUnbanned, "adminbot.user_unban_device"
 	case "delete":
 		old := b.avatarNameOf(ctx, uid)
 		if err := b.d.Users.Delete(ctx, uid); err != nil {
@@ -1046,8 +1109,10 @@ func (b *AdminBot) doAction(ctx context.Context, c *Client, out *Outbox, w admin
 	b.say(out, chat, done, nil)
 }
 
-func boundLabel(hwid, os, osv, model, app string, id int64) string {
-	name := model
+func boundLabel(name, hwid, os, osv, model, app string, id int64) string {
+	if name == "" {
+		name = model
+	}
 	if name == "" {
 		name = strings.TrimSpace(os + " " + osv)
 	}
@@ -1080,11 +1145,76 @@ func (b *AdminBot) pickUnbind(ctx context.Context, c *Client, out *Outbox, w adm
 	kb := &Keyboard{}
 	for _, d := range devs {
 		kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{
-			Text:         boundLabel(d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID),
+			Text:         boundLabel(d.Name, d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID),
 			CallbackData: "ab:cf:unbind:" + strconv.FormatInt(uid, 10) + ":" + strconv.FormatInt(d.ID, 10),
 		}})
 	}
 	b.say(out, chat, w.unbindPick, kb)
+}
+
+// pickBan lists the bound devices with an id to block: the shared place belongs to
+// everyone, there is nothing to block there.
+func (b *AdminBot) pickBan(ctx context.Context, c *Client, out *Outbox, w adminWords, q *CallbackQuery, chat int64, admin db.Admin, uidStr string) {
+	if !b.check(out, w, chat, admin, "users", true) {
+		b.answer(c, q.ID, w.noAccess)
+		return
+	}
+	uid, err := strconv.ParseInt(uidStr, 10, 64)
+	if err != nil {
+		return
+	}
+	devs, err := b.d.Store.Q.ListBoundDevices(ctx, uid)
+	if err != nil {
+		return
+	}
+	kb := &Keyboard{}
+	for _, d := range devs {
+		if d.Hwid == "" {
+			continue
+		}
+		kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{
+			Text:         boundLabel(d.Name, d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID),
+			CallbackData: "ab:cf:ban:" + strconv.FormatInt(uid, 10) + ":" + strconv.FormatInt(d.ID, 10),
+		}})
+	}
+	if len(kb.InlineKeyboard) == 0 {
+		b.say(out, chat, w.noBound, nil)
+		return
+	}
+	b.say(out, chat, w.banPick, kb)
+}
+
+// bansView lists the blocked device ids with their unblock buttons.
+func (b *AdminBot) bansView(ctx context.Context, c *Client, out *Outbox, w adminWords, q *CallbackQuery, chat int64, admin db.Admin, uidStr string) {
+	if !b.check(out, w, chat, admin, "users", false) {
+		b.answer(c, q.ID, w.noAccess)
+		return
+	}
+	uid, err := strconv.ParseInt(uidStr, 10, 64)
+	if err != nil {
+		return
+	}
+	bans, err := b.d.Store.Q.ListDeviceBans(ctx, uid)
+	if err != nil || len(bans) == 0 {
+		b.say(out, chat, w.noBans, nil)
+		return
+	}
+	var lines []string
+	lines = append(lines, "<b>"+esc(w.unbansTitle)+"</b>")
+	kb := &Keyboard{}
+	for _, bn := range bans {
+		label := bn.Label
+		if label == "" {
+			label = bn.Hwid
+		}
+		lines = append(lines, "🚫 "+esc(label))
+		kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{
+			Text:         w.unbanVerb + ": " + label,
+			CallbackData: "ab:cf:unban:" + strconv.FormatInt(uid, 10) + ":" + strconv.FormatInt(bn.ID, 10),
+		}})
+	}
+	kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{Text: w.back, CallbackData: "ab:user:" + uidStr}})
+	b.say(out, chat, strings.Join(lines, "\n"), kb)
 }
 
 func (b *AdminBot) cmdNodes(ctx context.Context, out *Outbox, w adminWords, chat int64, admin db.Admin) {

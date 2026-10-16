@@ -219,6 +219,8 @@ func (b *Bot) devices(ctx context.Context, w *words, u db.User, cmd string, id i
 
 func deviceName(w *words, d db.BoundDevice) string {
 	switch {
+	case d.Name != "":
+		return d.Name
 	case d.Hwid == "":
 		return w.sharedPlace
 	case d.Model != "":

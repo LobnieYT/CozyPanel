@@ -158,10 +158,6 @@ func maskIP(ip string) string {
 	return ip
 }
 
-func boundName(hwid, os, osv, model, app string, id int64) string {
-	return boundLabel(hwid, os, osv, model, app, id)
-}
-
 // trafficText summarizes today, the total and the last 7 days.
 func (b *AdminBot) trafficText(ctx context.Context, w adminWords, uid int64) string {
 	now := b.d.Now()
@@ -367,7 +363,7 @@ func (b *AdminBot) devicesView(ctx context.Context, out *Outbox, w adminWords, c
 			if b.boundLive(ctx, d.SlotID) {
 				st = "online"
 			}
-			line := "📱 " + esc(boundLabel(d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID)) + " · " + st
+			line := "📱 " + esc(boundLabel(d.Name, d.Hwid, d.Os, d.OsVersion, d.Model, d.App, d.ID)) + " · " + st
 			if n := used[d.ID]; n > 0 {
 				line += " · " + fmtBytes(n)
 			}
@@ -376,8 +372,19 @@ func (b *AdminBot) devicesView(ctx context.Context, out *Outbox, w adminWords, c
 	}
 	kb := &Keyboard{InlineKeyboard: [][]Button{
 		{{Text: w.unbindVerb, CallbackData: "ab:unb:" + uid}},
-		{{Text: w.back, CallbackData: "ab:user:" + uid}},
+		{{Text: w.banVerb, CallbackData: "ab:ban:" + uid}},
 	}}
+	if bans, err := b.d.Store.Q.ListDeviceBans(ctx, u.ID); err == nil && len(bans) > 0 {
+		for _, bn := range bans {
+			label := bn.Label
+			if label == "" {
+				label = bn.Hwid
+			}
+			lines = append(lines, "🚫 "+esc(label))
+		}
+		kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{Text: w.unbansVerb + " (" + strconv.Itoa(len(bans)) + ")", CallbackData: "ab:unbans:" + uid}})
+	}
+	kb.InlineKeyboard = append(kb.InlineKeyboard, []Button{{Text: w.back, CallbackData: "ab:user:" + uid}})
 	b.say(out, chat, strings.Join(lines, "\n"), kb)
 }
 

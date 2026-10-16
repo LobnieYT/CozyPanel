@@ -32,3 +32,26 @@ func TestDevicesScreenShowsTraffic(t *testing.T) {
 		t.Fatalf("traffic token %d times, want 1:\n%s", got, text)
 	}
 }
+
+// The devices screen calls a renamed device by its own name.
+func TestDevicesScreenShowsNames(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := e.st.DB.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	exec("INSERT INTO slots (id, name, uuid, secret, state, created_at) VALUES (424241, 's424241', 'uu1', 'x', 'assigned', 1)")
+	exec("INSERT INTO bound_devices (user_id, hwid, slot_id, os, model, name, created_at, last_seen) VALUES (?, 'hw1', 424241, 'Android', 'Pixel 9', 'Мамин телефон', 1, 1)", e.user.ID)
+
+	w := wordsFor("ru")
+	text, _ := e.bot.devices(ctx, w, e.user, "d", 0, "", e.now)
+	if !strings.Contains(text, "Мамин телефон") {
+		t.Fatalf("no own name in:\n%s", text)
+	}
+	if strings.Contains(text, "Pixel 9") {
+		t.Fatalf("the app name leaks beside the own one:\n%s", text)
+	}
+}
