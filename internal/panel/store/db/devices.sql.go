@@ -10,6 +10,23 @@ import (
 	"database/sql"
 )
 
+const activeDeviceBan = `-- name: ActiveDeviceBan :one
+SELECT id FROM device_bans WHERE user_id = ? AND hwid = ?
+`
+
+type ActiveDeviceBanParams struct {
+	UserID int64
+	Hwid   string
+}
+
+// The ban on a device, if the admin banned it.
+func (q *Queries) ActiveDeviceBan(ctx context.Context, arg ActiveDeviceBanParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, activeDeviceBan, arg.UserID, arg.Hwid)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const addSlotTraffic = `-- name: AddSlotTraffic :exec
 INSERT INTO slot_traffic (slot_id, up, down)
 SELECT id, ?, ? FROM slots WHERE name = ?
@@ -43,7 +60,7 @@ func (q *Queries) CountBoundDevices(ctx context.Context, userID int64) (int64, e
 const createBoundDevice = `-- name: CreateBoundDevice :one
 INSERT INTO bound_devices (user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen
+RETURNING id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen, name
 `
 
 type CreateBoundDeviceParams struct {
@@ -85,6 +102,43 @@ func (q *Queries) CreateBoundDevice(ctx context.Context, arg CreateBoundDevicePa
 		&i.LastIp,
 		&i.CreatedAt,
 		&i.LastSeen,
+		&i.Name,
+	)
+	return i, err
+}
+
+const createDeviceBan = `-- name: CreateDeviceBan :one
+INSERT INTO device_bans (user_id, hwid, label, admin_id, banned_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (user_id, hwid) DO UPDATE SET label = excluded.label, admin_id = excluded.admin_id, banned_at = excluded.banned_at
+RETURNING id, user_id, hwid, label, admin_id, banned_at
+`
+
+type CreateDeviceBanParams struct {
+	UserID   int64
+	Hwid     string
+	Label    string
+	AdminID  sql.NullInt64
+	BannedAt int64
+}
+
+// Banning twice keeps one row: the label, the admin and the moment are the latest.
+func (q *Queries) CreateDeviceBan(ctx context.Context, arg CreateDeviceBanParams) (DeviceBan, error) {
+	row := q.db.QueryRowContext(ctx, createDeviceBan,
+		arg.UserID,
+		arg.Hwid,
+		arg.Label,
+		arg.AdminID,
+		arg.BannedAt,
+	)
+	var i DeviceBan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Hwid,
+		&i.Label,
+		&i.AdminID,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -107,8 +161,31 @@ func (q *Queries) DeleteBoundDevicesOf(ctx context.Context, userID int64) error 
 	return err
 }
 
+const deleteDeviceBan = `-- name: DeleteDeviceBan :one
+DELETE FROM device_bans WHERE id = ? AND user_id = ? RETURNING id, user_id, hwid, label, admin_id, banned_at
+`
+
+type DeleteDeviceBanParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) DeleteDeviceBan(ctx context.Context, arg DeleteDeviceBanParams) (DeviceBan, error) {
+	row := q.db.QueryRowContext(ctx, deleteDeviceBan, arg.ID, arg.UserID)
+	var i DeviceBan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Hwid,
+		&i.Label,
+		&i.AdminID,
+		&i.BannedAt,
+	)
+	return i, err
+}
+
 const getBoundDevice = `-- name: GetBoundDevice :one
-SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen FROM bound_devices WHERE user_id = ? AND hwid = ?
+SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen, name FROM bound_devices WHERE user_id = ? AND hwid = ?
 `
 
 type GetBoundDeviceParams struct {
@@ -131,12 +208,13 @@ func (q *Queries) GetBoundDevice(ctx context.Context, arg GetBoundDeviceParams) 
 		&i.LastIp,
 		&i.CreatedAt,
 		&i.LastSeen,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getBoundDeviceByID = `-- name: GetBoundDeviceByID :one
-SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen FROM bound_devices WHERE id = ? AND user_id = ?
+SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen, name FROM bound_devices WHERE id = ? AND user_id = ?
 `
 
 type GetBoundDeviceByIDParams struct {
@@ -159,6 +237,7 @@ func (q *Queries) GetBoundDeviceByID(ctx context.Context, arg GetBoundDeviceByID
 		&i.LastIp,
 		&i.CreatedAt,
 		&i.LastSeen,
+		&i.Name,
 	)
 	return i, err
 }
@@ -199,7 +278,7 @@ func (q *Queries) ListBoundDeviceTraffic(ctx context.Context, userID int64) ([]L
 }
 
 const listBoundDevices = `-- name: ListBoundDevices :many
-SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen FROM bound_devices WHERE user_id = ? ORDER BY created_at, id
+SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen, name FROM bound_devices WHERE user_id = ? ORDER BY created_at, id
 `
 
 func (q *Queries) ListBoundDevices(ctx context.Context, userID int64) ([]BoundDevice, error) {
@@ -223,6 +302,55 @@ func (q *Queries) ListBoundDevices(ctx context.Context, userID int64) ([]BoundDe
 			&i.LastIp,
 			&i.CreatedAt,
 			&i.LastSeen,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeviceBans = `-- name: ListDeviceBans :many
+SELECT b.id, b.user_id, b.hwid, b.label, b.admin_id, b.banned_at, COALESCE(a.username, '') AS admin_name
+FROM device_bans b LEFT JOIN admins a ON a.id = b.admin_id
+WHERE b.user_id = ? ORDER BY b.banned_at DESC, b.id DESC
+`
+
+type ListDeviceBansRow struct {
+	ID        int64
+	UserID    int64
+	Hwid      string
+	Label     string
+	AdminID   sql.NullInt64
+	BannedAt  int64
+	AdminName string
+}
+
+// The devices banned from a subscription, latest first.
+func (q *Queries) ListDeviceBans(ctx context.Context, userID int64) ([]ListDeviceBansRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDeviceBans, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeviceBansRow{}
+	for rows.Next() {
+		var i ListDeviceBansRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Hwid,
+			&i.Label,
+			&i.AdminID,
+			&i.BannedAt,
+			&i.AdminName,
 		); err != nil {
 			return nil, err
 		}
@@ -272,7 +400,7 @@ func (q *Queries) ListDeviceSlots(ctx context.Context) ([]ListDeviceSlotsRow, er
 }
 
 const listIdleBoundDevices = `-- name: ListIdleBoundDevices :many
-SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen FROM bound_devices WHERE last_seen < ?
+SELECT id, user_id, hwid, slot_id, os, os_version, model, app, last_ip, created_at, last_seen, name FROM bound_devices WHERE last_seen < ?
 `
 
 func (q *Queries) ListIdleBoundDevices(ctx context.Context, lastSeen int64) ([]BoundDevice, error) {
@@ -296,6 +424,7 @@ func (q *Queries) ListIdleBoundDevices(ctx context.Context, lastSeen int64) ([]B
 			&i.LastIp,
 			&i.CreatedAt,
 			&i.LastSeen,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -308,6 +437,25 @@ func (q *Queries) ListIdleBoundDevices(ctx context.Context, lastSeen int64) ([]B
 		return nil, err
 	}
 	return items, nil
+}
+
+const setBoundDeviceName = `-- name: SetBoundDeviceName :execrows
+UPDATE bound_devices SET name = ? WHERE id = ? AND user_id = ?
+`
+
+type SetBoundDeviceNameParams struct {
+	Name   string
+	ID     int64
+	UserID int64
+}
+
+// The device's own name; ” goes back to the one its app reports.
+func (q *Queries) SetBoundDeviceName(ctx context.Context, arg SetBoundDeviceNameParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setBoundDeviceName, arg.Name, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const setUserSlot = `-- name: SetUserSlot :exec
