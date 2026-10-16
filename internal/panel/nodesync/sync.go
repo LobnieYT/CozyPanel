@@ -510,6 +510,13 @@ func (s *Syncer) pullCounters(ctx context.Context) {
 			if err := q.AddTrafficDaily(ctx, db.AddTrafficDailyParams{UserID: uid, Day: day, Up: t.Up, Down: t.Down}); err != nil {
 				return err
 			}
+			// Each slot's own total: what the bound device behind the slot used.
+			// Zero batches leave no row; a batch delivered again is skipped above.
+			if t.Up != 0 || t.Down != 0 {
+				if err := q.AddSlotTraffic(ctx, db.AddSlotTrafficParams{Up: t.Up, Down: t.Down, Name: slot}); err != nil {
+					return err
+				}
+			}
 		}
 		// Pool traffic counts to the pool, not to the main quota; the statistics take all.
 		// A pool deleted meanwhile is skipped: the batch must still go through.
@@ -547,6 +554,11 @@ func (s *Syncer) pullCounters(ctx context.Context) {
 				}
 				if err := q.AddTrafficDaily(ctx, db.AddTrafficDailyParams{UserID: uid, Day: day, Up: t.Up, Down: t.Down}); err != nil {
 					return err
+				}
+				if t.Up != 0 || t.Down != 0 {
+					if err := q.AddSlotTraffic(ctx, db.AddSlotTrafficParams{Up: t.Up, Down: t.Down, Name: slot}); err != nil {
+						return err
+					}
 				}
 			}
 		}
