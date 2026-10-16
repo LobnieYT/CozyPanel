@@ -7,7 +7,7 @@ import { useToast } from "../../../components/toast";
 import { ErrorState, Skeleton } from "../../../components/ui";
 import { t } from "../../../i18n";
 import { desktopOS, deviceDetails, deviceLabel } from "../../../lib/devices";
-import { ago, maskIP } from "../../../lib/format";
+import { ago, bytes, maskIP } from "../../../lib/format";
 import { Section } from "./section";
 
 export function DevicesSection({ u }: { u: User }) {
@@ -133,6 +133,11 @@ function BoundDevices({ u }: { u: User }) {
                     {meta ? `${meta} · ` : ""}
                     {d.online ? <span className="text-[var(--leaf-700)]">{t("users.onlineNow")}</span> : ago(d.last_seen)}
                   </div>
+                  {d.traffic_up + d.traffic_down > 0 ? (
+                    <div className="num text-xs text-[var(--ink-500)]" title={t("userDrawer.deviceTrafficHint")}>
+                      {t("userDrawer.deviceTraffic", { down: bytes(d.traffic_down), up: bytes(d.traffic_up) })}
+                    </div>
+                  ) : null}
                 </div>
                 {writable ? (
                   <button type="button" className="icon-btn" aria-label={t("userDrawer.unbindLabel", { name: deviceName(d) })} title={t("userDrawer.unbind")} onClick={() => setPick(d)}>

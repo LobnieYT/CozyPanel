@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Pill } from "../components/ui";
 import { t } from "../i18n";
 import { desktopOS, deviceDetails, deviceLabel } from "../lib/devices";
-import { ago, dateShort, time } from "../lib/format";
+import { ago, bytes, dateShort, time } from "../lib/format";
 import { request } from "./net";
 import type { Device, Info } from "./types";
 
@@ -86,6 +86,11 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
                       {meta ? `${meta} · ` : ""}
                       {ago(d.last_seen)}
                     </div>
+                    {(d.used ?? 0) > 0 ? (
+                      <div className="num text-xs text-[var(--ink-500)]" title={t("sub.deviceUsedHint")}>
+                        {t("sub.deviceUsed", { n: bytes(d.used ?? 0) })}
+                      </div>
+                    ) : null}
                   </div>
                   {confirm === d.id ? null : (
                     <Button id={`unbind-${d.id}`} size="sm" disabled={busy || !!wait} onClick={() => ask(d.id)} aria-label={t("sub.unbindLabel", { name })}>
