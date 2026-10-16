@@ -285,6 +285,16 @@
           },
           "os_version": {
             "type": "string"
+          },
+          "traffic_down": {
+            "description": "Байты к устройству с тех пор, как оно привязано",
+            "format": "int64",
+            "type": "integer"
+          },
+          "traffic_up": {
+            "description": "Байты от устройства с тех пор, как оно привязано",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
@@ -297,7 +307,9 @@
           "last_ip",
           "online",
           "created_at",
-          "last_seen"
+          "last_seen",
+          "traffic_up",
+          "traffic_down"
         ],
         "type": "object"
       },

@@ -1317,6 +1317,16 @@ export interface components {
             online: boolean;
             os: string;
             os_version: string;
+            /**
+             * Format: int64
+             * @description Байты к устройству с тех пор, как оно привязано
+             */
+            traffic_down: number;
+            /**
+             * Format: int64
+             * @description Байты от устройства с тех пор, как оно привязано
+             */
+            traffic_up: number;
         };
         BroadcastInputBody: {
             /** @description Обычный текст; {brand} — название сервиса */

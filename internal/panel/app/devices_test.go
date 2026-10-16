@@ -117,11 +117,34 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 	api := "/" + adminPath + "/api/v1/users/" + strconv.FormatInt(u.ID, 10) + "/bound-devices"
 	resp, body = h.do(http.MethodGet, api, nil, nil)
 	var bound []struct {
-		ID   int64  `json:"id"`
-		HWID string `json:"hwid"`
+		ID          int64  `json:"id"`
+		HWID        string `json:"hwid"`
+		TrafficUp   int64  `json:"traffic_up"`
+		TrafficDown int64  `json:"traffic_down"`
 	}
 	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bound) != nil || len(bound) != 3 || bound[0].HWID == "" {
 		t.Fatalf("admin list: %d %s", resp.StatusCode, body)
+	}
+	for _, b := range bound {
+		if b.TrafficUp != 0 || b.TrafficDown != 0 {
+			t.Fatalf("uncounted device %d shows traffic: up %d down %d", b.ID, b.TrafficUp, b.TrafficDown)
+		}
+	}
+	if _, err := h.st.DB.ExecContext(ctx, "INSERT INTO slot_traffic (slot_id, up, down) SELECT slot_id, 150, 950 FROM bound_devices WHERE id = ?", bound[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	resp, body = h.do(http.MethodGet, api, nil, nil)
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bound) != nil {
+		t.Fatalf("admin list again: %d %s", resp.StatusCode, body)
+	}
+	for _, b := range bound {
+		wantUp, wantDown := int64(0), int64(0)
+		if b.ID == bound[0].ID {
+			wantUp, wantDown = 150, 950
+		}
+		if b.TrafficUp != wantUp || b.TrafficDown != wantDown {
+			t.Fatalf("device %d: up %d down %d, want %d %d", b.ID, b.TrafficUp, b.TrafficDown, wantUp, wantDown)
+		}
 	}
 	if resp, _ := h.do(http.MethodDelete, api+"/"+strconv.FormatInt(bound[0].ID, 10), nil, map[string]string{"X-CSRF-Token": h.csrf}); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("the admin unbinds without the daily limit: %d", resp.StatusCode)
