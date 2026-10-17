@@ -29,6 +29,8 @@ type NodeInfo struct {
 	Host        string     `json:"host" doc:"Адрес для клиентов"`
 	Domain      string     `json:"domain"`
 	Enabled     bool       `json:"enabled"`
+	FairShare   bool       `json:"fair_share" doc:"Делить канал ноды поровну между теми, кто качает"`
+	ChannelMbps *int64     `json:"channel_mbps,omitempty" doc:"Ширина канала ноды, Мбит/с; нужна для деления"`
 	Inbounds    int        `json:"inbounds"`
 	Status      string     `json:"status" enum:"ok,error,unknown"`
 	Error       string     `json:"error,omitempty"`
@@ -69,10 +71,12 @@ type createNodeInput struct {
 type patchNodeInput struct {
 	ID   int64 `path:"id" minimum:"1"`
 	Body struct {
-		Name    *string `json:"name,omitempty" maxLength:"200"`
-		Host    *string `json:"host,omitempty" maxLength:"253"`
-		Domain  *string `json:"domain,omitempty" maxLength:"253"`
-		Enabled *bool   `json:"enabled,omitempty"`
+		Name        *string `json:"name,omitempty" maxLength:"200"`
+		Host        *string `json:"host,omitempty" maxLength:"253"`
+		Domain      *string `json:"domain,omitempty" maxLength:"253"`
+		Enabled     *bool   `json:"enabled,omitempty"`
+		FairShare   *bool   `json:"fair_share,omitempty"`
+		ChannelMbps *int64  `json:"channel_mbps,omitempty" minimum:"1" maximum:"100000" doc:"Ширина канала ноды, Мбит/с"`
 	}
 }
 
@@ -90,7 +94,8 @@ func (h *handlers) registerNodes() {
 
 func (h *handlers) viewNode(ctx context.Context, n db.Node, inbounds []db.Inbound) NodeInfo {
 	v := NodeInfo{ID: n.ID, Name: n.Name, Local: n.Address == "", Address: n.Address, Host: domain.NodeHost(n), Domain: n.Domain,
-		Enabled: n.Enabled != 0, Inbounds: len(domain.NodeInbounds(inbounds, n.ID)), Status: "unknown"}
+		Enabled: n.Enabled != 0, Inbounds: len(domain.NodeInbounds(inbounds, n.ID)), Status: "unknown",
+		FairShare: n.FairShare != 0, ChannelMbps: ptrInt(n.ChannelMbps.Int64, n.ChannelMbps.Valid)}
 	if v.Local {
 		// The panel's own node is reached at the panel's address.
 		ep, _ := h.d.Settings.Endpoint(ctx)
@@ -273,6 +278,27 @@ func (h *handlers) updateNode(ctx context.Context, in *patchNodeInput) (*nodeInf
 		Enabled: n.Enabled, UpdatedAt: h.d.Now().Unix(), ID: n.ID})
 	if err != nil {
 		return nil, err
+	}
+	// The channel: shared out or not. Without a width there is nothing to divide.
+	if b.FairShare != nil || b.ChannelMbps != nil {
+		channel := n.ChannelMbps
+		if b.ChannelMbps != nil {
+			channel = nullable(b.ChannelMbps)
+		}
+		fair := n.FairShare
+		if b.FairShare != nil {
+			if *b.FairShare && !channel.Valid {
+				return nil, huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.channel_mbps", Message: "channel_required"})
+			}
+			if *b.FairShare {
+				fair = 1
+			} else {
+				fair = 0
+			}
+		}
+		if err := h.d.Store.Q.SetNodeShaping(ctx, db.SetNodeShapingParams{ChannelMbps: channel, FairShare: fair, UpdatedAt: h.d.Now().Unix(), ID: n.ID}); err != nil {
+			return nil, err
+		}
 	}
 	h.nodesChanged()
 	h.d.Changes.SlotsChanged()

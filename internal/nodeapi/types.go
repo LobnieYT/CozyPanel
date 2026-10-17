@@ -33,6 +33,9 @@ type DesiredState struct {
 	Warp *Warp `json:"warp,omitempty"`
 	// Relay is the hidden listener other nodes send their chosen traffic out through;
 	// Exits are the other nodes this one sends chosen inbounds through (a cascade).
+	// Shaping is the node's own channel: its width and whether it is divided between
+	// those who are downloading at the moment. Nil: the caps in the policies stand alone.
+	Shaping *Shaping `json:"shaping,omitempty"`
 	Relay *Relay `json:"relay,omitempty"`
 	Exits []Exit `json:"exits,omitempty"`
 	// DNS is the node's resolver setup; nil or disabled: mihomo's DNS stays off and
@@ -154,6 +157,9 @@ type Policy struct {
 	DeviceLimit    int      `json:"device_limit"`       // 0 = unlimited
 	QuotaRemaining int64    `json:"quota_remaining"`    // bytes left as of BaseSeq; -1 = unlimited
 	BaseSeq        int64    `json:"base_seq"`
+	// Mbps is the cap on this slot's speed, each way; 0 = none. With a node's fair
+	// share on it is the ceiling, not what every slot gets.
+	Mbps int `json:"mbps,omitempty"`
 	// OtherIPs are the slot's devices on the panel's other nodes: they count against
 	// DeviceLimit here too, and may connect here without taking another device.
 	OtherIPs []string `json:"other_ips,omitempty"`
@@ -165,6 +171,13 @@ type Policy struct {
 type PoliciesRequest struct {
 	Epoch    string   `json:"epoch"`
 	Policies []Policy `json:"policies"`
+}
+
+// Shaping is the node's own channel: its width in Mbit/s and whether it is shared out
+// between the slots that are downloading at the moment.
+type Shaping struct {
+	ChannelMbps int  `json:"channel_mbps"`
+	FairShare   bool `json:"fair_share,omitempty"`
 }
 
 type AckRequest struct {

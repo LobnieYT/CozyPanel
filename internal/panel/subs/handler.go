@@ -473,6 +473,8 @@ type Info struct {
 	ReissueLimit int        `json:"reissue_limit,omitempty" doc:"New links per period; 0 unlimited"`
 	ReissueDays  int        `json:"reissue_days,omitempty" doc:"The period the limit counts over, days"`
 	ReissueAfter *time.Time `json:"reissue_after,omitempty" doc:"The subscriber may take a new link from then"`
+	// SpeedLimit is the cap, Mbit/s each way; the user's own may differ from the plan's.
+	SpeedLimit int `json:"speed_limit,omitempty" doc:"Мбит/с в каждую сторону; 0 — без ограничения"`
 	// Pools: the user's traffic pools with a limit or with traffic used.
 	Pools []PoolInfo `json:"pools,omitempty"`
 }
@@ -549,6 +551,9 @@ func (h *Handler) info(ctx context.Context, w http.ResponseWriter, u db.User, pr
 		out.UnbindDays = st.Rules.Days
 		out.UnbindsLeft = st.Left()
 		out.ReturnHours = st.Rules.ReturnHours
+	}
+	if u.SpeedLimit.Valid && u.SpeedLimit.Int64 > 0 {
+		out.SpeedLimit = int(u.SpeedLimit.Int64)
 	}
 	if u.TrafficLimit.Valid {
 		out.Limit = &u.TrafficLimit.Int64

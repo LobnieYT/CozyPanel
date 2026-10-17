@@ -21,6 +21,7 @@ type TariffView struct {
 	DurationDays  int64       `json:"duration_days" doc:"0 — бессрочно"`
 	DeviceLimit   *int64      `json:"device_limit"`
 	DeviceMode    string      `json:"device_mode" enum:"bound,online" doc:"Как считается лимит устройств: места или адреса в сети"`
+	SpeedLimit    *int64      `json:"speed_limit" doc:"Мбит/с в каждую сторону; null — без ограничения"`
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period"`
 	BillingDay    *int64      `json:"billing_day" doc:"День месяца, в который заканчивается срок; null — срок в днях"`
 	PriceLabel    string      `json:"price_label"`
@@ -31,6 +32,7 @@ type TariffView struct {
 func viewTariff(t db.Tariff) TariffView {
 	return TariffView{ID: t.ID, Name: t.Name, TrafficLimit: ptrInt(t.TrafficLimit.Int64, t.TrafficLimit.Valid),
 		DurationDays: t.DurationDays, DeviceLimit: ptrInt(t.DeviceLimit.Int64, t.DeviceLimit.Valid), DeviceMode: t.DeviceMode,
+		SpeedLimit:    ptrInt(t.SpeedLimit.Int64, t.SpeedLimit.Valid),
 		ResetStrategy: t.ResetStrategy, BillingDay: ptrInt(t.BillingDay.Int64, t.BillingDay.Valid), PriceLabel: t.PriceLabel, Sort: t.Sort}
 }
 
@@ -40,6 +42,7 @@ type tariffBody struct {
 	DurationDays  int64       `json:"duration_days" minimum:"0" maximum:"3650"`
 	DeviceLimit   *int64      `json:"device_limit,omitempty" minimum:"1" maximum:"100"`
 	DeviceMode    string      `json:"device_mode,omitempty" doc:"bound, online; пусто — оставить как было"`
+	SpeedLimit    *int64      `json:"speed_limit,omitempty" minimum:"1" maximum:"100000" doc:"Мбит/с в каждую сторону"`
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period" default:"none"`
 	BillingDay    *int64      `json:"billing_day,omitempty" minimum:"1" maximum:"31" doc:"Срок до этого числа месяца: месяц = от дня оплаты до дня оплаты"`
 	PriceLabel    string      `json:"price_label,omitempty" maxLength:"40"`
@@ -114,7 +117,7 @@ func (h *handlers) createTariff(ctx context.Context, in *tariffInput) (*tariffOu
 		var err error
 		t, err = q.CreateTariff(ctx, db.CreateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
 			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), DeviceMode: mode, ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
-			Sort: b.Sort, CreatedAt: h.d.Now().Unix(), BillingDay: nullable(b.BillingDay)})
+			Sort: b.Sort, CreatedAt: h.d.Now().Unix(), BillingDay: nullable(b.BillingDay), SpeedLimit: nullable(b.SpeedLimit)})
 		if err != nil || b.Pools == nil {
 			return err
 		}
@@ -145,7 +148,7 @@ func (h *handlers) updateTariff(ctx context.Context, in *tariffUpdateInput) (*ta
 		var err error
 		t, err = q.UpdateTariff(ctx, db.UpdateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
 			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), DeviceMode: mode, ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
-			Sort: b.Sort, BillingDay: nullable(b.BillingDay), ID: in.ID})
+			Sort: b.Sort, BillingDay: nullable(b.BillingDay), ID: in.ID, SpeedLimit: nullable(b.SpeedLimit)})
 		if err != nil || b.Pools == nil {
 			return err
 		}

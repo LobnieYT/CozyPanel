@@ -42,6 +42,7 @@ type UserView struct {
 	TotalDown     int64         `json:"total_down"`
 	DeviceLimit   *int64        `json:"device_limit"`
 	DeviceMode    string        `json:"device_mode" enum:"bound,online" doc:"Как считается лимит устройств: места или адреса в сети"`
+	SpeedLimit    *int64        `json:"speed_limit" doc:"Мбит/с в каждую сторону; null — без ограничения"`
 	ResetStrategy string        `json:"reset_strategy" enum:"none,month_start,period" doc:"month_start — раз в месяц: в день оплаты, без него 1-го числа"`
 	ResetsAt      *time.Time    `json:"resets_at"`
 	ExpiresAt     *time.Time    `json:"expires_at"`
@@ -101,7 +102,7 @@ func (h *handlers) viewUser(u db.User, slots []string, grants domain.GrantsLeft,
 		ID: u.ID, Name: u.Name, Contact: u.Contact, Note: u.Note, Tags: domain.DecodeTags(u.Tags),
 		State: domain.State(u, grants.Main(u.ID), now), TariffID: ptrInt(u.TariffID.Int64, u.TariffID.Valid),
 		TrafficLimit: ptrInt(u.TrafficLimit.Int64, u.TrafficLimit.Valid), TrafficExtra: grants.Main(u.ID), UsedUp: u.UsedUp, UsedDown: u.UsedDown,
-		TotalUp: u.TotalUp, TotalDown: u.TotalDown, DeviceLimit: ptrInt(u.DeviceLimit.Int64, u.DeviceLimit.Valid), DeviceMode: u.DeviceMode,
+		TotalUp: u.TotalUp, TotalDown: u.TotalDown, DeviceLimit: ptrInt(u.DeviceLimit.Int64, u.DeviceLimit.Valid), DeviceMode: u.DeviceMode, SpeedLimit: ptrInt(u.SpeedLimit.Int64, u.SpeedLimit.Valid),
 		ResetStrategy: u.ResetStrategy, ExpiresAt: ptrTime(u.ExpiresAt.Int64, u.ExpiresAt.Valid),
 		BillingDay: ptrInt(u.BillingDay.Int64, u.BillingDay.Valid),
 		Inbounds:   domain.DecodeInbounds(u.Inbounds), OnlineAt: ptrTime(u.OnlineAt.Int64, u.OnlineAt.Valid),
@@ -201,6 +202,8 @@ type patchUserInput struct {
 		DeviceLimit      *int64     `json:"device_limit,omitempty" minimum:"1" maximum:"100"`
 		DevicesUnlimited bool       `json:"devices_unlimited,omitempty"`
 		DeviceMode       *string    `json:"device_mode,omitempty" doc:"bound или online"`
+		SpeedLimit       *int64     `json:"speed_limit,omitempty" minimum:"1" maximum:"100000" doc:"Мбит/с в каждую сторону"`
+		SpeedUnlimited   bool       `json:"speed_unlimited,omitempty"`
 		ExpiresAt        *time.Time `json:"expires_at,omitempty"`
 		NeverExpires     bool       `json:"never_expires,omitempty"`
 		BillingDay       *int64     `json:"billing_day,omitempty" minimum:"0" maximum:"31" doc:"День оплаты 1–31; 0 — убрать"`
@@ -393,7 +396,7 @@ func (h *handlers) updateUser(ctx context.Context, in *patchUserInput) (*userOut
 	p := domain.Patch{
 		Name: b.Name, Contact: b.Contact, Note: b.Note, Tags: b.Tags, Disabled: b.Disabled,
 		TrafficLimit: b.TrafficLimit, ClearTrafficLimit: b.TrafficUnlimited,
-		DeviceLimit: b.DeviceLimit, ClearDeviceLimit: b.DevicesUnlimited, DeviceMode: b.DeviceMode,
+		DeviceLimit: b.DeviceLimit, ClearDeviceLimit: b.DevicesUnlimited, DeviceMode: b.DeviceMode, SpeedLimit: b.SpeedLimit, ClearSpeedLimit: b.SpeedUnlimited,
 		ExpiresAt: b.ExpiresAt, ClearExpiry: b.NeverExpires, Inbounds: b.Inbounds, TariffID: b.TariffID,
 	}
 	if b.BillingDay != nil {

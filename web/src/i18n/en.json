@@ -131,6 +131,7 @@
       "device_name_long": "Up to 40 characters",
       "name_chars": "Letters, numbers and punctuation on one line",
       "bad_device_mode": "How the device limit counts: places or addresses online.",
+      "channel_required": "Set the channel's width first: fair share divides it.",
       "bad_unbind_limit": "Unbinds: a number from 0 to 100.",
       "bad_unbind_days": "Days: a number from 1 to 365.",
       "bad_return_hours": "Hours: a number from -1 to 720.",
