@@ -161,6 +161,7 @@ func Start(o Options) (*Engine, error) {
 	}
 	e.restoreCounters(cs)
 	go e.sys.run()
+	go e.Reg.shaper.run(time.Second)
 	return e, nil
 }
 
@@ -240,6 +241,7 @@ func (e *Engine) Apply(st nodeapi.DesiredState) (nodeapi.ApplyResult, error) {
 		e.warpMu.Unlock()
 	}
 
+	e.Reg.SetShaping(st.Shaping)
 	e.Reg.SetSlots(st.Slots)
 	e.Reg.SetPolicies(st.Epoch, st.Policies)
 	e.Reg.SetShared(sharedListeners(st))
@@ -427,7 +429,7 @@ func policyShape(ps []nodeapi.Policy) string {
 		for _, q := range p.Pools {
 			pools = append(pools, q.Pool+strconv.FormatBool(q.Remaining < 0))
 		}
-		_ = enc.Encode([]any{p.Slot, p.Allowed, p.Inbounds, p.DeviceLimit, p.QuotaRemaining < 0, p.OtherIPs, pools})
+		_ = enc.Encode([]any{p.Slot, p.Allowed, p.Inbounds, p.DeviceLimit, p.Mbps, p.QuotaRemaining < 0, p.OtherIPs, pools})
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

@@ -174,6 +174,10 @@ func (s *Syncer) desired(ctx context.Context) (nodeapi.DesiredState, error) {
 	if err != nil {
 		return st, err
 	}
+	// The node's own channel: its width, and whether it is shared out fairly.
+	if n.ChannelMbps.Valid && n.ChannelMbps.Int64 > 0 && n.FairShare != 0 {
+		st.Shaping = &nodeapi.Shaping{ChannelMbps: int(n.ChannelMbps.Int64), FairShare: true}
+	}
 	inbounds, err := q.ListInbounds(ctx)
 	if err != nil {
 		return st, err
@@ -434,6 +438,9 @@ func userPolicy(u db.User, grants int64, name string, seq int64, now time.Time, 
 		QuotaRemaining: domain.TrafficLeft(u.TrafficLimit, u.UsedUp+u.UsedDown, grants)}
 	if u.DeviceLimit.Valid {
 		p.DeviceLimit = int(u.DeviceLimit.Int64)
+	}
+	if u.SpeedLimit.Valid && u.SpeedLimit.Int64 > 0 {
+		p.Mbps = int(u.SpeedLimit.Int64)
 	}
 	if allowed := domain.DecodeInbounds(u.Inbounds); len(allowed) > 0 {
 		for _, id := range allowed {
@@ -714,7 +721,8 @@ func stateKey(st nodeapi.DesiredState) string {
 		O  []nodeapi.NodeOutbound
 		A  *nodeapi.AdBlock
 		V  bool
-	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds, st.AdBlock, st.EgressIPv6})
+		Sh *nodeapi.Shaping
+	}{st.Inbounds, st.Slots, st.TLS, st.SelfStealPort, st.Warp, st.Relay, st.Exits, st.DNS, st.Routes, st.Outbounds, st.AdBlock, st.EgressIPv6, st.Shaping})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
@@ -724,7 +732,7 @@ func stateKey(st nodeapi.DesiredState) string {
 func policyKey(ps []nodeapi.Policy) string {
 	h := sha256.New()
 	for _, p := range ps {
-		raw, _ := json.Marshal([]any{p.Slot, p.Allowed, p.Inbounds, p.DeviceLimit, p.QuotaRemaining < 0, p.OtherIPs, poolKey(p.Pools)})
+		raw, _ := json.Marshal([]any{p.Slot, p.Allowed, p.Inbounds, p.DeviceLimit, p.Mbps, p.QuotaRemaining < 0, p.OtherIPs, poolKey(p.Pools)})
 		h.Write(raw)
 	}
 	return hex.EncodeToString(h.Sum(nil))

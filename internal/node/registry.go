@@ -22,6 +22,7 @@ type Registry struct {
 	retired []*slot           // removed slots whose counters are not cut yet
 	now     func() time.Time
 	release time.Duration
+	shaper  *Shaper // the node's speed shaping; nil-safe, see SetShaping
 
 	batchMu sync.Mutex
 	epoch   string
@@ -45,6 +46,7 @@ type slot struct {
 	deviceLimit int
 	otherIPs    map[string]bool // the slot's devices on other nodes of the panel
 	conns       map[*countingConn]struct{}
+	shape       *shapedConn // the shaping this slot's connection got, when it has one
 	ips         map[string]*ipUse
 	seen        map[seenKey]time.Time // last admitted connection per device and inbound
 	cleaned     time.Time             // when ips was last swept of devices that left
@@ -68,8 +70,12 @@ const activityKeep = time.Hour
 const seqAfterCrash = 100_000
 
 func NewRegistry(epoch string, seq int64, release time.Duration, now func() time.Time) *Registry {
-	return &Registry{byKey: map[string]*slot{}, byName: map[string]*slot{}, epoch: epoch, seq: seq, release: release, now: now}
+	return &Registry{byKey: map[string]*slot{}, byName: map[string]*slot{}, epoch: epoch, seq: seq, release: release, now: now,
+		shaper: newShaper(now)}
 }
+
+// SetShaping gives the node its channel: the width, and whether it is shared out.
+func (r *Registry) SetShaping(sh *nodeapi.Shaping) { r.shaper.shaping(sh) }
 
 func newSlot(name, uuid string) *slot {
 	s := &slot{name: name, uuid: uuid, conns: map[*countingConn]struct{}{}, ips: map[string]*ipUse{}, seen: map[seenKey]time.Time{}}
@@ -130,6 +136,11 @@ func (r *Registry) SetPolicies(epoch string, list []nodeapi.Policy) {
 	r.mu.RUnlock()
 
 	var toClose []*countingConn
+	// The shaping buckets are set outside the slot lock: the shaper has its own.
+	caps := make(map[string]int, len(given))
+	for _, p := range list {
+		caps[p.Slot] = p.Mbps
+	}
 	for _, s := range slots {
 		p, ok := given[s.name]
 		s.mu.Lock()
@@ -202,6 +213,9 @@ func (r *Registry) SetPolicies(epoch string, list []nodeapi.Policy) {
 			}
 		}
 		s.mu.Unlock()
+	}
+	for name, mbps := range caps {
+		r.shaper.setMbps(name, mbps)
 	}
 	closeAll(toClose)
 }

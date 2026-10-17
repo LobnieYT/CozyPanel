@@ -45,7 +45,14 @@ func (t *Tunnel) HandleTCPConn(conn net.Conn, m *C.Metadata) {
 		_ = conn.Close()
 		return
 	}
-	c := &countingConn{Conn: conn, slot: s, bucket: b, inName: m.InName, ip: ip, now: t.reg.now}
+	// The speed cap and the node's fair share wrap the raw connection: both the counting
+	// path and the splice path read and write through it.
+	under := net.Conn(conn)
+	if shaped, ok := t.reg.shaper.addConn(s.name, conn); ok {
+		under = shaped
+		defer t.reg.shaper.dropConn(shaped)
+	}
+	c := &countingConn{Conn: under, slot: s, bucket: b, inName: m.InName, ip: ip, now: t.reg.now}
 	s.addConn(c)
 	defer c.Close()
 	t.inner.HandleTCPConn(c, m)
