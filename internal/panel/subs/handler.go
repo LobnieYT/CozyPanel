@@ -468,11 +468,11 @@ type Info struct {
 	UnbindsLeft int          `json:"unbinds_left,omitempty" doc:"Unbinds left in the period; -1 unlimited"`
 	ReturnHours int          `json:"return_hours,omitempty" doc:"Hours an unbound device waits; 0 at once, -1 for the admin"`
 	// Reissue: the subscriber's own new link (Mini App only).
-	Reissue       bool       `json:"reissue,omitempty" doc:"The Mini App may offer a new link"`
-	ReissueOff    bool       `json:"reissue_off,omitempty" doc:"Only the admin issues links"`
-	ReissueLimit  int        `json:"reissue_limit,omitempty" doc:"New links per period; 0 unlimited"`
-	ReissueDays   int        `json:"reissue_days,omitempty" doc:"The period the limit counts over, days"`
-	ReissueAfter  *time.Time `json:"reissue_after,omitempty" doc:"The subscriber may take a new link from then"`
+	Reissue      bool       `json:"reissue,omitempty" doc:"The Mini App may offer a new link"`
+	ReissueOff   bool       `json:"reissue_off,omitempty" doc:"Only the admin issues links"`
+	ReissueLimit int        `json:"reissue_limit,omitempty" doc:"New links per period; 0 unlimited"`
+	ReissueDays  int        `json:"reissue_days,omitempty" doc:"The period the limit counts over, days"`
+	ReissueAfter *time.Time `json:"reissue_after,omitempty" doc:"The subscriber may take a new link from then"`
 	// Pools: the user's traffic pools with a limit or with traffic used.
 	Pools []PoolInfo `json:"pools,omitempty"`
 }
