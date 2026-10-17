@@ -1994,6 +1994,11 @@ export interface components {
             /** @description host:port API ноды; пусто у своей ноды */
             address: string;
             certificate?: components["schemas"]["NodeCertView"];
+            /**
+             * Format: int64
+             * @description Ширина канала ноды, Мбит/с; нужна для деления
+             */
+            channel_mbps?: number;
             /** Format: date-time */
             checked_at?: string;
             /** Format: int64 */
@@ -2003,6 +2008,8 @@ export interface components {
             domain: string;
             enabled: boolean;
             error?: string;
+            /** @description Делить канал ноды поровну между теми, кто качает */
+            fair_share: boolean;
             /** @description Адрес для клиентов */
             host: string;
             /** Format: int64 */
@@ -2198,8 +2205,14 @@ export interface components {
             sub_dns?: string;
         };
         PatchNodeInputBody: {
+            /**
+             * Format: int64
+             * @description Ширина канала ноды, Мбит/с
+             */
+            channel_mbps?: number;
             domain?: string;
             enabled?: boolean;
+            fair_share?: boolean;
             host?: string;
             name?: string;
         };
@@ -2282,6 +2295,12 @@ export interface components {
             name?: string;
             never_expires?: boolean;
             note?: string;
+            /**
+             * Format: int64
+             * @description Мбит/с в каждую сторону
+             */
+            speed_limit?: number;
+            speed_unlimited?: boolean;
             tags?: string[];
             /**
              * Format: int64
@@ -2536,6 +2555,11 @@ export interface components {
             reset_strategy: "none" | "month_start" | "period";
             /** Format: int64 */
             sort?: number;
+            /**
+             * Format: int64
+             * @description Мбит/с в каждую сторону
+             */
+            speed_limit?: number;
             /** Format: int64 */
             traffic_limit?: number;
         };
@@ -2567,6 +2591,11 @@ export interface components {
             reset_strategy: "none" | "month_start" | "period";
             /** Format: int64 */
             sort: number;
+            /**
+             * Format: int64
+             * @description Мбит/с в каждую сторону; null — без ограничения
+             */
+            speed_limit: number | null;
             /**
              * Format: int64
              * @description Байты; null — без лимита
@@ -2814,6 +2843,11 @@ export interface components {
             reset_strategy: "none" | "month_start" | "period";
             /** Format: date-time */
             resets_at: string | null;
+            /**
+             * Format: int64
+             * @description Мбит/с в каждую сторону; null — без ограничения
+             */
+            speed_limit: number | null;
             /** @enum {string} */
             state: "active" | "expiring" | "limited" | "expired" | "disabled";
             sub_url: string;

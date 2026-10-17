@@ -30,6 +30,7 @@ export type Info = {
   reissue_limit?: number;
   reissue_days?: number;
   reissue_after?: string;
+  speed_limit?: number;
   telegram?: string;
   pools?: { name: string; limit?: number; used: number; extra?: number }[];
 };

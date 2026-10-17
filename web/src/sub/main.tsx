@@ -223,6 +223,12 @@ function SubPage() {
               </b>
             </div>
           ) : null}
+          {current.speed_limit ? (
+            <div>
+              {t("tariffs.speed")}
+              <b className="num block text-base font-medium text-[var(--ink-900)]">{t("sub.speedUpTo", { n: current.speed_limit })}</b>
+            </div>
+          ) : null}
         </div>
       </section>
 

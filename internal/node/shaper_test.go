@@ -123,7 +123,7 @@ func TestShapedConnWaits(t *testing.T) {
 		t.Fatalf("32 KB at 1 Mbit/s took %s: the bucket does not wait", took)
 	}
 	// An uncapped slot gets no wrapper: its connection is read as it is.
-	plain := &bytesConn{data: bytes.Repeat([]byte("x"), 32 << 10)}
+	plain := &bytesConn{data: bytes.Repeat([]byte("x"), 32<<10)}
 	if _, ok := r.shaper.addConn("s000002", plain); ok {
 		t.Fatal("an uncapped slot must pass untouched")
 	}

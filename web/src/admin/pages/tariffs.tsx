@@ -33,8 +33,9 @@ export function tariffSummary(tr: Tariff): string {
     tr.traffic_limit != null ? bytes(tr.traffic_limit) : t("users.unlimited"),
     tariffTerm(tr),
     tr.device_limit != null ? (tr.device_mode === "online" ? t("deviceMode.shortOnline", { n: tr.device_limit }) : t("userDrawer.devicesShort", { n: tr.device_limit })) : t("tariffs.devicesUnlimitedShort"),
+    tr.speed_limit != null ? t("tariffs.speedShort", { n: tr.speed_limit }) : "",
   ];
-  return parts.join(" · ");
+  return parts.filter(Boolean).join(" · ");
 }
 
 const TAB_ICONS = { tariffs: Tag, pools: Layers, packages: Package } as const;
@@ -198,6 +199,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
   const [devices, setDevices] = useState("3");
   const [devicesUnlimited, setDevicesUnlimited] = useState(false);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("bound");
+  const [speed, setSpeed] = useState("");
   const [reset, setReset] = useState<Tariff["reset_strategy"]>("period");
   const [price, setPrice] = useState("");
   const allPools = usePools();
@@ -217,6 +219,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
     setDevicesUnlimited(tr ? tr.device_limit == null : false);
     setDevices(String(tr?.device_limit ?? 3));
     setDeviceMode(modeOf(tr ?? {}));
+    setSpeed(tr?.speed_limit != null ? String(tr.speed_limit) : "");
     setReset(tr?.reset_strategy ?? "period");
     setPrice(tr?.price_label ?? "");
     setPoolGB(Object.fromEntries((tr?.pools ?? []).map((p) => [p.pool_id, p.traffic_limit != null ? String(+(p.traffic_limit / GiB).toFixed(2)) : ""])));
@@ -257,6 +260,8 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
     if (toDay && (!Number.isInteger(monN) || monN < 0 || monN > 120)) errs.duration_days = t("tariffs.errMonths");
     if (toDay && (!Number.isInteger(dayN) || dayN < 1 || dayN > 31)) errs.billing_day = t("tariffs.errBillingDay");
     if (!devicesUnlimited && (!Number.isInteger(devN) || devN < 1 || devN > 100)) errs.device_limit = t("tariffs.errDevices");
+    const speedN = Number(speed);
+    if (speed.trim() !== "" && (!Number.isInteger(speedN) || speedN < 1 || speedN > 100000)) errs.speed_limit = t("tariffs.errSpeed");
     setErrors(errs);
     if (Object.keys(errs).length) return;
     save.mutate({
@@ -267,6 +272,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
       billing_day: toDay ? dayN : undefined,
       device_limit: devicesUnlimited ? undefined : devN,
       device_mode: deviceMode,
+      speed_limit: speed.trim() === "" ? undefined : speedN,
       reset_strategy: unlimited ? "none" : reset,
       price_label: price.trim() || undefined,
       pools: poolLimits,
@@ -353,6 +359,16 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
         </Field>
         <Field label={t("deviceMode.label")} hint={t("deviceMode.boundHint")}>
           <DeviceModePicker value={deviceMode} onChange={setDeviceMode} />
+        </Field>
+        <Field label={t("tariffs.speed")} htmlFor="t-speed" hint={t("tariffs.speedHint")} error={errors.speed_limit}>
+          <input
+            id="t-speed"
+            className="input max-w-[110px]"
+            inputMode="numeric"
+            value={speed}
+            placeholder={t("tariffs.speedUnlimitedShort")}
+            onChange={(e) => setSpeed(e.target.value.replace(/[^0-9]/g, ""))}
+          />
         </Field>
         {!unlimited ? (
           <Field label={t("tariffs.whenReset")} hint={t("tariffs.whenResetHint")}>

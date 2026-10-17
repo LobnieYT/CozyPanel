@@ -2057,7 +2057,7 @@
         ],
         "type": "object"
       },
-      "NodeInfo": {
+            "NodeInfo":       {
         "additionalProperties": false,
         "properties": {
           "address": {
@@ -2066,6 +2066,11 @@
           },
           "certificate": {
             "$ref": "#/components/schemas/NodeCertView"
+          },
+          "channel_mbps": {
+            "description": "Ширина канала ноды, Мбит/с; нужна для деления",
+            "format": "int64",
+            "type": "integer"
           },
           "checked_at": {
             "format": "date-time",
@@ -2087,6 +2092,10 @@
           },
           "error": {
             "type": "string"
+          },
+          "fair_share": {
+            "description": "Делить канал ноды поровну между теми, кто качает",
+            "type": "boolean"
           },
           "host": {
             "description": "Адрес для клиентов",
@@ -2150,6 +2159,7 @@
           "host",
           "domain",
           "enabled",
+          "fair_share",
           "inbounds",
           "status",
           "listeners",
@@ -2622,14 +2632,24 @@
         },
         "type": "object"
       },
-      "PatchNodeInputBody": {
+            "PatchNodeInputBody":       {
         "additionalProperties": false,
         "properties": {
+          "channel_mbps": {
+            "description": "Ширина канала ноды, Мбит/с",
+            "format": "int64",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
           "domain": {
             "maxLength": 253,
             "type": "string"
           },
           "enabled": {
+            "type": "boolean"
+          },
+          "fair_share": {
             "type": "boolean"
           },
           "host": {
@@ -2812,7 +2832,7 @@
         },
         "type": "object"
       },
-            "PatchUserInputBody":       {
+                  "PatchUserInputBody":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -2864,6 +2884,16 @@
           "note": {
             "maxLength": 2000,
             "type": "string"
+          },
+          "speed_limit": {
+            "description": "Мбит/с в каждую сторону",
+            "format": "int64",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "speed_unlimited": {
+            "type": "boolean"
           },
           "tags": {
             "items": {
@@ -3518,7 +3548,7 @@
         ],
         "type": "object"
       },
-            "TariffBody":       {
+                  "TariffBody":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -3574,6 +3604,13 @@
             "format": "int64",
             "type": "integer"
           },
+          "speed_limit": {
+            "description": "Мбит/с в каждую сторону",
+            "format": "int64",
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "integer"
+          },
           "traffic_limit": {
             "format": "int64",
             "minimum": 1,
@@ -3587,7 +3624,7 @@
         ],
         "type": "object"
       },
-            "TariffView":       {
+                  "TariffView":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -3647,6 +3684,14 @@
             "format": "int64",
             "type": "integer"
           },
+          "speed_limit": {
+            "description": "Мбит/с в каждую сторону; null — без ограничения",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "traffic_limit": {
             "description": "Байты; null — без лимита",
             "format": "int64",
@@ -3663,6 +3708,7 @@
           "duration_days",
           "device_limit",
           "device_mode",
+          "speed_limit",
           "reset_strategy",
           "billing_day",
           "price_label",
@@ -4213,7 +4259,7 @@
         ],
         "type": "object"
       },
-            "UserView":       {
+                  "UserView":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -4303,6 +4349,14 @@
               "null"
             ]
           },
+          "speed_limit": {
+            "description": "Мбит/с в каждую сторону; null — без ограничения",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "state": {
             "enum": [
               "active",
@@ -4379,6 +4433,7 @@
           "total_down",
           "device_limit",
           "device_mode",
+          "speed_limit",
           "reset_strategy",
           "resets_at",
           "expires_at",

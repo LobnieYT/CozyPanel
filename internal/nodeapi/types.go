@@ -36,8 +36,8 @@ type DesiredState struct {
 	// Shaping is the node's own channel: its width and whether it is divided between
 	// those who are downloading at the moment. Nil: the caps in the policies stand alone.
 	Shaping *Shaping `json:"shaping,omitempty"`
-	Relay *Relay `json:"relay,omitempty"`
-	Exits []Exit `json:"exits,omitempty"`
+	Relay   *Relay   `json:"relay,omitempty"`
+	Exits   []Exit   `json:"exits,omitempty"`
 	// DNS is the node's resolver setup; nil or disabled: mihomo's DNS stays off and
 	// the system resolver answers.
 	DNS *NodeDNS `json:"dns,omitempty"`

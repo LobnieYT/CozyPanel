@@ -405,11 +405,11 @@ function KeyDrawer({ joined, onClose }: { joined: Joined | null; onClose: () => 
 function EditNodeDrawer({ node, onClose }: { node: Node | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const [form, setForm] = useState({ name: "", host: "", domain: "", enabled: true });
+  const [form, setForm] = useState({ name: "", host: "", domain: "", enabled: true, fair_share: false, channel_mbps: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
     if (node) {
-      setForm({ name: node.name, host: node.host, domain: node.domain, enabled: node.enabled });
+      setForm({ name: node.name, host: node.host, domain: node.domain, enabled: node.enabled, fair_share: node.fair_share, channel_mbps: node.channel_mbps != null ? String(node.channel_mbps) : "" });
       setErrors({});
     }
   }, [node]);
@@ -432,6 +432,14 @@ function EditNodeDrawer({ node, onClose }: { node: Node | null; onClose: () => v
     e.preventDefault();
     if (!node) return;
     const body: Schemas["PatchNodeInputBody"] = { name: form.name.trim(), enabled: form.enabled };
+    body.fair_share = form.fair_share;
+    if (form.channel_mbps.trim() !== "") {
+      body.channel_mbps = Number(form.channel_mbps);
+    } else if (form.fair_share) {
+      // Fair share without a width: the API says so, better to say it here.
+      setErrors({ channel_mbps: t("errors.api.channel_required") });
+      return;
+    }
     if (!node.local) {
       body.host = form.host.trim();
       body.domain = form.domain.trim();
@@ -478,6 +486,21 @@ function EditNodeDrawer({ node, onClose }: { node: Node | null; onClose: () => v
         <Field label={t("nodes.serving")} hint={t("nodes.servingHint")}>
           <Switch checked={form.enabled} onChange={(v) => setForm((f) => ({ ...f, enabled: v }))} label={t("nodes.serving")} />
         </Field>
+        <Field label={t("nodes.channel")} htmlFor="e-channel" hint={t("nodes.channelHint")} error={errors.channel_mbps}>
+          <input
+            id="e-channel"
+            className="input max-w-[110px]"
+            inputMode="numeric"
+            value={form.channel_mbps}
+            placeholder={t("nodes.channelOff")}
+            onChange={(e) => setForm((f) => ({ ...f, channel_mbps: e.target.value.replace(/[^0-9]/g, "") }))}
+            aria-invalid={!!errors.channel_mbps}
+          />
+        </Field>
+        <Field label={t("nodes.fairShare")} hint={t("nodes.fairShareHint")}>
+          <Switch checked={form.fair_share} onChange={(v) => setForm((f) => ({ ...f, fair_share: v }))} label={t("nodes.fairShare")} />
+        </Field>
+        {form.fair_share ? <p className="text-xs text-[var(--ink-500)]">{t("nodes.fairShareReconnect")}</p> : null}
       </form>
     </Drawer>
   );

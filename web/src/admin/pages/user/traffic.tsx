@@ -47,6 +47,22 @@ export function TariffSection({ u }: { u: User }) {
           </Menu.Portal>
         </Menu.Root>
       </div>
+      <div className="mt-3 flex items-center gap-2 text-[13px]">
+        <span className="text-[var(--ink-600)]">{t("tariffs.speed")}</span>
+        <input
+          className="input max-w-[110px]"
+          inputMode="numeric"
+          value={u.speed_limit == null ? "" : String(u.speed_limit)}
+          placeholder={t("tariffs.speedUnlimitedShort")}
+          aria-label={t("tariffs.speed")}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^0-9]/g, "");
+            const body = raw === "" ? { speed_unlimited: true } : { speed_limit: Number(raw) };
+            update.mutate({ id: u.id, body }, { onError: (e) => toast.error(errorText(e)) });
+          }}
+        />
+        <span className="text-xs text-[var(--ink-500)]">{t("tariffs.speedHint")}</span>
+      </div>
       <Confirm
         open={pick !== null}
         onOpenChange={(v) => !v && setPick(null)}
