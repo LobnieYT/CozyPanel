@@ -64,7 +64,7 @@ func TestDeviceNamesBans(t *testing.T) {
 	if _, err := st.Q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: 1, Hwid: "hw2"}); err == nil {
 		t.Fatal("a ban of a device that was never banned")
 	}
-	bans, err := st.Q.ListDeviceBans(ctx, 1)
+	bans, err := st.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: 1, Until: sql.NullInt64{Int64: 1 << 40, Valid: true}})
 	if err != nil || len(bans) != 1 || bans[0].Label != "Планшет" || bans[0].AdminName != "root" {
 		t.Fatalf("bans list: %+v %v", bans, err)
 	}

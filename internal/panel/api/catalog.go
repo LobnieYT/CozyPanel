@@ -56,7 +56,7 @@ func tariffMode(current, want string) (string, error) {
 		return current, nil
 	}
 	if !domain.ValidDeviceMode(want) {
-		return "", huma.Error422UnprocessableEntity("bad_device_mode")
+		return "", huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.device_mode", Message: "bad_device_mode"})
 	}
 	return want, nil
 }
