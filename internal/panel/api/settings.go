@@ -55,6 +55,11 @@ type SettingsView struct {
 	LinkReissue   domain.ReissueRules `json:"link_reissue" doc:"Сколько новых ссылок подписчик выпускает сам"`
 	DefaultLang   string              `json:"default_lang" enum:"auto,ru,en" doc:"Язык админки и страницы подписки, пока человек не выбрал свой; auto — по языку браузера. На нём же названия по умолчанию: группа автовыбора и меню ненастроенного бота"`
 	Certificate   acme.Status         `json:"certificate"`
+	// ACMECA is the chosen certificate authority; ACMEEABKID is Google's key id, and
+	// ACMEEABSet says an HMAC key is on file (the key itself never leaves the panel).
+	ACMECA     string `json:"acme_ca" enum:"letsencrypt,zerossl,google" doc:"Кто выдаёт сертификат"`
+	ACMEEABKID string `json:"acme_eab_kid,omitempty"`
+	ACMEEABSet bool   `json:"acme_eab_set,omitempty"`
 }
 
 type settingsOutput struct{ Body SettingsView }
@@ -80,6 +85,9 @@ type patchSettingsInput struct {
 		AlertMem      *int    `json:"alert_mem_percent,omitempty" minimum:"50" maximum:"100"`
 		AlertMinutes  *int    `json:"alert_minutes,omitempty" minimum:"1" maximum:"60"`
 		AlertCooldown *int    `json:"alert_cooldown_hours,omitempty" minimum:"1" maximum:"72"`
+		ACMECA        *string `json:"acme_ca,omitempty" enum:"letsencrypt,zerossl,google" doc:"Кто выдаёт сертификат"`
+		ACMEEABKID    *string `json:"acme_eab_kid,omitempty" maxLength:"256"`
+		ACMEEABHMAC   *string `json:"acme_eab_hmac,omitempty" maxLength:"512"`
 		DeviceBinding *bool   `json:"device_binding,omitempty"`
 		RequireHWID   *bool   `json:"device_require_hwid,omitempty"`
 		DeviceUnbind  *struct {
@@ -197,6 +205,15 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 		return v, err
 	} else if v.AlertCooldown == 0 {
 		v.AlertCooldown = nodealert.DefCooldown
+	}
+	if v.ACMECA, err = acme.ChosenCA(ctx, h.d.Settings); err != nil {
+		return v, err
+	}
+	if v.ACMEEABKID, err = h.d.Settings.String(ctx, settings.KeyACMEEABKID); err != nil {
+		return v, err
+	}
+	if hmac, err := h.d.Settings.String(ctx, settings.KeyACMEEABHMAC); err == nil && hmac != "" {
+		v.ACMEEABSet = true
 	}
 	if v.DeviceBinding, err = h.d.Settings.On(ctx, settings.DeviceBinding); err != nil {
 		return v, err

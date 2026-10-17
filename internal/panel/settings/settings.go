@@ -21,6 +21,12 @@ const (
 	KeySubPort   = "sub_port"
 	KeyDomain    = "domain"
 	KeyACMEEmail = "acme_email"
+	// KeyACMECA is the chosen certificate authority (acme.CAs).
+	KeyACMECA = "acme_ca"
+	// The EAB credentials Google's Trust Services needs (acme.EAB); ZeroSSL's own come
+	// from its e-mail API.
+	KeyACMEEABKID  = "acme_eab_kid"
+	KeyACMEEABHMAC = "acme_eab_hmac"
 	KeyGroupMain = "sub_group_main" // subscription group names, see subs.Groups
 	KeyGroupAuto = "sub_group_auto"
 	KeyRouting   = "sub_routing" // subs.Routing

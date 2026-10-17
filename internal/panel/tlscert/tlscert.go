@@ -30,6 +30,9 @@ type Holder struct {
 
 func (h *Holder) Set(c *tls.Certificate) { h.cert.Store(c) }
 
+// Leaf is the certificate the panel serves now: nil while none is set.
+func (h *Holder) Leaf() *tls.Certificate { return h.cert.Load() }
+
 func (h *Holder) Get(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	c := h.cert.Load()
 	if c == nil {

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -320,8 +321,14 @@ func (m *Manager) obtain(ctx context.Context, id string) (*tls.Certificate, erro
 	email, _ := m.set.String(ctx, settings.KeyACMEEmail)
 	u := &user{email: email, key: key}
 	req, noCN := order(id)
+	chosen, _ := ChosenCA(ctx, m.set)
+	ca := EffectiveCA(chosen, id)
 	cfg := lego.NewConfig(u)
-	cfg.CADirURL = m.directory
+	cfg.CADirURL = Directory(ca)
+	if ca == CALetsEncrypt && m.directory != "" {
+		// A directory the admin pinned (a staging server) wins over the choice.
+		cfg.CADirURL = m.directory
+	}
 	cfg.Certificate.KeyType = certcrypto.EC256
 	cfg.Certificate.DisableCommonName = noCN
 	client, err := lego.NewClient(cfg)
@@ -334,7 +341,27 @@ func (m *Manager) obtain(ctx context.Context, id string) (*tls.Certificate, erro
 		return nil, err
 	}
 	if u.reg, err = client.Registration.ResolveAccountByKey(); err != nil {
-		if u.reg, err = client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true}); err != nil {
+		opts := registration.RegisterOptions{TermsOfServiceAgreed: true}
+		switch ca {
+		case CAZeroSSL:
+			eab, err := ZeroSSLEAB(ctx, &http.Client{}, email)
+			if err != nil {
+				return nil, err
+			}
+			u.reg, err = client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
+				TermsOfServiceAgreed: true, Kid: eab.KID, HmacEncoded: eab.HMAC})
+		case CAGoogle:
+			kid, _ := m.set.String(ctx, settings.KeyACMEEABKID)
+			hmac, _ := m.set.String(ctx, settings.KeyACMEEABHMAC)
+			if kid == "" || hmac == "" {
+				return nil, ErrGoogleEAB
+			}
+			u.reg, err = client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
+				TermsOfServiceAgreed: true, Kid: kid, HmacEncoded: hmac})
+		default:
+			u.reg, err = client.Registration.Register(opts)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("register: %w", err)
 		}
 	}
@@ -416,4 +443,13 @@ func humanError(err error) string {
 		return "unreachable"
 	}
 	return s
+}
+
+// Leaf is the certificate the panel serves now: the ACME one, the admin's own, or the
+// self-signed fallback. Nil while none is set.
+func (m *Manager) Leaf() *tls.Certificate {
+	if c := m.holder.Leaf(); c != nil {
+		return c
+	}
+	return m.fallback
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"cozy/internal/panel/certcheck"
 	"cozy/internal/panel/tlscert"
 )
 
@@ -144,4 +145,21 @@ func (h *handlers) nodeCertView(id int64, host string) *NodeCertView {
 		return &NodeCertView{Error: "custom_invalid"}
 	}
 	return nil
+}
+
+// certCheckOutput is what "Check the certificate" answers.
+type certCheckOutput struct{ Body certcheck.CertReport }
+
+// checkCertificate runs the outside look: what the panel's and the nodes' ports serve,
+// whether the domain leads here and whether the CA's port 80 is free.
+func (h *handlers) checkCertificate(ctx context.Context, _ *struct{}) (*certCheckOutput, error) {
+	if h.d.CertCheck == nil {
+		return nil, huma.Error409Conflict("cert_check_unavailable")
+	}
+	report, err := h.d.CertCheck(ctx)
+	if err != nil {
+		return nil, err
+	}
+	h.audit(ctx, sessionOf(ctx).AdminID, "settings.check_certificate", "", "", nil)
+	return &certCheckOutput{Body: *report}, nil
 }

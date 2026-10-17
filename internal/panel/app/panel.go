@@ -158,6 +158,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 	if o.Certs != nil {
 		deps.Cert, deps.RenewCert = o.Certs.Status, o.Certs.Renew
 		deps.SetCert, deps.ClearCert = o.Certs.SetCustom, o.Certs.ClearCustom
+		deps.CertCheck = certCheck(st, o.Certs, deps.Resolve)
 	}
 	deps.NodeCerts = o.NodeCerts
 	deps.ForgetNode = forgetNodeFiles(o)

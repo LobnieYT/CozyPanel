@@ -18,6 +18,7 @@ import (
 	"cozy/internal/panel/audit"
 	"cozy/internal/panel/auth"
 	"cozy/internal/panel/autotune"
+	"cozy/internal/panel/certcheck"
 	"cozy/internal/panel/dnscheck"
 	"cozy/internal/panel/domain"
 	"cozy/internal/panel/nodesync"
@@ -54,6 +55,8 @@ type Deps struct {
 	Online    func() map[string]nodeapi.Online
 	Cert      func() acme.Status
 	RenewCert func()
+	// CertCheck is "Check the certificate": the outside look; nil disables the button.
+	CertCheck func(context.Context) (*certcheck.CertReport, error)
 	// Nodes is the live side of the nodes; nil when the panel runs without them.
 	Nodes NodeRuntime
 	// PanelCert is the client certificate remote nodes pin; their join keys carry its hash.
