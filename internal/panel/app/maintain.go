@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"time"
+
+	"cozy/internal/panel/domain"
 )
 
 // What only grows is cut here, every ten minutes with the rest of the housekeeping. The
@@ -29,5 +31,8 @@ func (p *Panel) maintain(ctx context.Context) {
 		p.log.Error("forget idle devices", "err", err)
 	} else if n > 0 {
 		p.log.Info("forgot idle devices", "count", n)
+	}
+	if err := domain.PruneDeviceData(ctx, p.st.Q, now); err != nil {
+		p.log.Error("prune device pauses and unbind history", "err", err)
 	}
 }

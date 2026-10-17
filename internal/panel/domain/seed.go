@@ -62,9 +62,9 @@ func Seed(ctx context.Context, st *store.Store, now time.Time) error {
 			return ru
 		}
 		defaults := []db.CreateTariffParams{
-			{Name: name("Пробный", "Trial"), TrafficLimit: nullInt(5 * GiB), DurationDays: 3, DeviceLimit: nullInt(1), ResetStrategy: "none", Sort: 1},
-			{Name: name("Стандарт", "Standard"), TrafficLimit: nullInt(150 * GiB), DurationDays: 30, DeviceLimit: nullInt(3), ResetStrategy: "period", Sort: 2},
-			{Name: name("Безлимит", "Unlimited"), DurationDays: 30, DeviceLimit: nullInt(3), ResetStrategy: "none", Sort: 3},
+			{Name: name("Пробный", "Trial"), TrafficLimit: nullInt(5 * GiB), DurationDays: 3, DeviceLimit: nullInt(1), ResetStrategy: "none", Sort: 1, DeviceMode: DeviceModeBound},
+			{Name: name("Стандарт", "Standard"), TrafficLimit: nullInt(150 * GiB), DurationDays: 30, DeviceLimit: nullInt(3), ResetStrategy: "period", Sort: 2, DeviceMode: DeviceModeBound},
+			{Name: name("Безлимит", "Unlimited"), DurationDays: 30, DeviceLimit: nullInt(3), ResetStrategy: "none", Sort: 3, DeviceMode: DeviceModeBound},
 		}
 		for _, t := range defaults {
 			t.CreatedAt = now.Unix()

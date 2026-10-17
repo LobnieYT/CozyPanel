@@ -137,10 +137,16 @@ func (d *Devices) bind(ctx context.Context, u db.User, hwid string, in DeviceInf
 			return err
 		}
 		if hwid != "" {
-			// A banned id stays out: it takes no place and burns no slot.
-			if _, err := q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: u.ID, Hwid: hwid}); err == nil {
+			// A banned id stays out: it takes no place and burns no slot. A pause from
+			// the subscriber's own unbind reports when it may bind again.
+			until, err := q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: u.ID, Hwid: hwid, Until: sql.NullInt64{Int64: now, Valid: true}})
+			if err == nil {
+				if until.Valid {
+					return &UnboundError{Until: time.Unix(until.Int64, 0).UTC()}
+				}
 				return ErrDeviceBanned
-			} else if !errors.Is(err, sql.ErrNoRows) {
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
 		}
@@ -158,8 +164,10 @@ func (d *Devices) bind(ctx context.Context, u db.User, hwid string, in DeviceInf
 		if err != nil {
 			return err
 		}
+		// Online mode counts addresses online at once on the node, not bound places:
+		// binding stays open up to the pool's own ceiling.
 		limit := int64(MaxDevices)
-		if u.DeviceLimit.Valid {
+		if u.DeviceLimit.Valid && BindsDevices(u.DeviceMode) {
 			limit = u.DeviceLimit.Int64
 		}
 		if n >= limit {
@@ -191,7 +199,9 @@ func (d *Devices) bind(ctx context.Context, u db.User, hwid string, in DeviceInf
 
 // Unbind frees a device's place and cuts it off: its own slot burns (the node drops it
 // at once). The shared place of apps without an id is the user's own slot: it is replaced
-// with a fresh one, the subscription link stays. The subscriber may do this once a day.
+// with a fresh one, the subscription link stays. The subscriber unbinds within the
+// admin's rules; a device they unbound waits out the return pause before it may bind
+// again. The admin is outside the rules.
 func (d *Devices) Unbind(ctx context.Context, userID, deviceID int64, bySubscriber bool) error {
 	err := d.unbind(ctx, userID, deviceID, bySubscriber)
 	if errors.Is(err, ErrNoSlots) {
@@ -209,12 +219,12 @@ func (d *Devices) Unbind(ctx context.Context, userID, deviceID int64, bySubscrib
 
 func (d *Devices) unbind(ctx context.Context, userID, deviceID int64, bySubscriber bool) error {
 	now := d.now()
+	var rules UnbindRules
 	return d.st.Tx(ctx, func(q *db.Queries) error {
-		u, err := q.GetUser(ctx, userID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
+		if _, err := q.GetUser(ctx, userID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
 			return err
 		}
 		dev, err := q.GetBoundDeviceByID(ctx, db.GetBoundDeviceByIDParams{ID: deviceID, UserID: userID})
@@ -224,8 +234,18 @@ func (d *Devices) unbind(ctx context.Context, userID, deviceID int64, bySubscrib
 		if err != nil {
 			return err
 		}
-		if bySubscriber && now.Sub(time.Unix(u.UnboundAt, 0)) < UnbindCooldown {
-			return ErrUnbindCooldown
+		if bySubscriber {
+			st, err := UnbindStateOf(ctx, q, userID, now)
+			if err != nil {
+				return err
+			}
+			if st.Rules.Off {
+				return ErrUnbindOff
+			}
+			if st.Left() == 0 {
+				return ErrUnbindCooldown
+			}
+			rules = st.Rules
 		}
 		if dev.Hwid == "" {
 			fresh, err := q.TakeFreeSlot(ctx)
@@ -245,10 +265,13 @@ func (d *Devices) unbind(ctx context.Context, userID, deviceID int64, bySubscrib
 		if err := q.DeleteBoundDevice(ctx, dev.ID); err != nil {
 			return err
 		}
-		if bySubscriber {
-			return q.SetUserUnboundAt(ctx, db.SetUserUnboundAtParams{UnboundAt: now.Unix(), ID: userID})
+		if !bySubscriber {
+			return nil
 		}
-		return nil
+		if err := q.AddUnbind(ctx, db.AddUnbindParams{UserID: userID, At: now.Unix()}); err != nil {
+			return err
+		}
+		return holdUnbound(ctx, q, userID, dev.Hwid, DeviceLabel(dev), rules, now)
 	})
 }
 
@@ -282,15 +305,6 @@ func (d *Devices) ForgetIdle(ctx context.Context) (int, error) {
 		d.changes.PoliciesChanged()
 	}
 	return n, err
-}
-
-// NextUnbind is when the subscriber may unbind a device again (zero: now).
-func NextUnbind(u db.User, now time.Time) time.Time {
-	next := time.Unix(u.UnboundAt, 0).Add(UnbindCooldown)
-	if u.UnboundAt == 0 || !next.After(now) {
-		return time.Time{}
-	}
-	return next.UTC()
 }
 
 // burnDevices burns the slots of a user's devices with ids and forgets all devices:
@@ -402,18 +416,42 @@ func (d *Devices) Unban(ctx context.Context, userID, banID int64) (db.DeviceBan,
 	return ban, nil
 }
 
-// Banned is whether the admin banned a device id from the user. An invalid id is
-// nobody's: it never matches a ban.
+// Banned is whether the admin banned a device id from the user for good. A pause from
+// the subscriber's own unbind is about places, not fetches: it answers false. An
+// invalid id is nobody's: it never matches a ban.
 func (d *Devices) Banned(ctx context.Context, userID int64, hwid string) (bool, error) {
 	if !ValidHWID(hwid) {
 		return false, nil
 	}
-	_, err := d.st.Q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: userID, Hwid: hwid})
+	until, err := d.st.Q.ActiveDeviceBan(ctx, db.ActiveDeviceBanParams{UserID: userID, Hwid: hwid, Until: sql.NullInt64{Int64: d.now().Unix(), Valid: true}})
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return !until.Valid, nil
+}
+
+// Device modes: bound places, or addresses online at once.
+const (
+	DeviceModeBound  = "bound"
+	DeviceModeOnline = "online"
+)
+
+// ValidDeviceMode is one of the modes the picker offers.
+func ValidDeviceMode(s string) bool { return s == DeviceModeBound || s == DeviceModeOnline }
+
+// BindsDevices is whether the mode counts bound places (online counts addresses).
+func BindsDevices(mode string) bool { return mode != DeviceModeOnline }
+
+// setDeviceMode moves the user to the tariff's mode, writing only on change.
+func setDeviceMode(ctx context.Context, q *db.Queries, u db.User, mode string) error {
+	if mode == "" {
+		mode = DeviceModeBound
+	}
+	if mode == u.DeviceMode {
+		return nil
+	}
+	return q.SetUserDeviceMode(ctx, db.SetUserDeviceModeParams{DeviceMode: mode, ID: u.ID})
 }

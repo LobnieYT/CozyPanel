@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
@@ -140,7 +141,7 @@ func TestRenameAndBanDevice(t *testing.T) {
 	if _, err := devs.Bind(ctx, other, phone, false); err != nil {
 		t.Fatalf("the same id on another user: %v", err)
 	}
-	bans, err := st.Q.ListDeviceBans(ctx, u.ID)
+	bans, err := st.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: u.ID, Until: sql.NullInt64{Int64: now.Unix(), Valid: true}})
 	if err != nil || len(bans) != 1 || bans[0].Label != "Pixel 10" || bans[0].AdminName != "root" {
 		t.Fatalf("bans: %+v %v", bans, err)
 	}

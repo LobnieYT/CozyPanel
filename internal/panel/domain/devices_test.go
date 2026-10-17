@@ -69,8 +69,9 @@ func TestDeviceBinding(t *testing.T) {
 		t.Fatalf("a second unbind the same day: %v", err)
 	}
 	u, _ = st.Q.GetUser(ctx, u.ID)
-	if next := NextUnbind(u, now); !next.Equal(now.Add(UnbindCooldown).UTC()) {
-		t.Fatalf("next unbind: %s", next)
+	stt, err := UnbindStateOf(ctx, st.Q, u.ID, now)
+	if err != nil || !stt.Next.Equal(now.Add(24*time.Hour).UTC()) {
+		t.Fatalf("next unbind: %+v %v", stt, err)
 	}
 	// The admin is not limited. Unbinding the shared place gives the user new own keys.
 	var sharedDev int64

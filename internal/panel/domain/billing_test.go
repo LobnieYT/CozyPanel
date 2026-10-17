@@ -68,7 +68,7 @@ func TestUsersWithBillingDay(t *testing.T) {
 	ctx := context.Background()
 	tariffs, _ := st.Q.ListTariffs(ctx)
 	std := tariffs[1] // Стандарт: 30 days
-	if _, err := st.Q.UpdateTariff(ctx, db.UpdateTariffParams{Name: std.Name, TrafficLimit: std.TrafficLimit, DurationDays: std.DurationDays, DeviceLimit: std.DeviceLimit,
+	if _, err := st.Q.UpdateTariff(ctx, db.UpdateTariffParams{Name: std.Name, TrafficLimit: std.TrafficLimit, DurationDays: std.DurationDays, DeviceLimit: std.DeviceLimit, DeviceMode: std.DeviceMode,
 		ResetStrategy: "month_start", PriceLabel: std.PriceLabel, Sort: std.Sort, BillingDay: bday(10), ID: std.ID}); err != nil {
 		t.Fatal(err)
 	}

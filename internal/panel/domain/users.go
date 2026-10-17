@@ -141,6 +141,7 @@ func (s *Users) createTx(ctx context.Context, q *db.Queries, in CreateInput, any
 		ResetStrategy: t.ResetStrategy, PeriodDays: 30, PeriodStart: now,
 		ExpiresAt:  tariffExpiry(time.Unix(now, 0), durationTariff{t.DurationDays, t.BillingDay}),
 		BillingDay: t.BillingDay, SubToken: secure.Token(24), SlotID: sql.NullInt64{Int64: slot.ID, Valid: true}, CreatedAt: now, UpdatedAt: now,
+		DeviceMode: t.DeviceMode,
 	})
 	if err != nil {
 		return u, err
@@ -182,7 +183,7 @@ func (s *Users) Purchase(ctx context.Context, q *db.Queries, userID, tariffID in
 		Name: u.Name, Contact: u.Contact, Note: u.Note, Tags: u.Tags, Status: "active", TariffID: sql.NullInt64{Int64: t.ID, Valid: true},
 		TrafficLimit: t.TrafficLimit, DeviceLimit: t.DeviceLimit, ResetStrategy: t.ResetStrategy, PeriodDays: u.PeriodDays, PeriodStart: u.PeriodStart,
 		ExpiresAt: tariffExpiry(base, durationTariff{t.DurationDays, billingDay}), Inbounds: u.Inbounds, BillingDay: billingDay,
-		UpdatedAt: now.Unix(), ID: u.ID,
+		UpdatedAt: now.Unix(), ID: u.ID, DeviceMode: t.DeviceMode,
 	})
 	if err != nil {
 		return u, false, err
@@ -236,6 +237,7 @@ type Patch struct {
 	ClearTrafficLimit   bool
 	DeviceLimit         *int64
 	ClearDeviceLimit    bool
+	DeviceMode          *string // bound places, or addresses online at once
 	ExpiresAt           *time.Time
 	ClearExpiry         bool
 	BillingDay          *int64 // 1–31: terms end on that day of the month
@@ -303,7 +305,7 @@ func (s *Users) updateOn(ctx context.Context, q *db.Queries, id int64, p Patch) 
 		Name: u.Name, Contact: u.Contact, Note: u.Note, Tags: u.Tags, Status: u.Status, TariffID: u.TariffID,
 		TrafficLimit: u.TrafficLimit, DeviceLimit: u.DeviceLimit, ResetStrategy: u.ResetStrategy,
 		PeriodDays: u.PeriodDays, PeriodStart: u.PeriodStart, ExpiresAt: u.ExpiresAt, Inbounds: u.Inbounds,
-		BillingDay: u.BillingDay, UpdatedAt: now, ID: u.ID,
+		BillingDay: u.BillingDay, UpdatedAt: now, ID: u.ID, DeviceMode: u.DeviceMode,
 	}
 	if p.TariffID != nil {
 		t, err := q.GetTariff(ctx, *p.TariffID)
@@ -315,10 +317,17 @@ func (s *Users) updateOn(ctx context.Context, q *db.Queries, id int64, p Patch) 
 		}
 		par.TariffID = sql.NullInt64{Int64: t.ID, Valid: true}
 		par.TrafficLimit, par.DeviceLimit, par.ResetStrategy, par.BillingDay = t.TrafficLimit, t.DeviceLimit, t.ResetStrategy, t.BillingDay
+		par.DeviceMode = t.DeviceMode
 		par.ExpiresAt = tariffExpiry(time.Unix(now, 0), durationTariff{t.DurationDays, t.BillingDay})
 		if err := ApplyTariffPools(ctx, q, u.ID, t.ID); err != nil {
 			return db.User{}, err
 		}
+	}
+	if p.DeviceMode != nil {
+		if !ValidDeviceMode(*p.DeviceMode) {
+			return db.User{}, fieldErr("device_mode", "bad_device_mode")
+		}
+		par.DeviceMode = *p.DeviceMode
 	}
 	switch {
 	case p.ClearBillingDay:

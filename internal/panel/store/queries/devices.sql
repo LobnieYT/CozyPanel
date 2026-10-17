@@ -31,8 +31,19 @@ DELETE FROM bound_devices WHERE user_id = ?;
 -- A new own slot for the user, same subscription link (the shared device was unbound).
 UPDATE users SET slot_id = ?, updated_at = ? WHERE id = ?;
 
--- name: SetUserUnboundAt :exec
-UPDATE users SET unbound_at = ? WHERE id = ?;
+-- name: AddUnbind :exec
+-- The subscriber's own unbind, for the admin's limit of so many a period.
+INSERT INTO device_unbinds (user_id, at) VALUES (?, ?);
+
+-- name: ListUnbindsSince :many
+SELECT at FROM device_unbinds WHERE user_id = ? AND at >= ? ORDER BY at;
+
+-- name: DeleteUnbindsBefore :exec
+DELETE FROM device_unbinds WHERE at < ?;
+
+-- name: DeleteExpiredBans :exec
+-- Pauses that ran out: the admin's bans (no until) stay.
+DELETE FROM device_bans WHERE until IS NOT NULL AND until <= ?;
 
 -- name: ListDeviceSlots :many
 -- Slots of bound devices with an id: keys of their own, profile fetches of their own.
@@ -62,14 +73,22 @@ ON CONFLICT (user_id, hwid) DO UPDATE SET label = excluded.label, admin_id = exc
 RETURNING *;
 
 -- name: ActiveDeviceBan :one
--- The ban on a device, if the admin banned it.
-SELECT id FROM device_bans WHERE user_id = ? AND hwid = ?;
+-- The ban on a device: until is null for the admin's ban, a moment for a pause.
+SELECT until FROM device_bans WHERE user_id = ? AND hwid = ? AND (until IS NULL OR until > ?);
 
 -- name: ListDeviceBans :many
--- The devices banned from a subscription, latest first.
-SELECT b.id, b.user_id, b.hwid, b.label, b.admin_id, b.banned_at, COALESCE(a.username, '') AS admin_name
+-- The devices banned from a subscription, latest first; pauses that ran out are hidden.
+SELECT b.id, b.user_id, b.hwid, b.label, b.admin_id, b.banned_at, b.until, COALESCE(a.username, '') AS admin_name
 FROM device_bans b LEFT JOIN admins a ON a.id = b.admin_id
-WHERE b.user_id = ? ORDER BY b.banned_at DESC, b.id DESC;
+WHERE b.user_id = ? AND (b.until IS NULL OR b.until > ?) ORDER BY b.banned_at DESC, b.id DESC;
 
 -- name: DeleteDeviceBan :one
 DELETE FROM device_bans WHERE id = ? AND user_id = ? RETURNING *;
+
+-- name: HoldUnbound :exec
+-- A pause after the subscriber's own unbind: the device may not take a place again at
+-- once. The admin's ban (no until) stays untouched.
+INSERT INTO device_bans (user_id, hwid, label, banned_at, until)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (user_id, hwid) DO UPDATE SET label = excluded.label, banned_at = excluded.banned_at, until = excluded.until
+WHERE device_bans.until IS NOT NULL;
