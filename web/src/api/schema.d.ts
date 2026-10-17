@@ -1407,6 +1407,27 @@ export interface components {
              */
             until?: string;
         };
+        ReissueRules: {
+            /**
+             * Format: int64
+             * @description За сколько дней считается лимит (скользящее окно)
+             */
+            days: number;
+            /**
+             * Format: int64
+             * @description Сколько раз подписчик может сменить ссылку за days; 0 — без ограничения
+             */
+            limit: number;
+            /** @description Подписчик не меняет ссылку сам, только админ */
+            off?: boolean;
+        };
+        LinkReissueStruct: {
+            /** Format: int64 */
+            days?: number;
+            /** Format: int64 */
+            limit?: number;
+            off?: boolean;
+        };
         UnbindRules: {
             /**
              * Format: int64
@@ -2210,6 +2231,8 @@ export interface components {
             device_unbind?: components["schemas"]["DeviceUnbindStruct"];
             domain?: string;
             egress_ipv6?: boolean;
+            /** @description Сколько новых ссылок подписчик выпускает сам */
+            link_reissue?: components["schemas"]["LinkReissueStruct"];
             /** @description @имя, ссылка t.me или текст — бот показывает его вместо счетов */
             pay_contact?: string;
             public_host?: string;
@@ -2427,6 +2450,8 @@ export interface components {
             domain: string;
             /** @description Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода */
             egress_ipv6: boolean;
+            /** @description Сколько новых ссылок подписчик выпускает сам */
+            link_reissue: components["schemas"]["ReissueRules"];
             /** Format: int64 */
             panel_port: number;
             /** @description Контакт Telegram для ручной оплаты в боте: @имя, ссылка t.me или текст */

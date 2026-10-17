@@ -385,6 +385,47 @@
         ],
         "type": "object"
       },
+      "ReissueRules":       {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "description": "За сколько дней считается лимит (скользящее окно)",
+            "format": "int64",
+            "type": "integer"
+          },
+          "limit": {
+            "description": "Сколько раз подписчик может сменить ссылку за days; 0 — без ограничения",
+            "format": "int64",
+            "type": "integer"
+          },
+          "off": {
+            "description": "Подписчик не меняет ссылку сам, только админ",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "limit",
+          "days"
+        ],
+        "type": "object"
+      },
+      "LinkReissueStruct":       {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "limit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "off": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "UnbindRules":       {
         "additionalProperties": false,
         "properties": {
@@ -2617,7 +2658,7 @@
         },
         "type": "object"
       },
-            "PatchSettingsInputBody":       {
+                  "PatchSettingsInputBody":       {
         "additionalProperties": false,
         "properties": {
           "alert_cooldown_hours": {
@@ -2686,6 +2727,10 @@
           },
           "egress_ipv6": {
             "type": "boolean"
+          },
+          "link_reissue": {
+            "$ref": "#/components/schemas/LinkReissueStruct",
+            "description": "Сколько новых ссылок подписчик выпускает сам"
           },
           "pay_contact": {
             "description": "@имя, ссылка t.me или текст — бот показывает его вместо счетов",
@@ -3210,7 +3255,7 @@
         ],
         "type": "object"
       },
-            "SettingsView":       {
+                  "SettingsView":       {
         "additionalProperties": false,
         "properties": {
           "admin_url": {
@@ -3285,6 +3330,10 @@
           "egress_ipv6": {
             "description": "Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода",
             "type": "boolean"
+          },
+          "link_reissue": {
+            "$ref": "#/components/schemas/ReissueRules",
+            "description": "Сколько новых ссылок подписчик выпускает сам"
           },
           "panel_port": {
             "format": "int64",
@@ -3373,6 +3422,7 @@
           "device_binding",
           "device_require_hwid",
           "device_unbind",
+          "link_reissue",
           "default_lang",
           "certificate"
         ],

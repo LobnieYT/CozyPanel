@@ -25,6 +25,11 @@ export type Info = {
   unbind_days?: number;
   unbinds_left?: number;
   return_hours?: number;
+  reissue?: boolean;
+  reissue_off?: boolean;
+  reissue_limit?: number;
+  reissue_days?: number;
+  reissue_after?: string;
   telegram?: string;
   pools?: { name: string; limit?: number; used: number; extra?: number }[];
 };

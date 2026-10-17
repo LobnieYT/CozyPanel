@@ -221,6 +221,7 @@ export function DevicesCard({ s }: { s: Schemas["SettingsView"] }) {
         </li>
       </ul>
       <UnbindRulesForm current={s.device_unbind} />
+      <ReissueRulesForm current={s.link_reissue} />
       <p className="mt-3 text-xs text-[var(--ink-500)]">{t("settings.devicesNote")}</p>
     </section>
   );
@@ -326,4 +327,62 @@ function periodLabel(days: number): string {
 function pauseLabel(hours: number): string {
   if (hours < 24) return t("settings.unbindHoursUnit", { n: hours });
   return periodLabel(Math.ceil(hours / 24));
+}
+
+/** New links the subscriber issues on their own: a limit per period, or off. */
+function ReissueRulesForm({ current }: { current: Schemas["ReissueRules"] }) {
+  const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
+  const [off, setOff] = useState(current.off ?? false);
+  const [limit, setLimit] = useState(String(current.limit ?? 1));
+  const [days, setDays] = useState(String(current.days ?? 1));
+  const key = JSON.stringify(current);
+  useEffect(() => {
+    setOff(current.off ?? false);
+    setLimit(String(current.limit ?? 1));
+    setDays(String(current.days ?? 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const errs = fieldErrors(save.error);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    save.mutate({ link_reissue: { off, limit: Number(limit), days: Number(days) } });
+  };
+  const summary = off
+    ? t("settings.reissueSummaryOff")
+    : Number(limit) === 0
+      ? t("settings.reissueSummaryFree")
+      : t("settings.reissueSummary", { n: Number(limit) || 0, period: periodLabel(Number(days) || 0) });
+  return (
+    <form onSubmit={submit} noValidate className="mt-4 border-t border-[var(--hairline)] pt-4">
+      <div className="mb-2 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">{t("settings.reissueTitle")}</div>
+          <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.reissueSub")}</div>
+        </div>
+        <Switch checked={!off} label={t("settings.reissueTitle")} disabled={save.isPending || !writable} onChange={(v) => writable && setOff(!v)} />
+      </div>
+      {!off ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("settings.reissueLimit")} htmlFor="s-reissue-limit" error={errs["link_reissue.limit"]}>
+              <input id="s-reissue-limit" className="input" inputMode="numeric" value={limit} disabled={!writable} onChange={(e) => setLimit(e.target.value.replace(/[^0-9]/g, ""))} />
+            </Field>
+            <Field label={t("settings.unbindPeriod")} htmlFor="s-reissue-days" error={errs["link_reissue.days"]}>
+              <input id="s-reissue-days" className="input" inputMode="numeric" value={days} disabled={!writable} onChange={(e) => setDays(e.target.value.replace(/[^0-9]/g, ""))} />
+            </Field>
+          </div>
+          <p className="mb-3 text-xs text-[var(--ink-500)]" role="status">
+            {summary}
+          </p>
+          <Button variant="primary" type="submit" loading={save.isPending} disabled={!writable}>
+            {t("common.save")}
+          </Button>
+        </>
+      ) : (
+        <p className="text-xs text-[var(--ink-500)]">{t("settings.unbindOffNote")}</p>
+      )}
+    </form>
+  );
 }

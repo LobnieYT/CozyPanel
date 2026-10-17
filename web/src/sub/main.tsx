@@ -13,6 +13,7 @@ import { safeHref } from "../lib/url";
 import { APPS, detect, enc, type Platform } from "./apps";
 import { Devices } from "./devices";
 import { initData, json, outside, pageURL, request, subRoot, tgEvent, tgMode } from "./net";
+import { ReissueSection } from "./reissue";
 import type { Info, TgSub } from "./types";
 
 function SubPage() {
@@ -328,6 +329,16 @@ function SubPage() {
         <a className="btn btn-glass btn-block h-12 rounded-2xl" href={telegram} target="_blank" rel="noreferrer noopener">
           <Send size={18} aria-hidden /> {t("sub.openTelegram")}
         </a>
+      ) : null}
+      {tgMode && current ? (
+        <ReissueSection
+          info={current}
+          subURL={subURL}
+          onDone={(token) => {
+            setSubURL(subRoot + "/" + token);
+            void session();
+          }}
+        />
       ) : null}
       {support ? (
         <a className="btn btn-glass btn-block h-12 rounded-2xl" href={support} target="_blank" rel="noreferrer noopener" {...outside(support)}>
