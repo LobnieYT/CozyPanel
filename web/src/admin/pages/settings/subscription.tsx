@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Schemas } from "../../../api/client";
 import { useGrants, useInbounds, useNodes } from "../../../api/hooks";
 import { Button, Field, Pill } from "../../../components/ui";
@@ -220,7 +220,110 @@ export function DevicesCard({ s }: { s: Schemas["SettingsView"] }) {
           <Switch checked={s.device_require_hwid} label={t("settings.requireHwid")} disabled={save.isPending || !s.device_binding || !writable} onChange={(v) => writable && save.mutate({ device_require_hwid: v })} />
         </li>
       </ul>
+      <UnbindRulesForm current={s.device_unbind} />
       <p className="mt-3 text-xs text-[var(--ink-500)]">{t("settings.devicesNote")}</p>
     </section>
   );
+}
+
+type UnbindRules = Schemas["UnbindRules"];
+
+/** The subscriber's own unbinds: how many per period, and how soon an unbound device may bind again. */
+function UnbindRulesForm({ current }: { current: UnbindRules }) {
+  const save = useSaveSettings();
+  const { can } = useGrants();
+  const writable = can("settings", true);
+  const [off, setOff] = useState(current.off ?? false);
+  const [limit, setLimit] = useState(String(current.limit ?? 1));
+  const [days, setDays] = useState(String(current.days ?? 1));
+  const [ret, setRet] = useState(current.return_hours === -1 ? "admin" : current.return_hours === 0 ? "now" : "hours");
+  const [hours, setHours] = useState(String(current.return_hours > 0 ? current.return_hours : 24));
+  const key = JSON.stringify(current);
+  useEffect(() => {
+    setOff(current.off ?? false);
+    setLimit(String(current.limit ?? 1));
+    setDays(String(current.days ?? 1));
+    setRet(current.return_hours === -1 ? "admin" : current.return_hours === 0 ? "now" : "hours");
+    setHours(String(current.return_hours > 0 ? current.return_hours : 24));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const errs = fieldErrors(save.error);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const body = {
+      off,
+      limit: Number(limit),
+      days: Number(days),
+      return_hours: ret === "admin" ? -1 : ret === "now" ? 0 : Number(hours),
+    };
+    save.mutate({ device_unbind: body });
+  };
+  const summary = off
+    ? t("settings.unbindSummaryOff")
+    : Number(limit) === 0
+      ? t("settings.unbindSummaryFree")
+      : t("settings.unbindSummary", { n: Number(limit) || 0, period: periodLabel(Number(days) || 0) }) +
+        " " +
+        (ret === "admin" ? t("settings.unbindNever") : ret === "now" ? t("settings.unbindAtOnce") : t("settings.unbindSummaryPause", { span: pauseLabel(Number(hours) || 0) }));
+  return (
+    <form onSubmit={submit} noValidate className="mt-4 border-t border-[var(--hairline)] pt-4">
+      <div className="mb-2 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">{t("settings.unbindTitle")}</div>
+          <div className="mt-1 text-xs text-[var(--ink-500)]">{t("settings.unbindSub")}</div>
+        </div>
+        <Switch checked={!off} label={t("settings.unbindTitle")} disabled={save.isPending || !writable} onChange={(v) => writable && setOff(!v)} />
+      </div>
+      {!off ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("settings.unbindLimit")} htmlFor="s-unbind-limit" error={errs["device_unbind.limit"]}>
+              <input id="s-unbind-limit" className="input" inputMode="numeric" value={limit} disabled={!writable} onChange={(e) => setLimit(e.target.value.replace(/[^0-9]/g, ""))} />
+            </Field>
+            <Field label={t("settings.unbindPeriod")} htmlFor="s-unbind-days" error={errs["device_unbind.days"]}>
+              <input id="s-unbind-days" className="input" inputMode="numeric" value={days} disabled={!writable} onChange={(e) => setDays(e.target.value.replace(/[^0-9]/g, ""))} />
+            </Field>
+          </div>
+          <Field label={t("settings.unbindReturn")} error={errs["device_unbind.return_hours"]}>
+            <div className="seg" role="group" aria-label={t("settings.unbindReturn")}>
+              {(
+                [
+                  ["now", t("settings.unbindAtOnce")],
+                  ["hours", t("settings.unbindHours")],
+                  ["admin", t("settings.unbindNever")],
+                ] as const
+              ).map(([v, label]) => (
+                <button key={v} type="button" aria-pressed={ret === v} disabled={!writable} onClick={() => setRet(v)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          {ret === "hours" ? (
+            <Field label={t("settings.unbindHours")} htmlFor="s-unbind-hours" error={errs["device_unbind.return_hours"]}>
+              <input id="s-unbind-hours" className="input max-w-[100px]" inputMode="numeric" value={hours} disabled={!writable} onChange={(e) => setHours(e.target.value.replace(/[^0-9]/g, ""))} />
+            </Field>
+          ) : null}
+          <p className="mb-3 text-xs text-[var(--ink-500)]">{summary}</p>
+          <Button variant="primary" type="submit" loading={save.isPending} disabled={!writable}>
+            {t("common.save")}
+          </Button>
+        </>
+      ) : (
+        <p className="text-xs text-[var(--ink-500)]">{t("settings.unbindOffNote")}</p>
+      )}
+    </form>
+  );
+}
+
+function periodLabel(days: number): string {
+  if (days === 1) return t("settings.unbindDay");
+  if (days === 7) return t("settings.unbindWeek");
+  if (days === 30 || days === 31) return t("settings.unbindMonth");
+  return t("settings.unbindDays", { n: days });
+}
+
+function pauseLabel(hours: number): string {
+  if (hours < 24) return t("settings.unbindHoursUnit", { n: hours });
+  return periodLabel(Math.ceil(hours / 24));
 }

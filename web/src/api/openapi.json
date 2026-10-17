@@ -344,7 +344,7 @@
         ],
         "type": "object"
       },
-      "DeviceBanView":       {
+            "DeviceBanView":       {
         "additionalProperties": false,
         "properties": {
           "admin": {
@@ -354,6 +354,10 @@
           "banned_at": {
             "format": "date-time",
             "type": "string"
+          },
+          "forever": {
+            "description": "Ждёт администратора, сколько бы ни прошло",
+            "type": "boolean"
           },
           "hwid": {
             "type": "string"
@@ -365,6 +369,11 @@
           "label": {
             "description": "Как устройство называлось, когда его заблокировали",
             "type": "string"
+          },
+          "until": {
+            "description": "Пауза: снова привяжется с этого момента",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
@@ -374,6 +383,57 @@
           "admin",
           "banned_at"
         ],
+        "type": "object"
+      },
+      "UnbindRules":       {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "description": "За сколько дней считается лимит (скользящее окно)",
+            "format": "int64",
+            "type": "integer"
+          },
+          "limit": {
+            "description": "Сколько устройств подписчик может отвязать за days; 0 — без ограничения",
+            "format": "int64",
+            "type": "integer"
+          },
+          "off": {
+            "description": "Подписчик не отвязывает устройства сам, только админ",
+            "type": "boolean"
+          },
+          "return_hours": {
+            "description": "Сколько часов отвязанное подписчиком устройство не может привязаться снова; 0 — сразу, -1 — пока админ не разрешит",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "days",
+          "return_hours"
+        ],
+        "type": "object"
+      },
+      "DeviceUnbindStruct":       {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "limit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "off": {
+            "type": "boolean"
+          },
+          "return_hours": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "BroadcastInputBody": {
@@ -2557,9 +2617,36 @@
         },
         "type": "object"
       },
-      "PatchSettingsInputBody": {
+            "PatchSettingsInputBody":       {
         "additionalProperties": false,
         "properties": {
+          "alert_cooldown_hours": {
+            "format": "int64",
+            "maximum": 72,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "alert_cpu_percent": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 50,
+            "type": "integer"
+          },
+          "alert_enabled": {
+            "type": "boolean"
+          },
+          "alert_mem_percent": {
+            "format": "int64",
+            "maximum": 100,
+            "minimum": 50,
+            "type": "integer"
+          },
+          "alert_minutes": {
+            "format": "int64",
+            "maximum": 60,
+            "minimum": 1,
+            "type": "integer"
+          },
           "auto_port": {
             "type": "boolean"
           },
@@ -2588,6 +2675,10 @@
           },
           "device_require_hwid": {
             "type": "boolean"
+          },
+          "device_unbind": {
+            "$ref": "#/components/schemas/DeviceUnbindStruct",
+            "description": "Сколько устройств подписчик отвязывает сам: лимит за дни и пауза перед новой привязкой"
           },
           "domain": {
             "maxLength": 253,
@@ -2676,7 +2767,7 @@
         },
         "type": "object"
       },
-      "PatchUserInputBody": {
+            "PatchUserInputBody":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -2695,6 +2786,10 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          },
+          "device_mode": {
+            "description": "bound или online",
+            "type": "string"
           },
           "devices_unlimited": {
             "type": "boolean"
@@ -3115,11 +3210,35 @@
         ],
         "type": "object"
       },
-      "SettingsView": {
+            "SettingsView":       {
         "additionalProperties": false,
         "properties": {
           "admin_url": {
             "type": "string"
+          },
+          "alert_cooldown_hours": {
+            "description": "Повтор по той же ноде не чаще, часов",
+            "format": "int64",
+            "type": "integer"
+          },
+          "alert_cpu_percent": {
+            "description": "Порог CPU %, держится минутами",
+            "format": "int64",
+            "type": "integer"
+          },
+          "alert_enabled": {
+            "description": "Админ-бот пишет привязанным админам, когда у ноды заканчиваются CPU или RAM",
+            "type": "boolean"
+          },
+          "alert_mem_percent": {
+            "description": "Порог RAM %, держится минутами",
+            "format": "int64",
+            "type": "integer"
+          },
+          "alert_minutes": {
+            "description": "Сколько минут подряд держится превышение",
+            "format": "int64",
+            "type": "integer"
           },
           "auto_port": {
             "description": "Переносить подключение на другой порт, если клиенты перестали до него доходить",
@@ -3155,6 +3274,10 @@
           "device_require_hwid": {
             "description": "Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)",
             "type": "boolean"
+          },
+          "device_unbind": {
+            "$ref": "#/components/schemas/UnbindRules",
+            "description": "Сколько устройств подписчик отвязывает сам и как скоро отвязанное привязывается снова"
           },
           "domain": {
             "type": "string"
@@ -3242,8 +3365,14 @@
           "auto_port",
           "auto_sni",
           "egress_ipv6",
+          "alert_enabled",
+          "alert_cpu_percent",
+          "alert_mem_percent",
+          "alert_minutes",
+          "alert_cooldown_hours",
           "device_binding",
           "device_require_hwid",
+          "device_unbind",
           "default_lang",
           "certificate"
         ],
@@ -3339,7 +3468,7 @@
         ],
         "type": "object"
       },
-      "TariffBody": {
+            "TariffBody":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -3354,6 +3483,10 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          },
+          "device_mode": {
+            "description": "bound, online; пусто — оставить как было",
+            "type": "string"
           },
           "duration_days": {
             "format": "int64",
@@ -3404,7 +3537,7 @@
         ],
         "type": "object"
       },
-      "TariffView": {
+            "TariffView":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -3421,6 +3554,14 @@
               "integer",
               "null"
             ]
+          },
+          "device_mode": {
+            "description": "Как считается лимит устройств: места или адреса в сети",
+            "enum": [
+              "bound",
+              "online"
+            ],
+            "type": "string"
           },
           "duration_days": {
             "description": "0 — бессрочно",
@@ -3471,6 +3612,7 @@
           "traffic_limit",
           "duration_days",
           "device_limit",
+          "device_mode",
           "reset_strategy",
           "billing_day",
           "price_label",
@@ -4021,7 +4163,7 @@
         ],
         "type": "object"
       },
-      "UserView": {
+            "UserView":       {
         "additionalProperties": false,
         "properties": {
           "billing_day": {
@@ -4045,6 +4187,14 @@
               "integer",
               "null"
             ]
+          },
+          "device_mode": {
+            "description": "Как считается лимит устройств: места или адреса в сети",
+            "enum": [
+              "bound",
+              "online"
+            ],
+            "type": "string"
           },
           "expires_at": {
             "format": "date-time",
@@ -4178,6 +4328,7 @@
           "total_up",
           "total_down",
           "device_limit",
+          "device_mode",
           "reset_strategy",
           "resets_at",
           "expires_at",

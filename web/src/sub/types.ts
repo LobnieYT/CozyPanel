@@ -15,10 +15,16 @@ export type Info = {
   expires_at?: string;
   resets_at?: string;
   device_limit: number;
+  device_mode: string;
   protocols: string[];
   binding: boolean;
   devices?: Device[];
   unbind_after?: string;
+  unbind_off?: boolean;
+  unbind_limit?: number;
+  unbind_days?: number;
+  unbinds_left?: number;
+  return_hours?: number;
   telegram?: string;
   pools?: { name: string; limit?: number; used: number; extra?: number }[];
 };

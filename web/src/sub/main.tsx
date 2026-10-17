@@ -217,7 +217,9 @@ function SubPage() {
           {current.device_limit ? (
             <div>
               {t("sub.devices")}
-              <b className="num block text-base font-medium text-[var(--ink-900)]">{t("sub.upTo", { n: current.device_limit })}</b>
+              <b className="num block text-base font-medium text-[var(--ink-900)]">
+                {current.device_mode === "online" ? t("sub.upToOnline", { n: current.device_limit }) : t("sub.upTo", { n: current.device_limit })}
+              </b>
             </div>
           ) : null}
         </div>

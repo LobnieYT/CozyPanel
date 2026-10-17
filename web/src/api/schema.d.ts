@@ -1394,11 +1394,46 @@ export interface components {
             admin: string;
             /** Format: date-time */
             banned_at: string;
+            /** @description Ждёт администратора, сколько бы ни прошло */
+            forever?: boolean;
             hwid: string;
             /** Format: int64 */
             id: number;
             /** @description Как устройство называлось, когда его заблокировали */
             label: string;
+            /**
+             * Format: date-time
+             * @description Пауза: снова привяжется с этого момента
+             */
+            until?: string;
+        };
+        UnbindRules: {
+            /**
+             * Format: int64
+             * @description За сколько дней считается лимит (скользящее окно)
+             */
+            days: number;
+            /**
+             * Format: int64
+             * @description Сколько устройств подписчик может отвязать за days; 0 — без ограничения
+             */
+            limit: number;
+            /** @description Подписчик не отвязывает устройства сам, только админ */
+            off?: boolean;
+            /**
+             * Format: int64
+             * @description Сколько часов отвязанное подписчиком устройство не может привязаться снова; 0 — сразу, -1 — пока админ не разрешит
+             */
+            return_hours: number;
+        };
+        DeviceUnbindStruct: {
+            /** Format: int64 */
+            days?: number;
+            /** Format: int64 */
+            limit?: number;
+            off?: boolean;
+            /** Format: int64 */
+            return_hours?: number;
         };
         BroadcastInputBody: {
             /** @description Обычный текст; {brand} — название сервиса */
@@ -2153,6 +2188,15 @@ export interface components {
             routes_override?: string;
         };
         PatchSettingsInputBody: {
+            /** Format: int64 */
+            alert_cooldown_hours?: number;
+            /** Format: int64 */
+            alert_cpu_percent?: number;
+            alert_enabled?: boolean;
+            /** Format: int64 */
+            alert_mem_percent?: number;
+            /** Format: int64 */
+            alert_minutes?: number;
             auto_port?: boolean;
             auto_sni?: boolean;
             brand?: string;
@@ -2162,6 +2206,8 @@ export interface components {
             default_lang?: "auto" | "ru" | "en";
             device_binding?: boolean;
             device_require_hwid?: boolean;
+            /** @description Сколько устройств подписчик отвязывает сам: лимит за дни и пауза перед новой привязкой */
+            device_unbind?: components["schemas"]["DeviceUnbindStruct"];
             domain?: string;
             egress_ipv6?: boolean;
             /** @description @имя, ссылка t.me или текст — бот показывает его вместо счетов */
@@ -2203,6 +2249,8 @@ export interface components {
             contact?: string;
             /** Format: int64 */
             device_limit?: number;
+            /** @description bound или online */
+            device_mode?: string;
             devices_unlimited?: boolean;
             disabled?: boolean;
             /** Format: date-time */
@@ -2335,6 +2383,28 @@ export interface components {
         };
         SettingsView: {
             admin_url: string;
+            /**
+             * Format: int64
+             * @description Повтор по той же ноде не чаще, часов
+             */
+            alert_cooldown_hours: number;
+            /**
+             * Format: int64
+             * @description Порог CPU %, держится минутами
+             */
+            alert_cpu_percent: number;
+            /** @description Админ-бот пишет привязанным админам, когда у ноды заканчиваются CPU или RAM */
+            alert_enabled: boolean;
+            /**
+             * Format: int64
+             * @description Порог RAM %, держится минутами
+             */
+            alert_mem_percent: number;
+            /**
+             * Format: int64
+             * @description Сколько минут подряд держится превышение
+             */
+            alert_minutes: number;
             /** @description Переносить подключение на другой порт, если клиенты перестали до него доходить */
             auto_port: boolean;
             /** @description Менять сайт маскировки REALITY, если он перестал подходить */
@@ -2352,6 +2422,8 @@ export interface components {
             device_binding: boolean;
             /** @description Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место) */
             device_require_hwid: boolean;
+            /** @description Сколько устройств подписчик отвязывает сам и как скоро отвязанное привязывается снова */
+            device_unbind: components["schemas"]["UnbindRules"];
             domain: string;
             /** @description Выход нод по IPv6; выкл — строго IPv4, одна личность для антифрода */
             egress_ipv6: boolean;
@@ -2424,6 +2496,8 @@ export interface components {
             billing_day?: number;
             /** Format: int64 */
             device_limit?: number;
+            /** @description bound, online; пусто — оставить как было */
+            device_mode?: string;
             /** Format: int64 */
             duration_days: number;
             name: string;
@@ -2448,6 +2522,11 @@ export interface components {
             billing_day: number | null;
             /** Format: int64 */
             device_limit: number | null;
+            /**
+             * @description Как считается лимит устройств: места или адреса в сети
+             * @enum {string}
+             */
+            device_mode: "bound" | "online";
             /**
              * Format: int64
              * @description 0 — бессрочно
@@ -2686,6 +2765,11 @@ export interface components {
             created_at: string;
             /** Format: int64 */
             device_limit: number | null;
+            /**
+             * @description Как считается лимит устройств: места или адреса в сети
+             * @enum {string}
+             */
+            device_mode: "bound" | "online";
             /** Format: date-time */
             expires_at: string | null;
             /** Format: int64 */

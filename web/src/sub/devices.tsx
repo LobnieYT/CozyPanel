@@ -89,8 +89,14 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
   // The button that opened the confirmation: focus goes back to it, not to the page's top.
   const opener = useRef<number | null>(null);
   const list = info.devices ?? [];
-  const full = info.device_limit > 0 && list.length >= info.device_limit;
+  const online = info.device_mode === "online";
+  const full = !online && info.device_limit > 0 && list.length >= info.device_limit;
   const wait = info.unbind_after && new Date(info.unbind_after).getTime() > Date.now() ? info.unbind_after : "";
+  const off = !!info.unbind_off;
+  const left = info.unbinds_left ?? -1;
+  const limit = info.unbind_limit ?? 0;
+  const period = periodLabel(info.unbind_days ?? 1);
+  const pause = pauseLabel(info.return_hours ?? 0);
 
   useEffect(() => {
     if (confirm !== null || opener.current === null) return;
@@ -174,7 +180,7 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
                       >
                         {t("sub.rename")}
                       </Button>
-                      <Button id={`unbind-${d.id}`} size="sm" disabled={busy || !!wait} onClick={() => ask(d.id)} aria-label={t("sub.unbindLabel", { name })}>
+                      <Button id={`unbind-${d.id}`} size="sm" disabled={busy || !!wait || off} onClick={() => ask(d.id)} aria-label={t("sub.unbindLabel", { name })}>
                         {t("sub.unbind")}
                       </Button>
                     </div>
@@ -216,6 +222,37 @@ export function Devices({ info, subURL, reload }: { info: Info; subURL: string; 
         <p className="mt-2 text-xs text-[var(--ink-500)]">{t("sub.unbindAfter", { date: dateShort(wait), time: time(wait) })}</p>
       ) : null}
       <p className="mt-2 text-xs text-[var(--ink-500)]">{t("sub.devicesNote")}</p>
+      {online ? <p className="mt-1 text-xs text-[var(--ink-500)]">{t("sub.devicesNoteOnline")}</p> : null}
+      {off ? (
+        <p className="mt-1 text-xs text-[var(--ink-500)]">{t("sub.unbindOff")}</p>
+      ) : (
+        <>
+          {limit > 0 && left >= 0 ? (
+            <p className="mt-1 text-xs text-[var(--ink-500)]">{t("sub.unbindLeft", { left, limit, period })}</p>
+          ) : null}
+          {(info.return_hours ?? 0) === -1 ? (
+            <p className="mt-1 text-xs text-[var(--ink-500)]">{t("sub.returnNever")}</p>
+          ) : (info.return_hours ?? 0) > 0 ? (
+            <p className="mt-1 text-xs text-[var(--ink-500)]">{t("sub.returnNote", { span: pause })}</p>
+          ) : null}
+        </>
+      )}
     </section>
   );
+}
+
+function periodLabel(days: number): string {
+  if (days === 1) return t("sub.unbindDay");
+  if (days === 7) return t("sub.unbindWeek");
+  if (days === 30 || days === 31) return t("sub.unbindMonth");
+  return t("sub.unbindDays", { n: days });
+}
+
+function pauseLabel(hours: number): string {
+  if (hours < 24) return t("sub.unbindHoursUnit", { n: hours });
+  const days = Math.ceil(hours / 24);
+  if (days === 1) return t("sub.unbindDay");
+  if (days === 7) return t("sub.unbindWeek");
+  if (days === 30 || days === 31) return t("sub.unbindMonth");
+  return t("sub.unbindDays", { n: days });
 }

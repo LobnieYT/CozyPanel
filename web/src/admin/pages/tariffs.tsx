@@ -14,6 +14,7 @@ import { bytes, days, GiB, months, termMonths } from "../../lib/format";
 import { TARIFF_TABS } from "../search";
 import { PackagesCard } from "./packages";
 import { PoolLimitsField, PoolsCard } from "./pools";
+import { DeviceModePicker, modeOf, type DeviceMode } from "./user/device-mode";
 
 /** How long a term on the tariff runs: days, or months up to the billing day. */
 function tariffTerm(tr: Tariff): string {
@@ -31,7 +32,7 @@ export function tariffSummary(tr: Tariff): string {
   const parts = [
     tr.traffic_limit != null ? bytes(tr.traffic_limit) : t("users.unlimited"),
     tariffTerm(tr),
-    tr.device_limit != null ? t("userDrawer.devicesShort", { n: tr.device_limit }) : t("tariffs.devicesUnlimitedShort"),
+    tr.device_limit != null ? (tr.device_mode === "online" ? t("deviceMode.shortOnline", { n: tr.device_limit }) : t("userDrawer.devicesShort", { n: tr.device_limit })) : t("tariffs.devicesUnlimitedShort"),
   ];
   return parts.join(" · ");
 }
@@ -145,7 +146,7 @@ export function TariffsPage() {
                       <dl className="mt-5 grid grid-cols-2 gap-3 text-xs text-[var(--ink-500)]">
                         <Item label={t("users.colTraffic")} value={tr.traffic_limit != null ? bytes(tr.traffic_limit) : t("users.unlimited")} />
                         <Item label={t("users.colExpiry")} value={tariffTerm(tr)} />
-                        <Item label={t("users.colDevices")} value={tr.device_limit != null ? String(tr.device_limit) : t("users.unlimited")} />
+                        <Item label={t("users.colDevices")} value={tr.device_limit != null ? (modeOf(tr) === "online" ? t("deviceMode.shortOnline", { n: tr.device_limit }) : String(tr.device_limit)) : t("users.unlimited")} />
                         <Item label={t("tariffs.reset")} value={resetLabel(tr)} />
                         {poolLimitsText(tr, poolNames) ? (
                           <div className="col-span-2">
@@ -196,6 +197,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
   const [billingDay, setBillingDay] = useState("1");
   const [devices, setDevices] = useState("3");
   const [devicesUnlimited, setDevicesUnlimited] = useState(false);
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>("bound");
   const [reset, setReset] = useState<Tariff["reset_strategy"]>("period");
   const [price, setPrice] = useState("");
   const allPools = usePools();
@@ -214,6 +216,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
     setBillingDay(String(tr?.billing_day ?? new Date().getDate()));
     setDevicesUnlimited(tr ? tr.device_limit == null : false);
     setDevices(String(tr?.device_limit ?? 3));
+    setDeviceMode(modeOf(tr ?? {}));
     setReset(tr?.reset_strategy ?? "period");
     setPrice(tr?.price_label ?? "");
     setPoolGB(Object.fromEntries((tr?.pools ?? []).map((p) => [p.pool_id, p.traffic_limit != null ? String(+(p.traffic_limit / GiB).toFixed(2)) : ""])));
@@ -263,6 +266,7 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
       duration_days: toDay ? monN * 30 : durN,
       billing_day: toDay ? dayN : undefined,
       device_limit: devicesUnlimited ? undefined : devN,
+      device_mode: deviceMode,
       reset_strategy: unlimited ? "none" : reset,
       price_label: price.trim() || undefined,
       pools: poolLimits,
@@ -346,6 +350,9 @@ function TariffDrawer({ tariff, onClose }: { tariff: Tariff | "new" | null; onCl
               <input type="checkbox" className="check" checked={devicesUnlimited} onChange={(e) => setDevicesUnlimited(e.target.checked)} /> {t("users.unlimited")}
             </label>
           </div>
+        </Field>
+        <Field label={t("deviceMode.label")} hint={t("deviceMode.boundHint")}>
+          <DeviceModePicker value={deviceMode} onChange={setDeviceMode} />
         </Field>
         {!unlimited ? (
           <Field label={t("tariffs.whenReset")} hint={t("tariffs.whenResetHint")}>

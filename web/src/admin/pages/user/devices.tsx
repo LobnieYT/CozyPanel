@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ApiError, errorText, type Schemas, type User } from "../../../api/client";
 import { useBoundDevices, useDeviceBans, useDevices, useGrants, userActions, useSettings, useUserMutation } from "../../../api/hooks";
 import { Confirm } from "../../../components/overlay";
-import { useToast } from "../../../components/toast";
+import { DeviceModePicker, modeOf } from "./device-mode";import { useToast } from "../../../components/toast";
 import { ErrorState, Skeleton } from "../../../components/ui";
 import { t } from "../../../i18n";
 import { desktopOS, deviceDetails, deviceLabel } from "../../../lib/devices";
@@ -49,6 +49,13 @@ export function DevicesSection({ u }: { u: User }) {
         )}
       </div>
       <BoundDevices u={u} />
+      <div className="mt-4 flex items-center gap-2 text-[13px]">
+        <span className="text-[var(--ink-600)]">{t("deviceMode.label")}</span>
+        <DeviceModePicker
+          value={modeOf(u)}
+          onChange={(m) => update.mutate({ id: u.id, body: { device_mode: m } }, { onError: (e) => toast.error(errorText(e)) })}
+        />
+      </div>
       <h4 className="mt-5 mb-2 text-xs font-medium text-[var(--ink-500)]">{t("userDrawer.addresses")}</h4>
       {devices.isPending ? (
         <Skeleton style={{ height: 52, borderRadius: 16 }} />
