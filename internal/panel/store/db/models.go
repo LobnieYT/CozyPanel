@@ -129,6 +129,12 @@ type InboundReach struct {
 	At        int64
 }
 
+type LinkReissue struct {
+	ID     int64
+	UserID int64
+	At     int64
+}
+
 type Node struct {
 	ID                int64
 	Name              string

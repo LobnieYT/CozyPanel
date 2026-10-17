@@ -885,6 +885,18 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const lockUser = `-- name: LockUser :one
+SELECT id FROM users WHERE id = ?
+`
+
+// The user, held against other writers for the transaction (reissue burns their devices).
+func (q *Queries) LockUser(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, lockUser, id)
+	var id_2 int64
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const maxSlotID = `-- name: MaxSlotID :one
 SELECT CAST(coalesce(max(id), 0) AS INTEGER) FROM slots
 `

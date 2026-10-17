@@ -35,6 +35,16 @@ UPDATE users SET slot_id = ?, updated_at = ? WHERE id = ?;
 -- The subscriber's own unbind, for the admin's limit of so many a period.
 INSERT INTO device_unbinds (user_id, at) VALUES (?, ?);
 
+-- name: AddLinkReissue :exec
+-- The subscriber's own new link, for the admin's limit of so many a period.
+INSERT INTO link_reissues (user_id, at) VALUES (?, ?);
+
+-- name: ListLinkReissuesSince :many
+SELECT at FROM link_reissues WHERE user_id = ? AND at > ? ORDER BY at;
+
+-- name: DeleteLinkReissuesBefore :exec
+DELETE FROM link_reissues WHERE at < ?;
+
 -- name: ListUnbindsSince :many
 SELECT at FROM device_unbinds WHERE user_id = ? AND at >= ? ORDER BY at;
 

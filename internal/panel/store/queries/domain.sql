@@ -83,6 +83,10 @@ RETURNING *;
 -- name: GetUser :one
 SELECT * FROM users WHERE id = ?;
 
+-- name: LockUser :one
+-- The user, held against other writers for the transaction (reissue burns their devices).
+SELECT id FROM users WHERE id = ?;
+
 -- name: GetUserBySubToken :one
 SELECT * FROM users WHERE sub_token = ?;
 

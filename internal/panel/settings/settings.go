@@ -41,6 +41,9 @@ const (
 	// UnbindRules (domain.UnbindRules): how many devices the subscriber may unbind per
 	// period and how soon an unbound device may bind again. Unset: one a day, back in a day.
 	KeyUnbindRules = "device_unbind"
+	// ReissueRules (domain.ReissueRules): how many links the subscriber may issue per
+	// period. Unset: one a day.
+	KeyReissueRules = "link_reissue"
 	// KeyDefaultLang is the language chosen at install: the admin panel and the subscription
 	// page open in it until a visitor picks one, and new names (tariffs, the auto group, the
 	// bot's menu) are written in it. "auto" or unset: the visitor's browser decides.

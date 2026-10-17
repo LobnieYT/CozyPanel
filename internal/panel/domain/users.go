@@ -447,33 +447,36 @@ func (s *Users) Reissue(ctx context.Context, id int64) (db.User, error) {
 }
 
 func (s *Users) reissue(ctx context.Context, id int64) error {
-	now := s.now().Unix()
-	return s.st.Tx(ctx, func(q *db.Queries) error {
-		u, err := q.GetUser(ctx, id)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
+	return s.st.Tx(ctx, func(q *db.Queries) error { return s.reissueOn(ctx, q, id, s.now().Unix()) })
+}
+
+// reissueOn gives the user a new slot and token inside a transaction the caller holds:
+// the old slot burns and the bound devices are forgotten.
+func (s *Users) reissueOn(ctx context.Context, q *db.Queries, id int64, now int64) error {
+	u, err := q.GetUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	slot, err := q.TakeFreeSlot(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNoSlots
+	}
+	if err != nil {
+		return err
+	}
+	if u.SlotID.Valid {
+		if err := q.BurnSlot(ctx, db.BurnSlotParams{BurnedAt: sql.NullInt64{Int64: now, Valid: true}, ID: u.SlotID.Int64}); err != nil {
 			return err
 		}
-		slot, err := q.TakeFreeSlot(ctx)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNoSlots
-		}
-		if err != nil {
-			return err
-		}
-		if u.SlotID.Valid {
-			if err := q.BurnSlot(ctx, db.BurnSlotParams{BurnedAt: sql.NullInt64{Int64: now, Valid: true}, ID: u.SlotID.Int64}); err != nil {
-				return err
-			}
-		}
-		// A new link: every bound device registers again with it.
-		if err := burnDevices(ctx, q, id, now); err != nil {
-			return err
-		}
-		return q.SetUserCredentials(ctx, db.SetUserCredentialsParams{SlotID: sql.NullInt64{Int64: slot.ID, Valid: true}, SubToken: secure.Token(24), UpdatedAt: now, ID: id})
-	})
+	}
+	// A new link: every bound device registers again with it.
+	if err := burnDevices(ctx, q, id, now); err != nil {
+		return err
+	}
+	return q.SetUserCredentials(ctx, db.SetUserCredentialsParams{SlotID: sql.NullInt64{Int64: slot.ID, Valid: true}, SubToken: secure.Token(24), UpdatedAt: now, ID: id})
 }
 
 func (s *Users) Delete(ctx context.Context, id int64) error {

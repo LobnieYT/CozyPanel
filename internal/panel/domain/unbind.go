@@ -131,9 +131,13 @@ func holdUnbound(ctx context.Context, q *db.Queries, userID int64, hwid, label s
 		Until: sql.NullInt64{Int64: until.Unix(), Valid: true}})
 }
 
-// PruneDeviceData drops pauses that ran out and unbind history older than any window.
+// PruneDeviceData drops pauses that ran out and unbind and reissue history older than
+// any window.
 func PruneDeviceData(ctx context.Context, q *db.Queries, now time.Time) error {
 	if err := q.DeleteExpiredBans(ctx, sql.NullInt64{Int64: now.Unix(), Valid: true}); err != nil {
+		return err
+	}
+	if err := q.DeleteLinkReissuesBefore(ctx, now.Add(-unbindKeepHours*time.Hour).Unix()); err != nil {
 		return err
 	}
 	return q.DeleteUnbindsBefore(ctx, now.Add(-unbindKeepHours*time.Hour).Unix())

@@ -28,6 +28,21 @@ func (q *Queries) ActiveDeviceBan(ctx context.Context, arg ActiveDeviceBanParams
 	return until, err
 }
 
+const addLinkReissue = `-- name: AddLinkReissue :exec
+INSERT INTO link_reissues (user_id, at) VALUES (?, ?)
+`
+
+type AddLinkReissueParams struct {
+	UserID int64
+	At     int64
+}
+
+// The subscriber's own new link, for the admin's limit of so many a period.
+func (q *Queries) AddLinkReissue(ctx context.Context, arg AddLinkReissueParams) error {
+	_, err := q.db.ExecContext(ctx, addLinkReissue, arg.UserID, arg.At)
+	return err
+}
+
 const addSlotTraffic = `-- name: AddSlotTraffic :exec
 INSERT INTO slot_traffic (slot_id, up, down)
 SELECT id, ?, ? FROM slots WHERE name = ?
@@ -209,6 +224,15 @@ DELETE FROM device_bans WHERE until IS NOT NULL AND until <= ?
 // Pauses that ran out: the admin's bans (no until) stay.
 func (q *Queries) DeleteExpiredBans(ctx context.Context, until sql.NullInt64) error {
 	_, err := q.db.ExecContext(ctx, deleteExpiredBans, until)
+	return err
+}
+
+const deleteLinkReissuesBefore = `-- name: DeleteLinkReissuesBefore :exec
+DELETE FROM link_reissues WHERE at < ?
+`
+
+func (q *Queries) DeleteLinkReissuesBefore(ctx context.Context, at int64) error {
+	_, err := q.db.ExecContext(ctx, deleteLinkReissuesBefore, at)
 	return err
 }
 
@@ -501,6 +525,38 @@ func (q *Queries) ListIdleBoundDevices(ctx context.Context, lastSeen int64) ([]B
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLinkReissuesSince = `-- name: ListLinkReissuesSince :many
+SELECT at FROM link_reissues WHERE user_id = ? AND at > ? ORDER BY at
+`
+
+type ListLinkReissuesSinceParams struct {
+	UserID int64
+	At     int64
+}
+
+func (q *Queries) ListLinkReissuesSince(ctx context.Context, arg ListLinkReissuesSinceParams) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listLinkReissuesSince, arg.UserID, arg.At)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var at int64
+		if err := rows.Scan(&at); err != nil {
+			return nil, err
+		}
+		items = append(items, at)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
