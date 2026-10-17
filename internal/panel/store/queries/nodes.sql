@@ -18,5 +18,9 @@ UPDATE nodes SET cert_sha256 = ?, updated_at = ? WHERE id = ?;
 -- name: SetNodeNet :exec
 UPDATE nodes SET dns_override = ?, routes_override = ?, outbounds_override = ?, updated_at = ? WHERE id = ?;
 
+-- name: SetNodeShaping :exec
+-- The channel's width and whether it is divided between those who download at the moment.
+UPDATE nodes SET channel_mbps = ?, fair_share = ?, updated_at = ? WHERE id = ?;
+
 -- name: DeleteNode :exec
 DELETE FROM nodes WHERE id = ? AND id != 1;

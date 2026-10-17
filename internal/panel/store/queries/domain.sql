@@ -8,13 +8,13 @@ SELECT * FROM tariffs WHERE id = ?;
 SELECT count(*) FROM tariffs;
 
 -- name: CreateTariff :one
-INSERT INTO tariffs (name, traffic_limit, duration_days, device_limit, reset_strategy, price_label, sort, created_at, billing_day, device_mode)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tariffs (name, traffic_limit, duration_days, device_limit, reset_strategy, price_label, sort, created_at, billing_day, device_mode, speed_limit)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateTariff :one
 UPDATE tariffs
-SET name = ?, traffic_limit = ?, duration_days = ?, device_limit = ?, reset_strategy = ?, price_label = ?, sort = ?, billing_day = ?, device_mode = ?
+SET name = ?, traffic_limit = ?, duration_days = ?, device_limit = ?, reset_strategy = ?, price_label = ?, sort = ?, billing_day = ?, device_mode = ?, speed_limit = ?
 WHERE id = ?
 RETURNING *;
 
@@ -76,8 +76,8 @@ SELECT d.id AS device_id, s.name AS slot_name FROM bound_devices d JOIN slots s 
 
 -- name: CreateUser :one
 INSERT INTO users (name, contact, note, tags, status, tariff_id, traffic_limit, device_limit, reset_strategy,
-                   period_days, period_start, expires_at, inbounds, sub_token, slot_id, created_at, updated_at, billing_day, device_mode)
-VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
+                   period_days, period_start, expires_at, inbounds, sub_token, slot_id, created_at, updated_at, billing_day, device_mode, speed_limit)
+VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetUser :one
@@ -96,7 +96,7 @@ SELECT * FROM users ORDER BY id DESC;
 -- name: UpdateUser :one
 UPDATE users
 SET name = ?, contact = ?, note = ?, tags = ?, status = ?, tariff_id = ?, traffic_limit = ?, device_limit = ?,
-    reset_strategy = ?, period_days = ?, period_start = ?, expires_at = ?, inbounds = ?, updated_at = ?, billing_day = ?, device_mode = ?
+    reset_strategy = ?, period_days = ?, period_start = ?, expires_at = ?, inbounds = ?, updated_at = ?, billing_day = ?, device_mode = ?, speed_limit = ?
 WHERE id = ?
 RETURNING *;
 

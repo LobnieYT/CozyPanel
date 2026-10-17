@@ -296,3 +296,66 @@ func TestMigration0026UnbindRules(t *testing.T) {
 		t.Fatalf("device_unbinds after migrate up again: %v", err)
 	}
 }
+
+// Migration 0028: speed caps on plans and users, fair share on nodes; a cap of zero is
+// refused, and the rollback takes the columns away.
+func TestMigration0028SpeedLimits(t *testing.T) {
+	ctx := context.Background()
+	conn, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "old.db"))+"?_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	fsys, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, conn, fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 27); err != nil {
+		t.Fatal(err)
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := conn.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	exec("INSERT INTO tariffs (name, duration_days, reset_strategy, created_at) VALUES ('t', 30, 'none', 1)")
+	exec("INSERT INTO users (id, name, sub_token, period_start, created_at, updated_at) VALUES (1, 'a', 'tok', 1, 1, 1)")
+	exec("INSERT INTO nodes (id, name, address, created_at, updated_at) VALUES (2, 'n', '203.0.113.1', 1, 1)")
+
+	if _, err := p.UpTo(ctx, 28); err != nil {
+		t.Fatal(err)
+	}
+	var cap sql.NullInt64
+	if err := conn.QueryRowContext(ctx, "SELECT speed_limit FROM users WHERE id = 1").Scan(&cap); err != nil || cap.Valid {
+		t.Fatalf("the default cap: %v %v", cap, err)
+	}
+	exec("UPDATE users SET speed_limit = 50 WHERE id = 1")
+	if _, err := conn.ExecContext(ctx, "UPDATE users SET speed_limit = 0 WHERE id = 1"); err == nil {
+		t.Fatal("a cap of zero went in")
+	}
+	var fair int
+	var channel sql.NullInt64
+	if err := conn.QueryRowContext(ctx, "SELECT fair_share, channel_mbps FROM nodes WHERE id = 2").Scan(&fair, &channel); err != nil || fair != 0 || channel.Valid {
+		t.Fatalf("the default fair share: %d %v %v", fair, channel, err)
+	}
+	if _, err := p.Down(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT speed_limit FROM users"); err == nil {
+		t.Fatal("users.speed_limit is still there after the rollback")
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT fair_share FROM nodes"); err == nil {
+		t.Fatal("nodes.fair_share is still there after the rollback")
+	}
+	if _, err := p.Up(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRowContext(ctx, "SELECT speed_limit FROM users WHERE id = 1").Scan(&cap); err != nil {
+		t.Fatalf("speed_limit after migrate up again: %v", err)
+	}
+}

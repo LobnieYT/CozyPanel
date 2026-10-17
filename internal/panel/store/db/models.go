@@ -148,6 +148,8 @@ type Node struct {
 	DnsOverride       sql.NullString
 	RoutesOverride    sql.NullString
 	OutboundsOverride sql.NullString
+	FairShare         int64
+	ChannelMbps       sql.NullInt64
 }
 
 type NodeRelay struct {
@@ -245,6 +247,7 @@ type Tariff struct {
 	CreatedAt     int64
 	BillingDay    sql.NullInt64
 	DeviceMode    string
+	SpeedLimit    sql.NullInt64
 }
 
 type TariffPool struct {
@@ -360,6 +363,7 @@ type User struct {
 	BillingDay    sql.NullInt64
 	Avatar        string
 	DeviceMode    string
+	SpeedLimit    sql.NullInt64
 }
 
 type UserPool struct {

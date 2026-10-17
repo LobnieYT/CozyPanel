@@ -13,7 +13,7 @@ import (
 const createNode = `-- name: CreateNode :one
 INSERT INTO nodes (name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override
+RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override, fair_share, channel_mbps
 `
 
 type CreateNodeParams struct {
@@ -50,6 +50,8 @@ func (q *Queries) CreateNode(ctx context.Context, arg CreateNodeParams) (Node, e
 		&i.DnsOverride,
 		&i.RoutesOverride,
 		&i.OutboundsOverride,
+		&i.FairShare,
+		&i.ChannelMbps,
 	)
 	return i, err
 }
@@ -64,7 +66,7 @@ func (q *Queries) DeleteNode(ctx context.Context, id int64) error {
 }
 
 const getNode = `-- name: GetNode :one
-SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override FROM nodes WHERE id = ?
+SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override, fair_share, channel_mbps FROM nodes WHERE id = ?
 `
 
 func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
@@ -83,12 +85,14 @@ func (q *Queries) GetNode(ctx context.Context, id int64) (Node, error) {
 		&i.DnsOverride,
 		&i.RoutesOverride,
 		&i.OutboundsOverride,
+		&i.FairShare,
+		&i.ChannelMbps,
 	)
 	return i, err
 }
 
 const listNodes = `-- name: ListNodes :many
-SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override FROM nodes ORDER BY id
+SELECT id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override, fair_share, channel_mbps FROM nodes ORDER BY id
 `
 
 func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
@@ -113,6 +117,8 @@ func (q *Queries) ListNodes(ctx context.Context) ([]Node, error) {
 			&i.DnsOverride,
 			&i.RoutesOverride,
 			&i.OutboundsOverride,
+			&i.FairShare,
+			&i.ChannelMbps,
 		); err != nil {
 			return nil, err
 		}
@@ -165,8 +171,30 @@ func (q *Queries) SetNodeNet(ctx context.Context, arg SetNodeNetParams) error {
 	return err
 }
 
+const setNodeShaping = `-- name: SetNodeShaping :exec
+UPDATE nodes SET channel_mbps = ?, fair_share = ?, updated_at = ? WHERE id = ?
+`
+
+type SetNodeShapingParams struct {
+	ChannelMbps sql.NullInt64
+	FairShare   int64
+	UpdatedAt   int64
+	ID          int64
+}
+
+// The channel's width and whether it is divided between those who download at the moment.
+func (q *Queries) SetNodeShaping(ctx context.Context, arg SetNodeShapingParams) error {
+	_, err := q.db.ExecContext(ctx, setNodeShaping,
+		arg.ChannelMbps,
+		arg.FairShare,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
 const updateNode = `-- name: UpdateNode :one
-UPDATE nodes SET name = ?, address = ?, public_host = ?, domain = ?, enabled = ?, updated_at = ? WHERE id = ? RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override
+UPDATE nodes SET name = ?, address = ?, public_host = ?, domain = ?, enabled = ?, updated_at = ? WHERE id = ? RETURNING id, name, address, public_host, domain, cert_sha256, enabled, created_at, updated_at, dns_override, routes_override, outbounds_override, fair_share, channel_mbps
 `
 
 type UpdateNodeParams struct {
@@ -203,6 +231,8 @@ func (q *Queries) UpdateNode(ctx context.Context, arg UpdateNodeParams) (Node, e
 		&i.DnsOverride,
 		&i.RoutesOverride,
 		&i.OutboundsOverride,
+		&i.FairShare,
+		&i.ChannelMbps,
 	)
 	return i, err
 }
