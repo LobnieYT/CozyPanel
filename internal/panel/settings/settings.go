@@ -27,10 +27,10 @@ const (
 	// from its e-mail API.
 	KeyACMEEABKID  = "acme_eab_kid"
 	KeyACMEEABHMAC = "acme_eab_hmac"
-	KeyGroupMain = "sub_group_main" // subscription group names, see subs.Groups
-	KeyGroupAuto = "sub_group_auto"
-	KeyRouting   = "sub_routing" // subs.Routing
-	KeyRules     = "sub_rules"   // the admin's own Clash rules, as typed (subs.ParseRules)
+	KeyGroupMain   = "sub_group_main" // subscription group names, see subs.Groups
+	KeyGroupAuto   = "sub_group_auto"
+	KeyRouting     = "sub_routing" // subs.Routing
+	KeyRules       = "sub_rules"   // the admin's own Clash rules, as typed (subs.ParseRules)
 	// KeyFingerprint is the uTLS profile clients get where an inbound sets none
 	// (proto.Fingerprints); unset means proto.DefaultFingerprint.
 	KeyFingerprint = "client_fingerprint"
