@@ -211,9 +211,24 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 	var bans []struct {
 		ID    int64  `json:"id"`
 		Label string `json:"label"`
+		Admin string `json:"admin"`
+		Until *string `json:"until"`
 	}
-	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bans) != nil || len(bans) != 1 {
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bans) != nil || len(bans) != 2 {
 		t.Fatalf("bans: %d %s", resp.StatusCode, body)
+	}
+	// The admin's ban and the subscriber's own unbind pause live side by side.
+	seenBan, seenPause := false, false
+	for _, b := range bans {
+		if b.Admin != "" && b.Until == nil {
+			seenBan = true
+		}
+		if b.Admin == "" && b.Until != nil {
+			seenPause = true
+		}
+	}
+	if !seenBan || !seenPause {
+		t.Fatalf("ban and pause: %s", body)
 	}
 	if resp, links := fetch(bound[2].HWID); resp.StatusCode != http.StatusOK || !strings.Contains(links, "127.0.0.1:1") {
 		t.Fatalf("a banned device fetches keys: %d %.80s", resp.StatusCode, links)

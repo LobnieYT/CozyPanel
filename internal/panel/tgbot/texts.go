@@ -17,6 +17,9 @@ type words struct {
 	stateActive, stateExpiring, stateLimited, stateExpired, stateOff   string
 	forever, termUntil, noLimit, trafficOf, trafficNoLimit, resets     string
 	devicesNone, devicesOff, devicesNote, confirmUnbind, unbound, wait string
+	unbindLeft, returnNote, confirmReturn, returnNever, confirmNever   string
+	unbindOff, unbindFailed, onlineNote, onlineLimit                   string
+	perDay, perWeek, perMonth, perDays, hoursUnit                      string
 	connectText, linked, alreadyLinked, linkExpired, linkInvalid       string
 	linkLimit, noSub, sharedPlace, device, justNow                     string
 	// A subscription already linked to another account is moved only if its owner agrees.
@@ -47,12 +50,22 @@ var ru = words{
 	subTitle: "Подписка «%s»", devicesTitle: "Устройства", connectTitle: "Подключить устройство", switchTitle: "Какую подписку показать?",
 	stateActive: "✅ Работает", stateExpiring: "⏳ Скоро закончится", stateLimited: "📦 Трафик на этот период закончился", stateExpired: "⛔️ Подписка закончилась", stateOff: "⏸ Доступ приостановлен",
 	forever: "бессрочно", termUntil: "до %s — осталось %s", noLimit: "без лимита", trafficOf: "%s из %s", trafficNoLimit: "%s, без лимита", resets: "🔄 Обновится: %s",
-	devicesNone:       "Устройства появятся здесь, когда приложение загрузит подписку.",
-	devicesOff:        "Привязка устройств выключена: одновременно можно подключаться не больше чем с %s адресов.",
-	devicesNote:       "Отвязанное устройство сразу отключается, а место освобождается. Отвязывать можно одно устройство в сутки.",
-	confirmUnbind:     "Отвязать «%s»? Оно сразу отключится.",
-	unbound:           "✅ «%s» отвязано.",
-	wait:              "⏳ Следующее устройство можно отвязать %s.",
+	devicesNone:   "Устройства появятся здесь, когда приложение загрузит подписку.",
+	devicesOff:    "Привязка устройств выключена: одновременно можно подключаться не больше чем с %s адресов.",
+	devicesNote:   "Отвязанное устройство сразу отключается, а место освобождается.",
+	confirmUnbind: "Отвязать «%s»? Оно сразу отключится.",
+	unbound:       "✅ «%s» отвязано.",
+	wait:          "⏳ Следующее устройство можно отвязать %s.",
+	unbindLeft:    "Можно отвязать ещё %d из %d за %s.",
+	returnNote:    "Отвязанное устройство сможет привязаться через %s.",
+	confirmReturn: " Оно сможет привязаться снова через %s.",
+	returnNever:   "Отвязанное устройство сможет привязать только администратор.",
+	confirmNever:  " Разблокировать его сможет только администратор.",
+	unbindOff:     "Отвязка подписчиком выключена — попросите администратора.",
+	unbindFailed:  "Не отвязалось.",
+	onlineNote:    "Лимит считает только адреса в сети: привязывайте сколько угодно.",
+	onlineLimit:   "до %s одновременно",
+	perDay:        "сутки", perWeek: "неделю", perMonth: "месяц", perDays: "%d дн.", hoursUnit: "%d ч",
 	connectText:       "1. Установите приложение: Happ (iPhone, Android), Koala Clash (Windows) или другое со страницы подписки.\n2. Добавьте в него ссылку:\n<code>%s</code>\n\nНа странице подписки — кнопки «Добавить» для всех приложений.",
 	linked:            "✅ Подписка «%s» подключена.",
 	alreadyLinked:     "Подписка «%s» уже здесь.",
@@ -93,12 +106,22 @@ var en = words{
 	subTitle: "Subscription “%s”", devicesTitle: "Devices", connectTitle: "Connect a device", switchTitle: "Which subscription to show?",
 	stateActive: "✅ Working", stateExpiring: "⏳ Ends soon", stateLimited: "📦 Traffic for this period is used up", stateExpired: "⛔️ The subscription has ended", stateOff: "⏸ Access is paused",
 	forever: "no end date", termUntil: "until %s — %s left", noLimit: "unlimited", trafficOf: "%s of %s", trafficNoLimit: "%s, unlimited", resets: "🔄 Renews: %s",
-	devicesNone:       "Devices appear here once an app loads the subscription.",
-	devicesOff:        "Device binding is off: at most %s addresses can be connected at once.",
-	devicesNote:       "An unbound device is disconnected at once and its place frees up. You can unbind one device a day.",
-	confirmUnbind:     "Unbind “%s”? It disconnects at once.",
-	unbound:           "✅ “%s” is unbound.",
-	wait:              "⏳ You can unbind the next device %s.",
+	devicesNone:   "Devices appear here once an app loads the subscription.",
+	devicesOff:    "Device binding is off: at most %s addresses can be connected at once.",
+	devicesNote:   "An unbound device is disconnected at once and its place frees up.",
+	confirmUnbind: "Unbind “%s”? It disconnects at once.",
+	unbound:       "✅ “%s” is unbound.",
+	wait:          "⏳ You can unbind the next device %s.",
+	unbindLeft:    "You can unbind %d more of %d per %s.",
+	returnNote:    "An unbound device can bind again in %s.",
+	confirmReturn: " It can bind again in %s.",
+	returnNever:   "Only the admin can let an unbound device back.",
+	confirmNever:  " Only the admin can unblock it.",
+	unbindOff:     "Subscriber unbind is off — ask the admin.",
+	unbindFailed:  "Could not unbind.",
+	onlineNote:    "The limit counts only online addresses: bind as many as you like.",
+	onlineLimit:   "up to %s at once",
+	perDay:        "day", perWeek: "week", perMonth: "month", perDays: "%d days", hoursUnit: "%d h",
 	connectText:       "1. Install an app: Happ (iPhone, Android), Koala Clash (Windows) or another from the subscription page.\n2. Add this link to it:\n<code>%s</code>\n\nThe subscription page has “Add” buttons for every app.",
 	linked:            "✅ Subscription “%s” is connected.",
 	alreadyLinked:     "Subscription “%s” is already here.",
@@ -198,6 +221,27 @@ func (w *words) days(n int) string {
 		return fmt.Sprintf("%d дня", n)
 	}
 	return fmt.Sprintf("%d дней", n)
+}
+
+// period names the unbind window: a day, a week, a month, or so many days.
+func (w *words) period(days int) string {
+	switch days {
+	case 1:
+		return w.perDay
+	case 7:
+		return w.perWeek
+	case 30, 31:
+		return w.perMonth
+	}
+	return fmt.Sprintf(w.perDays, days)
+}
+
+// span names a return pause in hours, or in days when it is whole days.
+func (w *words) span(hours int) string {
+	if hours < 24 {
+		return fmt.Sprintf(w.hoursUnit, hours)
+	}
+	return w.period((hours + 23) / 24)
 }
 
 func (w *words) bytes(n int64) string {

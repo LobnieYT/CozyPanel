@@ -130,6 +130,7 @@
       "device_no_hwid": "Apps without a device ID share one place: there is nothing to block",
       "device_name_long": "Up to 40 characters",
       "name_chars": "Letters, numbers and punctuation on one line",
+      "bad_device_mode": "How the device limit counts: places or addresses online.",
       "domain_invalid": "A domain like vpn.example.com, or empty",
       "domain_or_ip": "Give a domain or an IP",
       "domain": "Give a domain",

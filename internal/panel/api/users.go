@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"slices"
@@ -40,6 +41,7 @@ type UserView struct {
 	TotalUp       int64         `json:"total_up"`
 	TotalDown     int64         `json:"total_down"`
 	DeviceLimit   *int64        `json:"device_limit"`
+	DeviceMode    string        `json:"device_mode" enum:"bound,online" doc:"Как считается лимит устройств: места или адреса в сети"`
 	ResetStrategy string        `json:"reset_strategy" enum:"none,month_start,period" doc:"month_start — раз в месяц: в день оплаты, без него 1-го числа"`
 	ResetsAt      *time.Time    `json:"resets_at"`
 	ExpiresAt     *time.Time    `json:"expires_at"`
@@ -99,7 +101,7 @@ func (h *handlers) viewUser(u db.User, slots []string, grants domain.GrantsLeft,
 		ID: u.ID, Name: u.Name, Contact: u.Contact, Note: u.Note, Tags: domain.DecodeTags(u.Tags),
 		State: domain.State(u, grants.Main(u.ID), now), TariffID: ptrInt(u.TariffID.Int64, u.TariffID.Valid),
 		TrafficLimit: ptrInt(u.TrafficLimit.Int64, u.TrafficLimit.Valid), TrafficExtra: grants.Main(u.ID), UsedUp: u.UsedUp, UsedDown: u.UsedDown,
-		TotalUp: u.TotalUp, TotalDown: u.TotalDown, DeviceLimit: ptrInt(u.DeviceLimit.Int64, u.DeviceLimit.Valid),
+		TotalUp: u.TotalUp, TotalDown: u.TotalDown, DeviceLimit: ptrInt(u.DeviceLimit.Int64, u.DeviceLimit.Valid), DeviceMode: u.DeviceMode,
 		ResetStrategy: u.ResetStrategy, ExpiresAt: ptrTime(u.ExpiresAt.Int64, u.ExpiresAt.Valid),
 		BillingDay: ptrInt(u.BillingDay.Int64, u.BillingDay.Valid),
 		Inbounds:   domain.DecodeInbounds(u.Inbounds), OnlineAt: ptrTime(u.OnlineAt.Int64, u.OnlineAt.Valid),
@@ -198,6 +200,7 @@ type patchUserInput struct {
 		TrafficUnlimited bool       `json:"traffic_unlimited,omitempty"`
 		DeviceLimit      *int64     `json:"device_limit,omitempty" minimum:"1" maximum:"100"`
 		DevicesUnlimited bool       `json:"devices_unlimited,omitempty"`
+		DeviceMode       *string    `json:"device_mode,omitempty" doc:"bound или online"`
 		ExpiresAt        *time.Time `json:"expires_at,omitempty"`
 		NeverExpires     bool       `json:"never_expires,omitempty"`
 		BillingDay       *int64     `json:"billing_day,omitempty" minimum:"0" maximum:"31" doc:"День оплаты 1–31; 0 — убрать"`
@@ -390,7 +393,7 @@ func (h *handlers) updateUser(ctx context.Context, in *patchUserInput) (*userOut
 	p := domain.Patch{
 		Name: b.Name, Contact: b.Contact, Note: b.Note, Tags: b.Tags, Disabled: b.Disabled,
 		TrafficLimit: b.TrafficLimit, ClearTrafficLimit: b.TrafficUnlimited,
-		DeviceLimit: b.DeviceLimit, ClearDeviceLimit: b.DevicesUnlimited,
+		DeviceLimit: b.DeviceLimit, ClearDeviceLimit: b.DevicesUnlimited, DeviceMode: b.DeviceMode,
 		ExpiresAt: b.ExpiresAt, ClearExpiry: b.NeverExpires, Inbounds: b.Inbounds, TariffID: b.TariffID,
 	}
 	if b.BillingDay != nil {
@@ -529,11 +532,13 @@ func (h *handlers) renameDevice(ctx context.Context, in *renameDeviceInput) (*re
 
 // DeviceBanView is a device id the admin keeps out of a subscription.
 type DeviceBanView struct {
-	ID     int64     `json:"id"`
-	HWID   string    `json:"hwid"`
-	Label  string    `json:"label" doc:"Как устройство называлось, когда его заблокировали"`
-	Admin  string    `json:"admin" doc:"Кто заблокировал; пусто — ключ API или удалённый админ"`
-	Banned time.Time `json:"banned_at"`
+	ID      int64     `json:"id"`
+	HWID    string    `json:"hwid"`
+	Label   string    `json:"label" doc:"Как устройство называлось, когда его заблокировали"`
+	Admin   string    `json:"admin" doc:"Кто заблокировал; пусто — ключ API или удалённый админ"`
+	Banned  time.Time `json:"banned_at"`
+	Until   *time.Time `json:"until,omitempty" doc:"Пауза: снова привяжется с этого момента"`
+	Forever bool       `json:"forever,omitempty" doc:"Ждёт администратора, сколько бы ни прошло"`
 }
 
 type deviceBansOutput struct{ Body []DeviceBanView }
@@ -543,8 +548,17 @@ type unbanInput struct {
 	Ban int64 `path:"ban" minimum:"1"`
 }
 
-func banView(b db.DeviceBan, admin string) DeviceBanView {
-	return DeviceBanView{ID: b.ID, HWID: b.Hwid, Label: b.Label, Admin: admin, Banned: time.Unix(b.BannedAt, 0).UTC()}
+func banView(id int64, hwid, label, admin string, bannedAt int64, until sql.NullInt64) DeviceBanView {
+	v := DeviceBanView{ID: id, HWID: hwid, Label: label, Admin: admin, Banned: time.Unix(bannedAt, 0).UTC()}
+	if until.Valid {
+		t := time.Unix(until.Int64, 0).UTC()
+		if domain.Forever(t) {
+			v.Forever = true
+		} else {
+			v.Until = &t
+		}
+	}
+	return v
 }
 
 func (h *handlers) banDevice(ctx context.Context, in *unbindInput) (*deviceBansOutput, error) {
@@ -559,20 +573,20 @@ func (h *handlers) banDevice(ctx context.Context, in *unbindInput) (*deviceBansO
 		}
 	}
 	h.audit(ctx, sessionOf(ctx).AdminID, "user.ban_device", "user", strconv.FormatInt(in.ID, 10), map[string]any{"device": in.Device, "ban": ban.ID, "label": ban.Label})
-	return &deviceBansOutput{Body: []DeviceBanView{banView(ban, admin)}}, nil
+	return &deviceBansOutput{Body: []DeviceBanView{banView(ban.ID, ban.Hwid, ban.Label, admin, ban.BannedAt, sql.NullInt64{})}}, nil
 }
 
 func (h *handlers) deviceBans(ctx context.Context, in *userIDInput) (*deviceBansOutput, error) {
 	if _, err := h.d.Users.Get(ctx, in.ID); err != nil {
 		return nil, mapDomainErr(err)
 	}
-	rows, err := h.d.Store.Q.ListDeviceBans(ctx, in.ID)
+	rows, err := h.d.Store.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: in.ID, Until: sql.NullInt64{Int64: h.d.Now().Unix(), Valid: true}})
 	if err != nil {
 		return nil, err
 	}
 	out := &deviceBansOutput{Body: []DeviceBanView{}}
 	for _, b := range rows {
-		out.Body = append(out.Body, banView(db.DeviceBan{ID: b.ID, UserID: b.UserID, Hwid: b.Hwid, Label: b.Label, AdminID: b.AdminID, BannedAt: b.BannedAt}, b.AdminName))
+		out.Body = append(out.Body, banView(b.ID, b.Hwid, b.Label, b.AdminName, b.BannedAt, b.Until))
 	}
 	return out, nil
 }

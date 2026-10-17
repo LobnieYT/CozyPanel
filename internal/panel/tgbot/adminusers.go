@@ -374,7 +374,7 @@ func (b *AdminBot) devicesView(ctx context.Context, out *Outbox, w adminWords, c
 		{{Text: w.unbindVerb, CallbackData: "ab:unb:" + uid}},
 		{{Text: w.banVerb, CallbackData: "ab:ban:" + uid}},
 	}}
-	if bans, err := b.d.Store.Q.ListDeviceBans(ctx, u.ID); err == nil && len(bans) > 0 {
+	if bans, err := b.d.Store.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: u.ID, Until: sql.NullInt64{Int64: b.d.Now().Unix(), Valid: true}}); err == nil && len(bans) > 0 {
 		for _, bn := range bans {
 			label := bn.Label
 			if label == "" {

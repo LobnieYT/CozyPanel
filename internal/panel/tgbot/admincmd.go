@@ -2,6 +2,7 @@ package tgbot
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strconv"
 	"strings"
@@ -1194,7 +1195,7 @@ func (b *AdminBot) bansView(ctx context.Context, c *Client, out *Outbox, w admin
 	if err != nil {
 		return
 	}
-	bans, err := b.d.Store.Q.ListDeviceBans(ctx, uid)
+	bans, err := b.d.Store.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: uid, Until: sql.NullInt64{Int64: b.d.Now().Unix(), Valid: true}})
 	if err != nil || len(bans) == 0 {
 		b.say(out, chat, w.noBans, nil)
 		return

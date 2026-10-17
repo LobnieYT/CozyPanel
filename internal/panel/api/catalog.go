@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"cozy/internal/panel/domain"
 	"cozy/internal/panel/store/db"
 )
 
@@ -19,6 +20,7 @@ type TariffView struct {
 	TrafficLimit  *int64      `json:"traffic_limit" doc:"Байты; null — без лимита"`
 	DurationDays  int64       `json:"duration_days" doc:"0 — бессрочно"`
 	DeviceLimit   *int64      `json:"device_limit"`
+	DeviceMode    string      `json:"device_mode" enum:"bound,online" doc:"Как считается лимит устройств: места или адреса в сети"`
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period"`
 	BillingDay    *int64      `json:"billing_day" doc:"День месяца, в который заканчивается срок; null — срок в днях"`
 	PriceLabel    string      `json:"price_label"`
@@ -28,7 +30,7 @@ type TariffView struct {
 
 func viewTariff(t db.Tariff) TariffView {
 	return TariffView{ID: t.ID, Name: t.Name, TrafficLimit: ptrInt(t.TrafficLimit.Int64, t.TrafficLimit.Valid),
-		DurationDays: t.DurationDays, DeviceLimit: ptrInt(t.DeviceLimit.Int64, t.DeviceLimit.Valid),
+		DurationDays: t.DurationDays, DeviceLimit: ptrInt(t.DeviceLimit.Int64, t.DeviceLimit.Valid), DeviceMode: t.DeviceMode,
 		ResetStrategy: t.ResetStrategy, BillingDay: ptrInt(t.BillingDay.Int64, t.BillingDay.Valid), PriceLabel: t.PriceLabel, Sort: t.Sort}
 }
 
@@ -37,11 +39,26 @@ type tariffBody struct {
 	TrafficLimit  *int64      `json:"traffic_limit,omitempty" minimum:"1"`
 	DurationDays  int64       `json:"duration_days" minimum:"0" maximum:"3650"`
 	DeviceLimit   *int64      `json:"device_limit,omitempty" minimum:"1" maximum:"100"`
+	DeviceMode    string      `json:"device_mode,omitempty" doc:"bound, online; пусто — оставить как было"`
 	ResetStrategy string      `json:"reset_strategy" enum:"none,month_start,period" default:"none"`
 	BillingDay    *int64      `json:"billing_day,omitempty" minimum:"1" maximum:"31" doc:"Срок до этого числа месяца: месяц = от дня оплаты до дня оплаты"`
 	PriceLabel    string      `json:"price_label,omitempty" maxLength:"40"`
 	Pools         []PoolLimit `json:"pools,omitempty" maxItems:"100" doc:"Лимиты пулов трафика; не передан — без изменений"`
 	Sort          int64       `json:"sort,omitempty"`
+}
+
+// tariffMode resolves the mode to store: empty keeps the current one.
+func tariffMode(current, want string) (string, error) {
+	if want == "" {
+		if current == "" {
+			return domain.DeviceModeBound, nil
+		}
+		return current, nil
+	}
+	if !domain.ValidDeviceMode(want) {
+		return "", huma.Error422UnprocessableEntity("bad_device_mode")
+	}
+	return want, nil
 }
 
 type tariffInput struct{ Body tariffBody }
@@ -88,11 +105,15 @@ func nullable(p *int64) sql.NullInt64 {
 // refused pool list leaves the tariff, and the limits it had, as they were.
 func (h *handlers) createTariff(ctx context.Context, in *tariffInput) (*tariffOutput, error) {
 	b := in.Body
+	mode, err := tariffMode("", b.DeviceMode)
+	if err != nil {
+		return nil, err
+	}
 	var t db.Tariff
-	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
+	err = h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		var err error
 		t, err = q.CreateTariff(ctx, db.CreateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
-			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
+			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), DeviceMode: mode, ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
 			Sort: b.Sort, CreatedAt: h.d.Now().Unix(), BillingDay: nullable(b.BillingDay)})
 		if err != nil || b.Pools == nil {
 			return err
@@ -108,11 +129,22 @@ func (h *handlers) createTariff(ctx context.Context, in *tariffInput) (*tariffOu
 
 func (h *handlers) updateTariff(ctx context.Context, in *tariffUpdateInput) (*tariffOutput, error) {
 	b := in.Body
+	cur, err := h.d.Store.Q.GetTariff(ctx, in.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, huma.Error404NotFound("not_found")
+		}
+		return nil, err
+	}
+	mode, err := tariffMode(cur.DeviceMode, b.DeviceMode)
+	if err != nil {
+		return nil, err
+	}
 	var t db.Tariff
-	err := h.d.Store.Tx(ctx, func(q *db.Queries) error {
+	err = h.d.Store.Tx(ctx, func(q *db.Queries) error {
 		var err error
 		t, err = q.UpdateTariff(ctx, db.UpdateTariffParams{Name: strings.TrimSpace(b.Name), TrafficLimit: nullable(b.TrafficLimit),
-			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
+			DurationDays: b.DurationDays, DeviceLimit: nullable(b.DeviceLimit), DeviceMode: mode, ResetStrategy: b.ResetStrategy, PriceLabel: b.PriceLabel,
 			Sort: b.Sort, BillingDay: nullable(b.BillingDay), ID: in.ID})
 		if err != nil || b.Pools == nil {
 			return err

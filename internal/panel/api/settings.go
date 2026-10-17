@@ -49,8 +49,9 @@ type SettingsView struct {
 	AlertMinutes  int      `json:"alert_minutes" doc:"Сколько минут подряд держится превышение"`
 	AlertCooldown int      `json:"alert_cooldown_hours" doc:"Повтор по той же ноде не чаще, часов"`
 	// Devices: see domain.Devices.
-	DeviceBinding bool        `json:"device_binding" doc:"Привязывать подписку к устройствам: у каждого устройства свои ключи"`
-	RequireHWID   bool        `json:"device_require_hwid" doc:"Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)"`
+	DeviceBinding bool                `json:"device_binding" doc:"Привязывать подписку к устройствам: у каждого устройства свои ключи"`
+	RequireHWID   bool                `json:"device_require_hwid" doc:"Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)"`
+	DeviceUnbind  domain.UnbindRules  `json:"device_unbind" doc:"Сколько устройств подписчик отвязывает сам и как скоро отвязанное привязывается снова"`
 	DefaultLang   string      `json:"default_lang" enum:"auto,ru,en" doc:"Язык админки и страницы подписки, пока человек не выбрал свой; auto — по языку браузера. На нём же названия по умолчанию: группа автовыбора и меню ненастроенного бота"`
 	Certificate   acme.Status `json:"certificate"`
 }
@@ -80,6 +81,12 @@ type patchSettingsInput struct {
 		AlertCooldown *int    `json:"alert_cooldown_hours,omitempty" minimum:"1" maximum:"72"`
 		DeviceBinding *bool   `json:"device_binding,omitempty"`
 		RequireHWID   *bool   `json:"device_require_hwid,omitempty"`
+		DeviceUnbind  *struct {
+			Off         *bool `json:"off,omitempty"`
+			Limit       *int  `json:"limit,omitempty"`
+			Days        *int  `json:"days,omitempty"`
+			ReturnHours *int  `json:"return_hours,omitempty"`
+		} `json:"device_unbind,omitempty" doc:"Сколько устройств подписчик отвязывает сам: лимит за дни и пауза перед новой привязкой"`
 		DefaultLang   *string `json:"default_lang,omitempty" enum:"auto,ru,en"`
 		SubPort       *int    `json:"sub_port,omitempty" minimum:"0" maximum:"65535" doc:"Отдельный порт подписок на сервере панели; 0 — убрать. Ссылки переезжают на него, старые продолжают работать"`
 	}
@@ -191,6 +198,7 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 	if v.RequireHWID, err = h.d.Settings.On(ctx, settings.RequireHWID); err != nil {
 		return v, err
 	}
+	v.DeviceUnbind = domain.LoadUnbindRules(ctx, h.d.Store.Q)
 	if v.Brand == "" {
 		v.Brand = "Cozy"
 	}
@@ -384,6 +392,31 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 				if err := settings.Set(ctx, set, key, *v); err != nil {
 					return err
 				}
+			}
+		}
+		if b.DeviceUnbind != nil {
+			cur := domain.LoadUnbindRules(ctx, h.d.Store.Q)
+			if b.DeviceUnbind.Off != nil {
+				cur.Off = *b.DeviceUnbind.Off
+			}
+			if b.DeviceUnbind.Limit != nil {
+				cur.Limit = *b.DeviceUnbind.Limit
+			}
+			if b.DeviceUnbind.Days != nil {
+				cur.Days = *b.DeviceUnbind.Days
+			}
+			if b.DeviceUnbind.ReturnHours != nil {
+				cur.ReturnHours = *b.DeviceUnbind.ReturnHours
+			}
+			if err := cur.Validate(); err != nil {
+				var fe *domain.FieldError
+				if errors.As(err, &fe) {
+					return huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.device_unbind." + fe.Field, Message: fe.Code})
+				}
+				return err
+			}
+			if err := settings.Set(ctx, set, settings.KeyUnbindRules, cur); err != nil {
+				return err
 			}
 		}
 		return nil

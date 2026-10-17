@@ -179,11 +179,28 @@ func (b *Bot) devices(ctx context.Context, w *words, u db.User, cmd string, id i
 			used[r.DeviceID] = r.Up + r.Down
 		}
 	}
+	st, err := domain.UnbindStateOf(ctx, b.d.Store.Q, u.ID, now)
+	if err != nil {
+		st = domain.UnbindState{Rules: domain.DefaultUnbindRules}
+	}
+	waiting := !st.Next.IsZero() || st.Rules.Off
 	name := func(d db.BoundDevice) string { return deviceName(w, d) }
+	returnNote := func(shared bool) string {
+		if shared {
+			return ""
+		}
+		if st.Rules.ReturnHours == domain.ReturnNever {
+			return w.confirmNever
+		}
+		if st.Rules.ReturnHours > 0 {
+			return fmt.Sprintf(w.confirmReturn, w.span(st.Rules.ReturnHours))
+		}
+		return ""
+	}
 	if cmd == "dc" {
 		for _, d := range devs {
 			if d.ID == id {
-				return html.EscapeString(fmt.Sprintf(w.confirmUnbind, name(d))), &Keyboard{[][]Button{
+				return html.EscapeString(fmt.Sprintf(w.confirmUnbind, name(d)) + returnNote(d.Hwid == "")), &Keyboard{[][]Button{
 					{{Text: w.yesUnbind, CallbackData: "du:" + strconv.FormatInt(id, 10)}, {Text: w.cancel, CallbackData: "d"}}}}
 			}
 		}
@@ -191,6 +208,9 @@ func (b *Bot) devices(ctx context.Context, w *words, u db.User, cmd string, id i
 	lines := []string{head, ""}
 	if notice != "" {
 		lines = append([]string{html.EscapeString(notice), ""}, lines...)
+	}
+	if waiting && notice == "" {
+		lines = append([]string{html.EscapeString(fmt.Sprintf(w.wait, b.when(w, st.Next))), ""}, lines...)
 	}
 	rows := [][]Button{}
 	if len(devs) == 0 {
@@ -209,10 +229,28 @@ func (b *Bot) devices(ctx context.Context, w *words, u db.User, cmd string, id i
 		}
 		meta = append(meta, w.ago(time.Unix(d.LastSeen, 0), now))
 		lines = append(lines, fmt.Sprintf("%d. %s — %s", i+1, html.EscapeString(name(d)), html.EscapeString(strings.Join(meta, " · "))))
-		rows = append(rows, []Button{{Text: "❌ " + name(d), CallbackData: "dc:" + strconv.FormatInt(d.ID, 10)}})
+		if !waiting {
+			rows = append(rows, []Button{{Text: "❌ " + name(d), CallbackData: "dc:" + strconv.FormatInt(d.ID, 10)}})
+		}
 	}
 	if len(devs) > 0 {
 		lines = append(lines, "", html.EscapeString(w.devicesNote))
+		if u.DeviceMode == domain.DeviceModeOnline {
+			lines = append(lines, html.EscapeString(w.onlineNote))
+		}
+		if st.Rules.Off {
+			lines = append(lines, html.EscapeString(w.unbindOff))
+		} else {
+			if left := st.Left(); left >= 0 && st.Rules.Limit > 0 {
+				note := html.EscapeString(fmt.Sprintf(w.unbindLeft, left, st.Rules.Limit, w.period(st.Rules.Days)))
+				lines = append(lines[:2], append([]string{note}, lines[2:]...)...)
+			}
+			if st.Rules.ReturnHours == domain.ReturnNever {
+				lines = append(lines, html.EscapeString(w.returnNever))
+			} else if st.Rules.ReturnHours > 0 {
+				lines = append(lines, html.EscapeString(fmt.Sprintf(w.returnNote, w.span(st.Rules.ReturnHours))))
+			}
+		}
 	}
 	return strings.Join(lines, "\n"), &Keyboard{append(rows, back)}
 }
@@ -254,8 +292,13 @@ func (b *Bot) act(ctx context.Context, chat int64, data string) (screen, notice 
 			case err == nil:
 				return "d", fmt.Sprintf(w.unbound, deviceName(w, d))
 			case errors.Is(err, domain.ErrUnbindCooldown):
-				fresh, _ := b.d.Store.Q.GetUser(ctx, u.ID)
-				return "d", fmt.Sprintf(w.wait, b.when(w, domain.NextUnbind(fresh, b.d.Now())))
+				st, _ := domain.UnbindStateOf(ctx, b.d.Store.Q, u.ID, b.d.Now())
+				return "d", fmt.Sprintf(w.wait, b.when(w, st.Next))
+			case errors.Is(err, domain.ErrUnbindOff):
+				return "d", w.unbindOff
+			case errors.Is(err, domain.ErrNotFound):
+			default:
+				return "d", w.unbindFailed
 			}
 		}
 		return "d", ""
@@ -320,9 +363,13 @@ func (b *Bot) vars(ctx context.Context, w *words, u db.User, now time.Time) map[
 		v["reset"] = w.shortDate(t)
 	}
 	n, _ := b.d.Store.Q.CountBoundDevices(ctx, u.ID)
-	v["devices"] = strconv.FormatInt(n, 10)
-	if u.DeviceLimit.Valid {
-		v["devices"] = fmt.Sprintf(w.trafficOf, v["devices"], strconv.FormatInt(u.DeviceLimit.Int64, 10))
+	if u.DeviceMode == domain.DeviceModeOnline && u.DeviceLimit.Valid {
+		v["devices"] = fmt.Sprintf(w.onlineLimit, strconv.FormatInt(u.DeviceLimit.Int64, 10))
+	} else {
+		v["devices"] = strconv.FormatInt(n, 10)
+		if u.DeviceLimit.Valid {
+			v["devices"] = fmt.Sprintf(w.trafficOf, v["devices"], strconv.FormatInt(u.DeviceLimit.Int64, 10))
+		}
 	}
 	return v
 }

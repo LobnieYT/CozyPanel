@@ -2,9 +2,12 @@ package tgbot
 
 import (
 	"context"
+	"database/sql"
 	"strconv"
 	"strings"
 	"testing"
+
+	"cozy/internal/panel/store/db"
 )
 
 // The admin blocks a device from the bot: pick, confirm, apply, the device is gone
@@ -12,11 +15,11 @@ import (
 func TestAdminDeviceBanUnban(t *testing.T) {
 	bot, tg, chat, uid := usersEnv(t)
 	ctx := context.Background()
-	db := bot.d.Store.DB
-	if _, err := db.ExecContext(ctx, "INSERT INTO slots (id, name, uuid, secret, state, created_at) VALUES (424241, 's424241', 'uu1', 'x', 'assigned', 1)"); err != nil {
+	conn := bot.d.Store.DB
+	if _, err := conn.ExecContext(ctx, "INSERT INTO slots (id, name, uuid, secret, state, created_at) VALUES (424241, 's424241', 'uu1', 'x', 'assigned', 1)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, "INSERT INTO bound_devices (user_id, hwid, slot_id, os, model, created_at, last_seen) VALUES (?, 'hw1', 424241, 'Android', 'Pixel 9', 1, 1)", uid); err != nil {
+	if _, err := conn.ExecContext(ctx, "INSERT INTO bound_devices (user_id, hwid, slot_id, os, model, created_at, last_seen) VALUES (?, 'hw1', 424241, 'Android', 'Pixel 9', 1, 1)", uid); err != nil {
 		t.Fatal(err)
 	}
 	devs, err := bot.d.Store.Q.ListBoundDevices(ctx, uid)
@@ -60,7 +63,7 @@ func TestAdminDeviceBanUnban(t *testing.T) {
 	if n, _ := bot.d.Store.Q.CountBoundDevices(ctx, uid); n != 0 {
 		t.Fatalf("bound after the ban: %d", n)
 	}
-	bans, err := bot.d.Store.Q.ListDeviceBans(ctx, uid)
+	bans, err := bot.d.Store.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: uid, Until: sql.NullInt64{Int64: 1 << 60, Valid: true}})
 	if err != nil || len(bans) != 1 || bans[0].Hwid != "hw1" {
 		t.Fatalf("bans: %+v %v", bans, err)
 	}
@@ -93,7 +96,7 @@ func TestAdminDeviceBanUnban(t *testing.T) {
 	if body := text(send); !strings.Contains(body, "разблокировано") {
 		t.Fatalf("unbanned: %q", body)
 	}
-	bans, _ = bot.d.Store.Q.ListDeviceBans(ctx, uid)
+	bans, _ = bot.d.Store.Q.ListDeviceBans(ctx, db.ListDeviceBansParams{UserID: uid, Until: sql.NullInt64{Int64: 1 << 60, Valid: true}})
 	if len(bans) != 0 {
 		t.Fatalf("bans after the unban: %+v", bans)
 	}
