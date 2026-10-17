@@ -52,8 +52,9 @@ type SettingsView struct {
 	DeviceBinding bool                `json:"device_binding" doc:"Привязывать подписку к устройствам: у каждого устройства свои ключи"`
 	RequireHWID   bool                `json:"device_require_hwid" doc:"Не выдавать подписку приложениям без ID устройства (иначе они вместе занимают одно место)"`
 	DeviceUnbind  domain.UnbindRules  `json:"device_unbind" doc:"Сколько устройств подписчик отвязывает сам и как скоро отвязанное привязывается снова"`
-	DefaultLang   string      `json:"default_lang" enum:"auto,ru,en" doc:"Язык админки и страницы подписки, пока человек не выбрал свой; auto — по языку браузера. На нём же названия по умолчанию: группа автовыбора и меню ненастроенного бота"`
-	Certificate   acme.Status `json:"certificate"`
+	LinkReissue   domain.ReissueRules `json:"link_reissue" doc:"Сколько новых ссылок подписчик выпускает сам"`
+	DefaultLang   string              `json:"default_lang" enum:"auto,ru,en" doc:"Язык админки и страницы подписки, пока человек не выбрал свой; auto — по языку браузера. На нём же названия по умолчанию: группа автовыбора и меню ненастроенного бота"`
+	Certificate   acme.Status         `json:"certificate"`
 }
 
 type settingsOutput struct{ Body SettingsView }
@@ -87,8 +88,13 @@ type patchSettingsInput struct {
 			Days        *int  `json:"days,omitempty"`
 			ReturnHours *int  `json:"return_hours,omitempty"`
 		} `json:"device_unbind,omitempty" doc:"Сколько устройств подписчик отвязывает сам: лимит за дни и пауза перед новой привязкой"`
-		DefaultLang   *string `json:"default_lang,omitempty" enum:"auto,ru,en"`
-		SubPort       *int    `json:"sub_port,omitempty" minimum:"0" maximum:"65535" doc:"Отдельный порт подписок на сервере панели; 0 — убрать. Ссылки переезжают на него, старые продолжают работать"`
+		LinkReissue *struct {
+			Off   *bool `json:"off,omitempty"`
+			Limit *int  `json:"limit,omitempty"`
+			Days  *int  `json:"days,omitempty"`
+		} `json:"link_reissue,omitempty" doc:"Сколько новых ссылок подписчик выпускает сам"`
+		DefaultLang *string `json:"default_lang,omitempty" enum:"auto,ru,en"`
+		SubPort     *int    `json:"sub_port,omitempty" minimum:"0" maximum:"65535" doc:"Отдельный порт подписок на сервере панели; 0 — убрать. Ссылки переезжают на него, старые продолжают работать"`
 	}
 }
 
@@ -199,6 +205,11 @@ func (h *handlers) readSettings(ctx context.Context) (SettingsView, error) {
 		return v, err
 	}
 	v.DeviceUnbind = domain.LoadUnbindRules(ctx, h.d.Store.Q)
+	if r, err := domain.LoadReissueRules(ctx, h.d.Store.Q); err == nil {
+		v.LinkReissue = r
+	} else {
+		v.LinkReissue = domain.DefaultReissueRules
+	}
 	if v.Brand == "" {
 		v.Brand = "Cozy"
 	}
@@ -416,6 +427,28 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 				return err
 			}
 			if err := settings.Set(ctx, set, settings.KeyUnbindRules, cur); err != nil {
+				return err
+			}
+		}
+		if b.LinkReissue != nil {
+			cur, _ := domain.LoadReissueRules(ctx, h.d.Store.Q)
+			if b.LinkReissue.Off != nil {
+				cur.Off = *b.LinkReissue.Off
+			}
+			if b.LinkReissue.Limit != nil {
+				cur.Limit = *b.LinkReissue.Limit
+			}
+			if b.LinkReissue.Days != nil {
+				cur.Days = *b.LinkReissue.Days
+			}
+			if err := cur.Validate(); err != nil {
+				var fe *domain.FieldError
+				if errors.As(err, &fe) {
+					return huma.Error422UnprocessableEntity("validation", &huma.ErrorDetail{Location: "body.link_reissue." + fe.Field, Message: fe.Code})
+				}
+				return err
+			}
+			if err := settings.Set(ctx, set, settings.KeyReissueRules, cur); err != nil {
 				return err
 			}
 		}

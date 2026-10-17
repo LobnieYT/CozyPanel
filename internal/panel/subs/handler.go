@@ -60,12 +60,21 @@ type Binder interface {
 	Banned(ctx context.Context, userID int64, hwid string) (bool, error)
 }
 
+// Reissuer gives a subscription a new link at its subscriber's request (domain.Users).
+type Reissuer interface {
+	ReissueByOwner(ctx context.Context, userID int64, via string) (db.User, error)
+	ReissueState(ctx context.Context, userID int64) (domain.ReissueState, error)
+}
+
 type Handler struct {
 	st      *store.Store
 	cfg     func(ctx context.Context) (Config, error)
 	page    http.Handler // browser page (SPA entry); nil = plain links
 	now     func() time.Time
 	devices Binder
+	// reissuer is nil until the panel plugs the users in: without it the Mini App has no
+	// new-link button.
+	reissuer Reissuer
 	// trustProxy takes the client's IP from X-Forwarded-For (a reverse proxy in front).
 	trustProxy bool
 	tg         Telegram // nil: no bot
@@ -82,6 +91,9 @@ type Telegram interface {
 
 // SetTelegram plugs in the bot.
 func (h *Handler) SetTelegram(tg Telegram) { h.tg = tg }
+
+// SetReissuer plugs in the new-link-at-the-subscriber's-request path.
+func (h *Handler) SetReissuer(r Reissuer) { h.reissuer = r }
 
 // SetLogger sets where the handler says what it could not serve; without one it is silent.
 func (h *Handler) SetLogger(l *slog.Logger) {
@@ -273,8 +285,63 @@ func (h *Handler) miniApp(w http.ResponseWriter, r *http.Request, rest string) {
 			out.Subs = append(out.Subs, sub{Token: u.SubToken, Name: u.Name})
 		}
 		_ = json.NewEncoder(w).Encode(out)
+	case r.Method == http.MethodPost && rest == "reissue" && sameOrigin(r) && h.reissuer != nil:
+		h.miniAppReissue(w, r)
 	default:
 		server.NotFound(w)
+	}
+}
+
+// miniAppReissue gives the subscriber a new link from the Mini App: only the account
+// that owns the subscription may do it, and only within the admin's rules.
+func (h *Handler) miniAppReissue(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		InitData string `json:"init_data"`
+		Token    string `json:"token"`
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	fail := func(status int, code string) {
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"code": code})
+	}
+	if json.NewDecoder(io.LimitReader(r.Body, 16<<10)).Decode(&in) != nil || in.Token == "" {
+		fail(http.StatusBadRequest, "bad_request")
+		return
+	}
+	_, users, err := h.tg.MiniAppUser(r.Context(), in.InitData)
+	if err != nil {
+		fail(http.StatusUnauthorized, "init_data")
+		return
+	}
+	var userID int64
+	for _, u := range users {
+		if u.SubToken == in.Token {
+			userID = u.ID
+		}
+	}
+	if userID == 0 {
+		fail(http.StatusForbidden, "not_yours")
+		return
+	}
+	u, err := h.reissuer.ReissueByOwner(r.Context(), userID, "miniapp")
+	switch {
+	case err == nil:
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": u.SubToken})
+	case errors.Is(err, domain.ErrReissueCooldown):
+		out := map[string]any{"code": "reissue_cooldown"}
+		if st, err := h.reissuer.ReissueState(r.Context(), userID); err == nil && !st.Next.IsZero() {
+			out["reissue_after"] = st.Next
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+		_ = json.NewEncoder(w).Encode(out)
+	case errors.Is(err, domain.ErrReissueOff):
+		fail(http.StatusForbidden, "reissue_off")
+	case errors.Is(err, domain.ErrNotFound):
+		server.NotFound(w)
+	default:
+		h.log.Warn("subs: the link was not reissued", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }
 
@@ -400,6 +467,12 @@ type Info struct {
 	UnbindDays  int          `json:"unbind_days,omitempty" doc:"The period the limit counts over, days"`
 	UnbindsLeft int          `json:"unbinds_left,omitempty" doc:"Unbinds left in the period; -1 unlimited"`
 	ReturnHours int          `json:"return_hours,omitempty" doc:"Hours an unbound device waits; 0 at once, -1 for the admin"`
+	// Reissue: the subscriber's own new link (Mini App only).
+	Reissue       bool       `json:"reissue,omitempty" doc:"The Mini App may offer a new link"`
+	ReissueOff    bool       `json:"reissue_off,omitempty" doc:"Only the admin issues links"`
+	ReissueLimit  int        `json:"reissue_limit,omitempty" doc:"New links per period; 0 unlimited"`
+	ReissueDays   int        `json:"reissue_days,omitempty" doc:"The period the limit counts over, days"`
+	ReissueAfter  *time.Time `json:"reissue_after,omitempty" doc:"The subscriber may take a new link from then"`
 	// Pools: the user's traffic pools with a limit or with traffic used.
 	Pools []PoolInfo `json:"pools,omitempty"`
 }
@@ -432,6 +505,20 @@ func (h *Handler) info(ctx context.Context, w http.ResponseWriter, u db.User, pr
 	}
 	if h.tg != nil {
 		out.Telegram = h.tg.LinkURL(ctx, u.ID)
+	}
+	if h.reissuer != nil && h.tg != nil {
+		st, err := h.reissuer.ReissueState(ctx, u.ID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		out.Reissue = true
+		out.ReissueOff = st.Rules.Off
+		out.ReissueLimit = st.Rules.Limit
+		out.ReissueDays = st.Rules.Days
+		if !st.Next.IsZero() {
+			out.ReissueAfter = &st.Next
+		}
 	}
 	if cfg.Binding {
 		devs, err := h.st.Q.ListBoundDevices(ctx, u.ID)

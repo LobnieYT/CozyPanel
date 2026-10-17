@@ -209,9 +209,9 @@ func TestDeviceBindingOverHTTP(t *testing.T) {
 	bansAPI := "/" + adminPath + "/api/v1/users/" + strconv.FormatInt(u.ID, 10) + "/device-bans"
 	resp, body = h.do(http.MethodGet, bansAPI, nil, nil)
 	var bans []struct {
-		ID    int64  `json:"id"`
-		Label string `json:"label"`
-		Admin string `json:"admin"`
+		ID    int64   `json:"id"`
+		Label string  `json:"label"`
+		Admin string  `json:"admin"`
 		Until *string `json:"until"`
 	}
 	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &bans) != nil || len(bans) != 2 {

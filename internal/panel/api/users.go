@@ -532,11 +532,11 @@ func (h *handlers) renameDevice(ctx context.Context, in *renameDeviceInput) (*re
 
 // DeviceBanView is a device id the admin keeps out of a subscription.
 type DeviceBanView struct {
-	ID      int64     `json:"id"`
-	HWID    string    `json:"hwid"`
-	Label   string    `json:"label" doc:"Как устройство называлось, когда его заблокировали"`
-	Admin   string    `json:"admin" doc:"Кто заблокировал; пусто — ключ API или удалённый админ"`
-	Banned  time.Time `json:"banned_at"`
+	ID      int64      `json:"id"`
+	HWID    string     `json:"hwid"`
+	Label   string     `json:"label" doc:"Как устройство называлось, когда его заблокировали"`
+	Admin   string     `json:"admin" doc:"Кто заблокировал; пусто — ключ API или удалённый админ"`
+	Banned  time.Time  `json:"banned_at"`
 	Until   *time.Time `json:"until,omitempty" doc:"Пауза: снова привяжется с этого момента"`
 	Forever bool       `json:"forever,omitempty" doc:"Ждёт администратора, сколько бы ни прошло"`
 }

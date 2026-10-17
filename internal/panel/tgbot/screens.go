@@ -52,7 +52,20 @@ func (b *Bot) screen(ctx context.Context, cfg Config, chat int64, data, notice s
 		}
 		lines = append(lines, "📱 "+html.EscapeString(vars["devices"]))
 		rows := [][]Button{}
+		newLink, linkLine := b.reissueRow(ctx, w, u)
+		if linkLine != "" {
+			lines = append(lines, "", linkLine)
+		}
+		if newLink != nil {
+			rows = append(rows, []Button{*newLink})
+		}
 		return withNotice(strings.Join(lines, "\n")), &Keyboard{append(rows, back)}
+	case "rl":
+		text, kb, ok := b.reissueConfirm(ctx, w, u)
+		if !ok {
+			return b.screen(ctx, cfg, chat, "s", text)
+		}
+		return withNotice(html.EscapeString(text)), kb
 	case "d", "dc":
 		id, _ := strconv.ParseInt(arg, 10, 64)
 		return b.devices(ctx, w, u, cmd, id, notice, now)
@@ -310,6 +323,8 @@ func (b *Bot) act(ctx context.Context, chat int64, data string) (screen, notice 
 			}
 		}
 		return "m", ""
+	case "rn":
+		return b.reissueAct(ctx, chat, id)
 	}
 	return data, ""
 }

@@ -260,7 +260,7 @@ func setup(t *testing.T, with ...func(e *env, d *Deps)) *env {
 	e.devs = domain.NewDevices(e.st, pool, noChanges{}, e.clock)
 	srv := httptest.NewServer(e.tg)
 	t.Cleanup(srv.Close)
-	deps := Deps{Store: e.st, Settings: e.set, Devices: e.devs, API: srv.URL, Now: e.clock,
+	deps := Deps{Store: e.st, Settings: e.set, Devices: e.devs, Users: domain.NewUsers(e.st, pool, noChanges{}, e.clock), API: srv.URL, Now: e.clock,
 		SubBase: func(context.Context) string { return "https://vpn.example.com:21355/sub" },
 		MiniApp: func() bool { return true }, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Limits: fast}
 	for _, f := range with {
