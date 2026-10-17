@@ -385,6 +385,48 @@
         ],
         "type": "object"
       },
+      "CertReport":       {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CertCheck"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "checks",
+          "checked_at"
+        ],
+        "type": "object"
+      },
+      "CertCheck":       {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
       "ReissueRules":       {
         "additionalProperties": false,
         "properties": {
@@ -2678,9 +2720,26 @@
         },
         "type": "object"
       },
-                  "PatchSettingsInputBody":       {
+                        "PatchSettingsInputBody":       {
         "additionalProperties": false,
         "properties": {
+          "acme_ca": {
+            "description": "Кто выдаёт сертификат",
+            "enum": [
+              "letsencrypt",
+              "zerossl",
+              "google"
+            ],
+            "type": "string"
+          },
+          "acme_eab_hmac": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "acme_eab_kid": {
+            "maxLength": 256,
+            "type": "string"
+          },
           "alert_cooldown_hours": {
             "format": "int64",
             "maximum": 72,
@@ -3285,9 +3344,24 @@
         ],
         "type": "object"
       },
-                  "SettingsView":       {
+                        "SettingsView":       {
         "additionalProperties": false,
         "properties": {
+          "acme_ca": {
+            "description": "Кто выдаёт сертификат",
+            "enum": [
+              "letsencrypt",
+              "zerossl",
+              "google"
+            ],
+            "type": "string"
+          },
+          "acme_eab_kid": {
+            "type": "string"
+          },
+          "acme_eab_set": {
+            "type": "boolean"
+          },
           "admin_url": {
             "type": "string"
           },
@@ -3454,7 +3528,8 @@
           "device_unbind",
           "link_reissue",
           "default_lang",
-          "certificate"
+          "certificate",
+          "acme_ca"
         ],
         "type": "object"
       },
@@ -7295,6 +7370,38 @@
         "tags": [
           "settings"
         ]
+      }
+    },
+    "/api/v1/settings/certificate/check":     {
+      "post": {
+        "operationId": "check-certificate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertReport"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить сертификат: что отдаётся снаружи",
+        "tags": [
+          "settings"
+        ],
+        "x-session-only": true
       }
     },
     "/api/v1/settings/reset-admin-path": {

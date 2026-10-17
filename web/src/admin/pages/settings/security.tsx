@@ -11,6 +11,7 @@ import { Button, Field, Pill, QR, Skeleton } from "../../../components/ui";
 import { getLocale, t, tMaybe } from "../../../i18n";
 import { useCopy } from "../../../lib/copy";
 import { CertDrawer, certUntil, type CertInfo } from "../../../components/cert-drawer";
+import { CertCheckButton } from "../../../components/cert-check";
 import { fieldErrors } from "../../../lib/fields";
 import { ago } from "../../../lib/format";
 
@@ -104,7 +105,9 @@ export function CertificateCard({ s }: { s: Schemas["SettingsView"] }) {
         <Button size="sm" onClick={() => setOwn(true)}>
           <ShieldCheck size={16} aria-hidden /> {custom ? t("settings.certReplace") : t("settings.certOwnButton")}
         </Button>
+        <CertCheckButton />
       </div>
+      <CaPicker s={s} />
       <CertDrawer
         open={own}
         onClose={() => setOwn(false)}
@@ -387,5 +390,57 @@ export function AdminBotCard({ owner }: { owner: boolean }) {
         </Link>
       </div>
     </section>
+  );
+}
+
+
+/** Which authority issues the certificate: Let's Encrypt, ZeroSSL or Google Trust Services. */
+function CaPicker({ s }: { s: Schemas["SettingsView"] }) {
+  const toast = useToast();
+  const set = useMutation({
+    mutationFn: (body: Schemas["PatchSettingsInputBody"]) => unwrap(api.PATCH("/api/v1/settings", { body })),
+    onSuccess: () => toast.ok(t("settings.saved")),
+    onError: (e) => toast.error(errorText(e)),
+  });
+  const ca = s.acme_ca;
+  return (
+    <div className="mt-4 border-t border-[var(--hairline)] pt-4">
+      <div className="mb-2 text-[13px] font-medium">{t("settings.caLabel")}</div>
+      <div className="seg" role="group" aria-label={t("settings.caLabel")}>
+        {(["letsencrypt", "zerossl", "google"] as const).map((name) => (
+          <button key={name} type="button" aria-pressed={ca === name} disabled={set.isPending} onClick={() => set.mutate({ acme_ca: name })}>
+            {t(`settings.ca.${name}`)}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-[var(--ink-500)]">{t(`settings.caHint.${ca}`)}</p>
+      {ca === "google" ? <GoogleEab s={s} save={(body) => set.mutate(body)} /> : null}
+    </div>
+  );
+}
+
+/** Google Trust Services issues only to an account bound to an EAB key from Google Cloud. */
+function GoogleEab({ s, save }: { s: Schemas["SettingsView"]; save: (body: Schemas["PatchSettingsInputBody"]) => void }) {
+  const [kid, setKid] = useState(s.acme_eab_kid ?? "");
+  const [hmac, setHmac] = useState("");
+  return (
+    <div className="mt-3 grid gap-2">
+      <Field label={t("settings.eabKid")} htmlFor="s-eab-kid">
+        <input id="s-eab-kid" className="input mono" value={kid} onChange={(e) => setKid(e.target.value)} />
+      </Field>
+      <Field label={t("settings.eabHmac")} htmlFor="s-eab-hmac" hint={s.acme_eab_set ? t("settings.eabSet") : t("settings.eabEmpty")}>
+        <input
+          id="s-eab-hmac"
+          className="input mono"
+          type="password"
+          value={hmac}
+          placeholder={s.acme_eab_set ? "••••••" : ""}
+          onChange={(e) => setHmac(e.target.value)}
+        />
+      </Field>
+      <Button size="sm" disabled={!kid || !hmac} onClick={() => save({ acme_eab_kid: kid, acme_eab_hmac: hmac })}>
+        {t("common.save")}
+      </Button>
+    </div>
   );
 }

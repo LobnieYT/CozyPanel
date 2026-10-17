@@ -771,6 +771,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/certificate/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить сертификат: что отдаётся снаружи */
+        post: operations["check-certificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/certificate/renew": {
         parameters: {
             query?: never;
@@ -1406,6 +1423,17 @@ export interface components {
              * @description Пауза: снова привяжется с этого момента
              */
             until?: string;
+        };
+        CertReport: {
+            /** Format: date-time */
+            checked_at: string;
+            checks: components["schemas"]["CertCheck"][];
+        };
+        CertCheck: {
+            detail?: string;
+            fix?: string;
+            id: string;
+            status: string;
         };
         ReissueRules: {
             /**
@@ -2222,6 +2250,13 @@ export interface components {
             routes_override?: string;
         };
         PatchSettingsInputBody: {
+            /**
+             * @description Кто выдаёт сертификат
+             * @enum {string}
+             */
+            acme_ca?: "letsencrypt" | "zerossl" | "google";
+            acme_eab_hmac?: string;
+            acme_eab_kid?: string;
             /** Format: int64 */
             alert_cooldown_hours?: number;
             /** Format: int64 */
@@ -2424,6 +2459,13 @@ export interface components {
             user_agent: string;
         };
         SettingsView: {
+            /**
+             * @description Кто выдаёт сертификат
+             * @enum {string}
+             */
+            acme_ca: "letsencrypt" | "zerossl" | "google";
+            acme_eab_kid?: string;
+            acme_eab_set?: boolean;
             admin_url: string;
             /**
              * Format: int64
@@ -4947,6 +4989,35 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
+    "check-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertReport"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
         requestBody?: never;
         responses: {
             /** @description Accepted */
