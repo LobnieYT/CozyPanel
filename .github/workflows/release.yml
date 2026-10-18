@@ -28,10 +28,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The credentials are not persisted, so the fetch below names the token itself: the
+      # job has contents: read and the check is what keeps a tag off any other branch.
       - name: the tagged commit is on main
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+          git fetch --no-tags "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
             echo "::error::$GITHUB_REF_NAME is on a commit that is not on main: a release is made from main only"
             exit 1
           fi
