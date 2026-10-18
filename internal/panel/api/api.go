@@ -129,6 +129,8 @@ type NodeRuntime interface {
 	EgressDial(ctx context.Context, id int64, req nodeapi.EgressDialRequest) (nodeapi.EgressDialResult, error)
 	// SyncError is why the node's state last failed to apply, "" when current.
 	SyncError(ctx context.Context, id int64) string
+	// Ping is a live call to a node, for the check that says why it is not answering.
+	Ping(ctx context.Context, id int64) error
 	// GeoStatus lists the node's geodata files; UpdateGeo re-downloads them.
 	GeoStatus(ctx context.Context, id int64) (nodeapi.GeoStatus, error)
 	UpdateGeo(ctx context.Context, id int64) (nodeapi.GeoStatus, error)

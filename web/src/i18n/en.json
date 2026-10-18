@@ -1935,5 +1935,24 @@
     "port80": "Port 80 for the CA",
     "acme": "The panel's certificate",
     "acme_error": "The certificate could not be obtained"
+  },
+  "nodeCheck": {
+    "title": "Check the node: {name}",
+    "lead": "What the panel sees when it calls the node.",
+    "button": "Check node",
+    "run": "Run the check",
+    "hint": "Press the check and the panel will call the node and tell, in words, what is wrong.",
+    "address": "The node's address",
+    "answer": "The node's answer",
+    "key": "The panel's key on the node",
+    "inbounds": "Listeners on the node",
+    "fix.node-address": "Check the node's address: the host and the API port.",
+    "fix.panel-certificate": "Put the panel's certificate on the node, or set the panel's domain as the node's SNI.",
+    "fix.node-firewall": "Open the node's API port: nothing outside reaches it.",
+    "fix.node-clock": "Sync the node's clock: a wrong time breaks the certificate.",
+    "fix.node-api": "Nothing listens on the node's API port. Is the node's service running?",
+    "fix.node-inbound": "The node has no listeners: add an inbound to it.",
+    "fix.node-key": "Issue a new key for the node and paste it into its config.",
+    "fix.node-container": "The node's container is not running: start it."
   }
 }

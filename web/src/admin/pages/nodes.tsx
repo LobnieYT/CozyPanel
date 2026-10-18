@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cloud, Copy, KeyRound, Pencil, Plus, ShieldCheck, Trash2, Waypoints } from "lucide-react";
+import { Cloud, Copy, KeyRound, Pencil, Plus, ShieldCheck, Stethoscope, Trash2, Waypoints } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
 import { qk, useGrants, useNodes } from "../../api/hooks";
 import { CertDrawer, certUntil } from "../../components/cert-drawer";
+import { NodeCheckDrawer } from "../../components/node-check";
 import { Confirm, Drawer } from "../../components/overlay";
 import { QueryBoundary } from "../../components/query";
 import { useToast } from "../../components/toast";
@@ -31,6 +32,7 @@ export function NodesPage() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Node | null>(null);
   const [rekeying, setRekeying] = useState<Node | null>(null);
+  const [checking, setChecking] = useState<Node | null>(null);
   const [removing, setRemoving] = useState<Node | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
   const [warpOf, setWarpOf] = useState<Node | null>(null);
@@ -100,7 +102,7 @@ export function NodesPage() {
                 </div>
               ) : null}
               {list.map((n, idx) => (
-                <NodeCard key={n.id} n={n} idx={idx} onEdit={() => setEditing(n)} onWarp={() => setWarpOf(n)} onCascade={() => setCascadeOf(n)} onCert={() => setCertOf(n)} onRekey={() => setRekeying(n)} onRemove={() => setRemoving(n)} />
+                <NodeCard key={n.id} n={n} idx={idx} onEdit={() => setEditing(n)} onWarp={() => setWarpOf(n)} onCascade={() => setCascadeOf(n)} onCert={() => setCertOf(n)} onRekey={() => setRekeying(n)} onCheck={() => setChecking(n)} onRemove={() => setRemoving(n)} />
               ))}
             </div>
           )
@@ -114,6 +116,7 @@ export function NodesPage() {
           setJoined(j);
         }}
       />
+      {checking ? <NodeCheckDrawer node={{ id: checking.id, name: nodeLabel(checking) }} onClose={() => setChecking(null)} /> : null}
       <EditNodeDrawer node={editing} onClose={() => setEditing(null)} />
       <KeyDrawer joined={joined} onClose={() => setJoined(null)} />
       <WarpDrawer node={warpOf ? { id: warpOf.id, name: nodeLabel(warpOf) } : null} onClose={() => setWarpOf(null)} />
@@ -161,6 +164,7 @@ function NodeCard({
   onCascade,
   onCert,
   onRekey,
+  onCheck,
   onRemove,
 }: {
   n: Node;
@@ -170,6 +174,7 @@ function NodeCard({
   onCascade: () => void;
   onCert: () => void;
   onRekey: () => void;
+  onCheck: () => void;
   onRemove: () => void;
 }) {
   const mem = n.mem_total ? Math.round((n.mem_used / n.mem_total) * 100) : 0;
@@ -271,7 +276,10 @@ function NodeCard({
             </Button>
             {!n.local ? (
               <>
-                <Button size="sm" onClick={onRekey}>
+                <Button size="sm" onClick={onCheck}>
+              <Stethoscope size={16} aria-hidden /> {t("nodeCheck.button")}
+            </Button>
+            <Button size="sm" onClick={onRekey}>
                   <KeyRound size={16} aria-hidden /> {t("nodes.rekey")}
                 </Button>
                 <Button size="sm" variant="danger" onClick={onRemove}>

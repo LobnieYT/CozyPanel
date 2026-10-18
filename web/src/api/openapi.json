@@ -405,6 +405,49 @@
         ],
         "type": "object"
       },
+      
+      "NodeCheck":       {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "NodeCheckReport":       {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/NodeCheck"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "checks",
+          "checked_at"
+        ],
+        "type": "object"
+      },
       "CertCheck":       {
         "additionalProperties": false,
         "properties": {
@@ -6362,6 +6405,50 @@
           }
         },
         "summary": "Выпустить новый ключ ноды (старый перестаёт работать)",
+        "tags": [
+          "node"
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/nodes/{id}/check":     {
+      "post": {
+        "operationId": "check-node",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeCheckReport"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Проверить ноду: почему не подключается",
         "tags": [
           "node"
         ],

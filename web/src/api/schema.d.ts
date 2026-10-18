@@ -523,7 +523,24 @@ export interface paths {
         head?: never;
         patch?: never;
         trace?: never;
+    };    "/api/v1/nodes/{id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить ноду: почему не подключается */
+        post: operations["check-node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
+
     "/api/v1/nodes/{id}/network": {
         parameters: {
             query?: never;
@@ -1406,7 +1423,18 @@ export interface components {
             /** @description Своё имя устройства; пусто — имя от приложения */
             name: string;
         };
-        DeviceBanView: {
+                NodeCheck: {
+            detail?: string;
+            fix?: string;
+            id: string;
+            status: string;
+        };
+        NodeCheckReport: {
+            /** Format: date-time */
+            checked_at: string;
+            checks: components["schemas"]["NodeCheck"][];
+        };
+DeviceBanView: {
             /** @description Кто заблокировал; пусто — ключ API или удалённый админ */
             admin: string;
             /** Format: date-time */
@@ -4242,7 +4270,38 @@ export interface operations {
                 };
             };
         };
+    };    "check-node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeCheckReport"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
+
     "get-node-network": {
         parameters: {
             query?: never;

@@ -280,6 +280,16 @@ func (m *Manager) SyncError(ctx context.Context, id int64) string {
 	return s.SyncError()
 }
 
+// Ping is a live call to a node: what the panel's check reports as the node's answer.
+func (m *Manager) Ping(ctx context.Context, id int64) error {
+	c, err := clientOf[*nodeapi.Client](m, id)
+	if err != nil {
+		return err
+	}
+	_, err = c.Health(ctx)
+	return err
+}
+
 // Validate runs mihomo's parser on an inbound on the node that will run it.
 func (m *Manager) Validate(ctx context.Context, id int64, req nodeapi.ValidateRequest) error {
 	v, err := clientOf[interface {

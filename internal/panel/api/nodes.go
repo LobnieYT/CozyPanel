@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"cozy/internal/panel/nodecheck"
 	"database/sql"
 	"errors"
 	"net"
@@ -49,6 +50,12 @@ type NodeInfo struct {
 }
 
 type nodesOutput struct{ Body []NodeInfo }
+
+// nodeCheckOutput is the report the check button shows: what is fine and, first, what is
+// not, each with the fix the panel can offer.
+type nodeCheckOutput struct {
+	Body nodecheck.NodeCheckReport
+}
 type nodeInfoOutput struct{ Body NodeInfo }
 
 type nodeKeyOutput struct {
@@ -88,6 +95,7 @@ func (h *handlers) registerNodes() {
 	huma.Register(h.api, huma.Operation{OperationID: "list-nodes", Method: http.MethodGet, Path: "/api/v1/nodes", Summary: "Ноды", Tags: []string{"node"}}, h.listNodes)
 	huma.Register(h.api, huma.Operation{OperationID: "create-node", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes", Summary: "Добавить ноду", Tags: []string{"node"}, DefaultStatus: http.StatusCreated}, h.createNode)
 	huma.Register(h.api, huma.Operation{OperationID: "update-node", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPatch, Path: "/api/v1/nodes/{id}", Summary: "Изменить ноду", Tags: []string{"node"}}, h.updateNode)
+	huma.Register(h.api, huma.Operation{OperationID: "check-node", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/check", Summary: "Проверить ноду: почему не подключается", Tags: []string{"node"}}, h.checkNode)
 	huma.Register(h.api, huma.Operation{OperationID: "rekey-node", Metadata: sessionOnly, Extensions: sessionOnlyExt, Method: http.MethodPost, Path: "/api/v1/nodes/{id}/key", Summary: "Выпустить новый ключ ноды (старый перестаёт работать)", Tags: []string{"node"}}, h.rekeyNode)
 	huma.Register(h.api, huma.Operation{OperationID: "delete-node", Method: http.MethodDelete, Path: "/api/v1/nodes/{id}", Summary: "Удалить ноду", Tags: []string{"node"}, DefaultStatus: http.StatusNoContent}, h.deleteNode)
 }
@@ -466,4 +474,39 @@ func (h *handlers) forgetNode(id int64) {
 	if err := h.d.ForgetNode(id); err != nil {
 		h.d.Log.Warn("remove node certificates", "node", id, "err", err)
 	}
+}
+
+// checkNode says, in plain words, why a node is not connecting: the panel dials it, asks
+// it, and matches the answer to a fix.
+func (h *handlers) checkNode(ctx context.Context, in *nodeIDInput) (*nodeCheckOutput, error) {
+	n, err := h.d.Store.Q.GetNode(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	var ask func(context.Context) error
+	var healthErr error
+	if h.d.Nodes != nil {
+		ask = func(ctx context.Context) error { return h.d.Nodes.Ping(ctx, in.ID) }
+		if view, ok := h.d.Nodes.Health(in.ID); ok && !view.OK && view.Error != "" {
+			healthErr = errors.New(view.Error)
+		}
+	}
+	all, _ := h.d.Store.Q.ListInbounds(ctx)
+	own := 0
+	for _, ib := range all {
+		if ib.NodeID == n.ID && ib.Enabled != 0 {
+			own++
+		}
+	}
+	r := nodecheck.Check(ctx, nodecheck.Node{
+		ID:       n.ID,
+		Name:     n.Name,
+		Address:  n.Address,
+		Host:     n.PublicHost,
+		SNI:      n.Domain,
+		Local:    n.Address == "",
+		KeysOK:   healthErr == nil,
+		Inbounds: own,
+	}, ask)
+	return &nodeCheckOutput{Body: r}, nil
 }
