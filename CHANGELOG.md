@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.5
+### en
+- The settings' section list is finally laid out as intended: its rules sat inside the phone-only `@media (max-width: 760px)` block, so on a desktop none of them applied — no icons beside the names, no spacing, no active item, no two-column cards. They are outside that block now, and the list stands beside the content exactly as the design it was ported from shows it.
+- The subscription page's own parts (Look, Brand, Blocks, Apps, CSS) show their names instead of the raw `settings.page.tab.*` keys, and the certificate authority's choices (Let's Encrypt, ZeroSSL, Google) their names instead of `settings.ca.*`. The translations were stored with a dot inside a section, which the lookup reads as a path.
+
+### ru
+- Список разделов настроек наконец выглядит так, как задумано: его правила лежали внутри мобильного блока `@media (max-width: 760px)`, поэтому на компьютере не действовало ни одно — ни иконок рядом с названиями, ни отступов, ни выделения активного, ни двух колонок карточек. Теперь они вне этого блока, и список стоит рядом с содержимым ровно так, как в панели-источнике дизайна.
+- Части «Страницы подписки» (Вид, Бренд, Блоки, Приложения, CSS) показывают свои названия вместо сырых ключей `settings.page.tab.*`, а центры сертификации (Let's Encrypt, ZeroSSL, Google) — вместо `settings.ca.*`: переводы хранились с точкой внутри секции, а поиск читает точку как путь.
+
 ## 1.3.4
 ### en
 - Settings read like the panel they came from: the section list stands in a 216px column beside the content (a select on narrow screens) instead of a bar of tabs, and the page header floats as a glass bar once the page scrolls under it.

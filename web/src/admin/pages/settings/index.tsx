@@ -21,11 +21,11 @@ type RoutingPart = "dns" | "routes" | "outbounds" | "adblock";
 const PAGE_PARTS: SubPagePart[] = ["look", "brand", "blocks", "apps", "css"];
 
 const PART_LABELS: Record<string, Key> = {
-  look: "settings.page.tab.look",
-  brand: "settings.page.tab.brand",
-  blocks: "settings.page.tab.blocks",
-  apps: "settings.page.tab.apps",
-  css: "settings.page.tab.css",
+  look: "settings.page.look",
+  brand: "settings.page.brand",
+  blocks: "settings.page.blocks",
+  apps: "settings.page.apps",
+  css: "settings.page.css",
   dns: "settings.routingParts.dns",
   routes: "settings.routingParts.routes",
   outbounds: "settings.routingParts.outbounds",

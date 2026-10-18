@@ -8,7 +8,7 @@ import { Confirm } from "../../../components/overlay";
 import { QueryBoundary } from "../../../components/query";
 import { useToast } from "../../../components/toast";
 import { Button, Field, Pill, QR, Skeleton } from "../../../components/ui";
-import { getLocale, t, tMaybe } from "../../../i18n";
+import { getLocale, t, tMaybe, type Key } from "../../../i18n";
 import { useCopy } from "../../../lib/copy";
 import { CertDrawer, certUntil, type CertInfo } from "../../../components/cert-drawer";
 import { CertCheckButton } from "../../../components/cert-check";
@@ -395,6 +395,18 @@ export function AdminBotCard({ owner }: { owner: boolean }) {
 
 
 /** Which authority issues the certificate: Let's Encrypt, ZeroSSL or Google Trust Services. */
+/** Ключи i18n хранятся без точек внутри секции, поэтому названия — отдельным списком. */
+const CA_LABEL: Record<string, Key> = {
+  letsencrypt: "settings.caLetsencrypt",
+  zerossl: "settings.caZerossl",
+  google: "settings.caGoogle",
+};
+const CA_HINT: Record<string, Key> = {
+  letsencrypt: "settings.caHintLetsencrypt",
+  zerossl: "settings.caHintZerossl",
+  google: "settings.caHintGoogle",
+};
+
 function CaPicker({ s }: { s: Schemas["SettingsView"] }) {
   const toast = useToast();
   const set = useMutation({
@@ -409,11 +421,11 @@ function CaPicker({ s }: { s: Schemas["SettingsView"] }) {
       <div className="seg" role="group" aria-label={t("settings.caLabel")}>
         {(["letsencrypt", "zerossl", "google"] as const).map((name) => (
           <button key={name} type="button" aria-pressed={ca === name} disabled={set.isPending} onClick={() => set.mutate({ acme_ca: name })}>
-            {t(`settings.ca.${name}`)}
+            {t(CA_LABEL[name] ?? "settings.caLetsencrypt")}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-[var(--ink-500)]">{t(`settings.caHint.${ca}`)}</p>
+      <p className="mt-2 text-xs text-[var(--ink-500)]">{t(CA_HINT[ca] ?? "settings.caHintLetsencrypt")}</p>
       {ca === "google" ? <GoogleEab s={s} save={(body) => set.mutate(body)} /> : null}
     </div>
   );
