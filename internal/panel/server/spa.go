@@ -26,6 +26,7 @@ type SPA struct {
 	entry  []byte
 	prefix atomic.Pointer[string]
 	lang   atomic.Pointer[string]
+	extra  atomic.Pointer[[]byte]
 }
 
 func NewSPA(files fs.FS, entryName string) (*SPA, error) {
@@ -40,8 +41,14 @@ func NewSPA(files fs.FS, entryName string) (*SPA, error) {
 	empty := ""
 	s.prefix.Store(&empty)
 	s.lang.Store(&empty)
+	none := []byte(nil)
+	s.extra.Store(&none)
 	return s, nil
 }
+
+// SetHead sets what goes into the page's <head> besides the base and the language: the
+// subscription page puts there its own data and the admin's CSS.
+func (s *SPA) SetHead(b []byte) { s.extra.Store(&b) }
 
 func (s *SPA) SetPrefix(p string) { s.prefix.Store(&p) }
 
@@ -62,6 +69,9 @@ func (s *SPA) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	head := `<base href="` + html.EscapeString("/"+*s.prefix.Load()+"/") + `">`
 	if l := *s.lang.Load(); l != "" {
 		head += `<meta name="cozy-lang" content="` + html.EscapeString(l) + `">`
+	}
+	if e := *s.extra.Load(); len(e) > 0 {
+		head += string(e)
 	}
 	page := bytes.Replace(s.entry, []byte(baseMarker), []byte(head), 1)
 	h := w.Header()

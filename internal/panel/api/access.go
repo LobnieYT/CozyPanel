@@ -26,7 +26,7 @@ type Grants map[string]string
 
 // Sections lists every API tag a grant can cover, in UI order.
 func Sections() []string {
-	return []string{"users", "inbounds", "node", "network", "settings", "tariffs", "telegram", "stats", "api-keys"}
+	return []string{"users", "inbounds", "node", "network", "settings", "sub-page", "tariffs", "telegram", "stats", "api-keys"}
 }
 
 // Presets fills the matrix in one click; the admin then tweaks it by hand.

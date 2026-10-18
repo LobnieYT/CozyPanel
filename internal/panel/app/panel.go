@@ -30,6 +30,7 @@ import (
 	"cozy/internal/panel/settings"
 	"cozy/internal/panel/store"
 	"cozy/internal/panel/store/db"
+	"cozy/internal/panel/subpage"
 	"cozy/internal/panel/subs"
 	"cozy/internal/panel/tgbot"
 	"cozy/internal/panel/tlscert"
@@ -369,8 +370,28 @@ func (p *Panel) Apply(ctx context.Context) (settings.Paths, error) {
 	if p.subPage != nil {
 		p.subPage.SetPrefix(paths.Sub)
 		p.subPage.SetLang(lang)
+		p.applySubPage(ctx)
 	}
 	return paths, nil
+}
+
+// applySubPage puts the subscription page's own data and the admin's CSS into its <head>,
+// so the page opens with the look the admin built.
+func (p *Panel) applySubPage(ctx context.Context) {
+	brand, _, err := settings.Get[string](ctx, p.Settings, settings.KeyBrand)
+	if err != nil {
+		brand = ""
+	}
+	accent, _, err := settings.Get[string](ctx, p.Settings, settings.KeyBrandAccent)
+	if err != nil {
+		accent = ""
+	}
+	pub, err := subpage.NewService(p.st.Q).Public(ctx, brand, accent)
+	if err != nil {
+		p.subPage.SetHead(nil)
+		return
+	}
+	p.subPage.SetHead(pub.Head())
 }
 
 // Run keeps paths and the language in sync with the DB (the CLI and the settings page

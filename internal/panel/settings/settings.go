@@ -58,8 +58,12 @@ const (
 	// off by default (internal/panel/updates).
 	KeyAutoUpdate = "auto_update"
 	// Branding and support: the bot's and the subscription page's name and the support link.
-	KeyBrand      = "brand"
-	KeySupportURL = "support_url"
+	KeyBrand = "brand"
+	// KeySubPage is the subscription page the admin builds: look, brand, blocks, apps.
+	KeySubPage = "sub_page"
+	// KeyBrandAccent is the brand's colour, taken by the page when its look asks for it.
+	KeyBrandAccent = "brand_accent"
+	KeySupportURL  = "support_url"
 	// KeyPayContact is the admin's Telegram contact for manual payment, shown by the
 	// bot instead of invoices: "@name", a t.me link, or any text.
 	KeyPayContact = "pay_contact"

@@ -335,7 +335,15 @@
       "domain_not_found": "The domain has no A or AAAA record. Point it at this server and wait for DNS to update.",
       "server_ip_unknown": "Set the server's IP address first: there is nothing to compare the domain with.",
       "domain_unchecked": "Could not check the domain with public DNS. Try again.",
-      "port_relay": "The port is taken by a cascade: another node's traffic goes through it — pick another"
+      "port_relay": "The port is taken by a cascade: another node's traffic goes through it — pick another",
+      "color_invalid": "That is not a colour. Write #RRGGBB.",
+      "one_line": "That text must be one line.",
+      "color_required": "The colour is required here.",
+      "value_invalid": "That value is not one of the choices.",
+      "emoji_invalid": "That is not a single emoji.",
+      "emoji_required": "Choose an emoji.",
+      "image_type": "Only PNG, JPEG and WebP are accepted; an SVG is not.",
+      "image_too_big": "That image is too big."
     },
     "acme": {
       "port80_busy": "Port 80 is used by another program — Let's Encrypt checks the server through it",

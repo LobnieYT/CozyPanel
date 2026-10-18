@@ -224,6 +224,7 @@ func New(d Deps) (http.Handler, huma.API, error) {
 	h.registerStats()
 	h.registerSettings()
 	h.registerCerts()
+	h.registerSubPage()
 	h.registerTelegram()
 	h.registerUpdates()
 	h.registerNodes()
