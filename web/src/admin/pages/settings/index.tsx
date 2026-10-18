@@ -68,7 +68,7 @@ export function SettingsPage() {
       >
         {tab === "page" ? (
           // The editor keeps its own draft: leaving the section drops it.
-          <SubPageSettings section={pagePart} onSection={(p) => go("page", p)} />
+          <SubPageSettings section={pagePart} />
         ) : (
           <QueryBoundary query={settings} pending={<Skeleton style={{ height: 320, borderRadius: 20 }} />} wrap={(state) => <section className="card glass">{state}</section>}>
             {(s) =>

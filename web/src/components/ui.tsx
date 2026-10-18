@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { Link } from "@tanstack/react-router";
 import { LoaderCircle, SearchX, TriangleAlert, UserRound } from "lucide-react";
-import { cloneElement, isValidElement, lazy, Suspense, useId, type ButtonHTMLAttributes, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { cloneElement, isValidElement, lazy, Suspense, useEffect, useId, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { ApiError, type UserState } from "../api/client";
 import { t } from "../i18n";
 
@@ -219,8 +219,17 @@ export function Field({ label, htmlFor, hint, error, children }: { label: string
 }
 
 export function PageHeader({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
+  // Заголовок лежит плоско на странице и превращается в плавающую панель, когда страница
+  // проскроллена под ним.
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setStuck(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <header className="topbar">
+    <header className="topbar" data-stuck={stuck || undefined}>
       <div className="min-w-0">
         <h1 className="page-title">{title}</h1>
         {sub ? <p className="page-sub">{sub}</p> : null}

@@ -12,8 +12,6 @@ type Page = Schemas["Page"];
 
 export type SubPagePart = "look" | "brand" | "blocks" | "apps" | "css";
 
-const PARTS: SubPagePart[] = ["look", "brand", "blocks", "apps", "css"];
-
 const BLOCK_TYPES: Record<string, Key> = {
   announce: "settings.page.block.announce",
   status: "settings.page.block.status",
@@ -44,17 +42,10 @@ function useSubPage() {
 }
 
 /** The subscription page: its look, its brand, its blocks, the apps it lists and its CSS. */
-export function SubPageSettings({ section, onSection }: { section: SubPagePart; onSection: (s: SubPagePart) => void }) {
+export function SubPageSettings({ section }: { section: SubPagePart }) {
   const page = useSubPage();
   return (
     <>
-      <nav className="section-parts" aria-label={t("settings.page.title")}>
-        {PARTS.map((p) => (
-          <button key={p} type="button" aria-current={p === section ? "page" : undefined} onClick={() => onSection(p)}>
-            {t(`settings.page.tab.${p}`)}
-          </button>
-        ))}
-      </nav>
       <QueryBoundary query={page} pending={<Skeleton style={{ height: 420, borderRadius: 20 }} />}>
         {(v) => <Editor v={v} section={section} />}
       </QueryBoundary>

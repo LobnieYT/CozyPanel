@@ -17,6 +17,12 @@
   --honey-50: #2c2310; --honey-500: #e0a021; --honey-600: #f2c14e;
   --berry-50: #311314; --berry-600: #f0665c;
 
+  /* Семантические поверхности (как в теме mikan): мягкая подложка, приподнятая и сплошная.
+     В тёмной панели это слои стекла, а не белый — но роль та же. */
+  --surface-soft: rgba(190, 200, 255, 0.07);
+  --surface-solid: rgba(19, 25, 55, 0.88);
+  --raised: rgba(148, 163, 255, 0.14);
+
   --glass: rgba(19, 25, 55, 0.6);
   --glass-strong: rgba(19, 25, 55, 0.88);
   --glass-edge: rgba(148, 163, 255, 0.16);
@@ -375,10 +381,10 @@
   .section-nav { display: flex; flex-direction: column; gap: 4px; }
   .section-nav ul { display: flex; flex-direction: column; gap: 4px; }
   .section-nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border-radius: var(--r-md); text-align: left; font-weight: 500; color: var(--ink-600); transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
-  .section-nav button:hover { background: var(--hover); color: var(--ink-900); }
+  .section-nav button:hover { background: var(--surface-soft); color: var(--ink-900); }
   .section-nav button[aria-current="page"], .section-nav button[data-open="true"] { color: var(--ink-900); }
-  .section-nav button[aria-current="page"] { background: var(--glass-strong); box-shadow: var(--shadow-sm); }
-  .section-nav button[aria-current="page"] svg, .section-nav button[data-open="true"] svg { color: var(--cozy-500); }
+  .section-nav button[aria-current="page"] { background: var(--raised); box-shadow: var(--shadow-sm); }
+  .section-nav button[aria-current="page"] svg, .section-nav button[data-open="true"] svg { color: var(--cozy-600); }
   .section-nav button svg { flex: none; }
   .section-nav .sub { gap: 2px; margin: 0 0 4px 28px; padding-left: 12px; border-left: 1px solid var(--hairline); }
   .section-nav .sub button { min-height: 32px; padding: 6px 12px; font-size: 13px; }
@@ -394,17 +400,43 @@
     /* Packed by useMasonry: rows of 4px, each card spans its height plus the 16px gap. */
     .section-body.narrow.masonry { grid-auto-rows: 4px; row-gap: 0; grid-auto-flow: row dense; }
   }
-  /* The list stays in place while the content scrolls beside it. */
+  /* Широкие экраны: заголовок и действия страницы остаются наверху при скролле, список
+     разделов стоит рядом с содержимым. */
   @media (min-width: 1024px) {
-    .section-layout { flex-direction: row; align-items: flex-start; gap: 24px; }
-    .section-nav { position: sticky; top: 16px; width: 232px; flex: none; max-height: calc(100vh - 32px); overflow-y: auto; }
-    .section-body { flex: 1; }
+    :root { --sticky-top: calc(96px + var(--bar-h, 0px)); }
+    /* Плоская на странице; как только страница проскроллена — плавающая стеклянная панель,
+       как у карточек. */
+    .topbar { position: sticky; top: calc(8px + var(--bar-h, 0px)); z-index: 20; margin: 0 -12px; padding: 8px 12px; min-height: 72px; border-radius: var(--r-xl); border: 1px solid transparent; transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s; }
+    .topbar[data-stuck] { background: color-mix(in srgb, var(--surface-solid) 82%, transparent); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); border-color: var(--hairline); box-shadow: var(--shadow-sm); }
+    .topbar .page-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .section-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }
+    .section-nav { position: sticky; top: var(--sticky-top); }
   }
-  /* A section's own parts: a small row of buttons above the content. */
-  .section-parts { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--r-md); background: rgba(148, 163, 255, 0.07); width: max-content; max-width: 100%; }
-  .section-parts button { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--ink-600); transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
-  .section-parts button:hover { color: var(--ink-900); }
-  .section-parts button[aria-current="page"] { background: var(--glass-strong); color: var(--ink-900); box-shadow: var(--shadow-sm); }
+  /* Полоса сохранения черновика страницы: под содержимым, остаётся на виду при скролле. */
+  .savebar { position: sticky; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 25; align-self: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; max-width: 100%; padding: 8px 8px 8px 16px; border-radius: var(--r-lg); }
+  .savebar-text { font-size: 13px; font-weight: 500; }
+  /* Сохранение и сброс формы карточки: всегда внизу справа. */
+  .form-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+  .form-actions-note { margin-right: auto; font-size: 12px; color: var(--ink-500); }
+  /* Строка с переключателем: что это слева, переключатель справа. */
+  .switch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; }
+  .switch-row-title { font-size: 13px; font-weight: 500; color: var(--ink-900); }
+  .switch-row-sub { margin-top: 4px; font-size: 12px; color: var(--ink-500); }
+  .switch-row-sub.warn { color: var(--honey-600); }
+  /* То, что большинство никогда не меняет, свёрнуто под заголовком. */
+  .disclosure { border-top: 1px solid var(--hairline); }
+  .disclosure > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 12px 0; cursor: pointer; list-style: none; border-radius: 8px; }
+  .disclosure > summary::-webkit-details-marker { display: none; }
+  .disclosure > summary:hover .disclosure-title { color: var(--ink-900); }
+  .disclosure > summary > svg { flex: none; color: var(--ink-500); transition: transform 0.2s var(--ease-out); }
+  .disclosure[open] > summary > svg { transform: rotate(90deg); }
+  .disclosure-title { font-size: 13px; font-weight: 600; color: var(--ink-700); }
+  .disclosure-sub { font-size: 12px; color: var(--ink-500); }
+  .disclosure-body { padding: 4px 0 8px; }
+  .card > .disclosure:last-child .disclosure-body { padding-bottom: 0; }
+  /* Сегменты на всю ширину строки. */
+  .seg-block { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+  .seg-block button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* An editor with its live preview beside it once both fit; the preview follows the scroll. */
   .with-preview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
   .with-preview > aside { position: sticky; top: var(--sticky-top, 16px); }
