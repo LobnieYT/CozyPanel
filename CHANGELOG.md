@@ -3,6 +3,21 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.2
+### en
+- Settings in sections listed beside the content (a select on phones); the section and its part live in the link. A new **System** section holds updates and the automatic port/SNI, and a new **Subscription page** section builds the page a subscriber opens: its look, brand, blocks, the apps it lists and its own CSS.
+- **Routing** is a section of its own now, and the global DNS moved into it: Network keeps the routes, outbounds, subscription DNS and blocklists. Nodes still override every one of them on their own card.
+- **Check certificate** in Security: what the panel's and the nodes' ports serve as seen from outside, every finding with what to do about it. The certificate authority is a choice now — Let's Encrypt, ZeroSSL or Google Trust Services with its EAB key.
+- **Check node** on every node card: the panel calls the node and says in plain words why it does not connect — wrong address, nothing listening, a certificate, a key — with the fix for each.
+- Traffic, device limits, bandwidth and fair sharing, faster link issuing and the other updates ported from the mikan dev branch.
+
+### ru
+- Настройки разделами списком рядом с содержимым (на телефоне — выбором); раздел и его часть живут в ссылке. Новый раздел **Система**: обновления и автоматический порт/SNI. Новый раздел **Страница подписки**: вид, бренд, блоки, список приложений и свой CSS страницы, которую открывает подписчик.
+- **Маршрутизация** стала отдельным разделом, и глобальный DNS переехал в неё: в «Сети» остались маршруты, исходящие, DNS подписок и блокировки. Ноды по-прежнему переопределяют всё это на своей карточке.
+- **Проверка сертификата** в «Безопасности»: что порты панели и нод отдают снаружи, каждая находка — с тем, что делать. Центр сертификации теперь выбирается: Let's Encrypt, ZeroSSL или Google Trust Services с EAB-ключом.
+- **Проверка ноды** на карточке каждой ноды: панель обращается к ноде и говорит словами, почему та не подключается — адрес, никто не слушает, сертификат, ключ — и что исправить.
+- Трафик, лимиты устройств, полоса и справедливая делёжка, быстрый выпуск новых ссылок и остальные обновления, перенесённые из dev-ветки mikan.
+
 ## 1.3.0
 ### en
 - Users section in the admin bot: list with state filters and counts, full-text search, rich cards (traffic, term, online, devices, tariff), extend variants (days, billing months, exact date, forever), enable/disable, traffic reset, reissue and delete with confirms, device limit, tariff switch, inbounds toggle, note/contact edits, Telegram unlink, pools and packages readout, per-key links behind a warning tap, avatars. Plus /users list and guided /new creation.
