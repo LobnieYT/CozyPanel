@@ -3,7 +3,20 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
-## 1.3.2
+## 1.3.4
+### en
+- Settings read like the panel they came from: the section list stands in a 216px column beside the content (a select on narrow screens) instead of a bar of tabs, and the page header floats as a glass bar once the page scrolls under it.
+- The list's colours are the theme's own surfaces again — a soft hover, a raised active item, a solid floating header — so the active item and the header read as the same material as the cards.
+- A section's parts (Routing's DNS, routes, outbounds, blocklists; the subscription page's look, brand, blocks, apps, CSS) are sub-items under their section in the list, with the vertical rule, as in the panel the design comes from — not a separate row of chips above the content.
+- The form parts the new sections use got their own look: a sticky save bar under the draft, a card's actions at its bottom right, a switch row, and a folded-away block.
+
+### ru
+- Настройки выглядят как та панель, откуда пришёл дизайн: список разделов стоит колонкой 216px рядом с содержимым (на узких экранах — выбором) вместо полосы вкладок, а заголовок страницы становится плавающей стеклянной панелью, как только страница проскроллена под ним.
+- Цвета списка снова взяты из самой темы — мягкая подложка, приподнятый активный пункт, сплошная плавающая шапка, — так что активный пункт и шапка читаются как тот же материал, что и карточки.
+- Части раздела (DNS, маршруты, исходящие, блокировки в «Маршрутизации»; вид, бренд, блоки, приложения, CSS в «Странице подписки») — подпунктами своего раздела в списке, с вертикальной чертой, как в панели-источнике дизайна, а не отдельной полосой чипов над содержимым.
+- Новым разделам достались их собственные элементы форм: липкая полоса сохранения под черновиком, действия карточки внизу справа, строка с переключателем и свёрнутый блок.
+
+## 1.3.3
 ### en
 - Settings in sections listed beside the content (a select on phones); the section and its part live in the link. A new **System** section holds updates and the automatic port/SNI, and a new **Subscription page** section builds the page a subscriber opens: its look, brand, blocks, the apps it lists and its own CSS.
 - **Routing** is a section of its own now, and the global DNS moved into it: Network keeps the routes, outbounds, subscription DNS and blocklists. Nodes still override every one of them on their own card.
