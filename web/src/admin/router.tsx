@@ -107,6 +107,7 @@ export function createAppRouter(queryClient: QueryClient) {
     component: page(() => import("./pages/settings"), "SettingsPage"),
     validateSearch: (s: Record<string, unknown>): SettingsSearch => ({
       tab: SETTINGS_TABS.includes(s.tab as SettingsSearch["tab"]) ? (s.tab as SettingsSearch["tab"]) : "general",
+      part: typeof s.part === "string" ? s.part : undefined,
     }),
   });
   const telegram = createRoute({

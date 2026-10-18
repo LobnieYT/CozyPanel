@@ -1,5 +1,5 @@
-// Network: the global DNS, routes and outbounds every node inherits, plus the
-// subscription DNS client profiles carry. Nodes override these on their own card.
+// Network: the routes, outbounds, subscription DNS and blocklists every node inherits.
+// The global DNS moved to Settings → Routing; nodes override these on their own card.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorText, unwrap, type Schemas } from "../../api/client";
@@ -52,7 +52,7 @@ export const DNS_PRESETS: { id: string; label: string; servers: { address: strin
   { id: "xbox", label: "xbox-dns", servers: [{ address: "https://xbox-dns.ru/dns-query", domains: ["geosite:google"] }] },
 ];
 
-const TABS = ["dns", "routes", "outbounds", "subdns", "adblock"] as const;
+const TABS = ["routes", "outbounds", "subdns", "adblock"] as const;
 type Tab = (typeof TABS)[number];
 
 function useNetwork() {
@@ -69,7 +69,7 @@ function parseJson<T>(text: string, fallback: T): T {
 }
 
 export function NetworkPage() {
-  const [tab, setTab] = useState<Tab>("dns");
+  const [tab, setTab] = useState<Tab>("routes");
   const net = useNetwork();
   const nodes = useNodes();
   const [nodeId, setNodeId] = useState<number | null>(null);
@@ -86,9 +86,7 @@ export function NetworkPage() {
       >
         <QueryBoundary query={net} pending={<Skeleton style={{ height: 320, borderRadius: 20 }} />}>
           {(n) =>
-            tab === "dns" ? (
-              <GlobalDNSCard key="dns" doc={n.node_dns} />
-            ) : tab === "routes" ? (
+            tab === "routes" ? (
               <GlobalRoutesCard key="routes" doc={n.node_routes} />
             ) : tab === "outbounds" ? (
               <GlobalOutboundsCard key="outbounds" doc={n.node_outbounds} />
@@ -541,7 +539,7 @@ export function joinDefault(def: string, rules: string): string {
 
 export const ROUTE_TARGETS = ["DIRECT", "REJECT", "REJECT-DROP", "WARP"];
 
-function GlobalRoutesCard({ doc }: { doc: string }) {
+export function GlobalRoutesCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
   const { can } = useGrants();
   const writable = can("network", true);
@@ -573,7 +571,7 @@ function GlobalRoutesCard({ doc }: { doc: string }) {
   );
 }
 
-function GlobalDNSCard({ doc }: { doc: string }) {
+export function GlobalDNSCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
   const { can } = useGrants();
   const writable = can("network", true);
@@ -620,7 +618,7 @@ export function parseOutbounds(text: string): OutboundDoc[] {
   }
 }
 
-function GlobalOutboundsCard({ doc }: { doc: string }) {
+export function GlobalOutboundsCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
   const { can } = useGrants();
   const writable = can("network", true);
@@ -854,7 +852,7 @@ export function parseWireGuardConf(name: string, conf: string): OutboundDoc {
   return doc;
 }
 
-function SubDNSCard({ doc }: { doc: string }) {
+export function SubDNSCard({ doc }: { doc: string }) {
   const save = useSaveNetwork();
   const { can } = useGrants();
   const writable = can("network", true);
@@ -1043,7 +1041,7 @@ function adBlockJson(form: AdBlockDoc): string {
   return JSON.stringify(out);
 }
 
-function AdBlockCard({ nodeDoc, subDoc }: { nodeDoc: string; subDoc: string }) {
+export function AdBlockCard({ nodeDoc, subDoc }: { nodeDoc: string; subDoc: string }) {
   const save = useSaveNetwork();
   const { can } = useGrants();
   const writable = can("network", true);

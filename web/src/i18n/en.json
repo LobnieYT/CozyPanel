@@ -1058,10 +1058,19 @@
     "tabs": {
       "general": "General",
       "subscription": "Subscription",
+      "routing": "Routing",
       "rules": "Clash rules",
-      "security": "Security"
+      "security": "Security",
+      "system": "System"
     },
-    "sections": "Settings sections"
+    "sections": "Settings sections",
+    "routingParts": {
+      "section": "Routing",
+      "dns": "DNS",
+      "routes": "Routes",
+      "outbounds": "Outbounds",
+      "adblock": "Blocklists"
+    }
   },
   "sub": {
     "loadFailed": "Could not load the subscription",

@@ -6,8 +6,11 @@ import type { User } from "../api/client";
 export const USER_STATES = ["all", "active", "expiring", "limited", "expired", "disabled"] as const;
 export type UsersSearch = { state: "all" | User["state"]; q: string; user?: number; create?: true };
 
-export const SETTINGS_TABS = ["general", "subscription", "rules", "security"] as const;
-export type SettingsSearch = { tab: (typeof SETTINGS_TABS)[number] };
+export const SETTINGS_TABS = ["general", "subscription", "routing", "rules", "security", "system"] as const;
+export type SettingsSearch = { tab: (typeof SETTINGS_TABS)[number]; part?: string };
+
+/** The parts the sub-page editor opens at; the rest of the sections have none. */
+export const SETTINGS_PARTS = { routing: ["dns", "routes", "outbounds", "adblock"] } as const;
 
 export const TARIFF_TABS = ["tariffs", "pools", "packages"] as const;
 export type TariffsSearch = { tab: (typeof TARIFF_TABS)[number] };

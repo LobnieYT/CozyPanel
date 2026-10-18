@@ -1,91 +1,104 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Globe, Link2, ListFilter, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Cpu, Globe, LayoutTemplate, Link2, ListFilter, Route, ShieldCheck } from "lucide-react";
 import { meQuery, useSettings } from "../../../api/hooks";
 import { LangSwitch } from "../../../components/lang";
 import { QueryBoundary } from "../../../components/query";
-import { Columns, Tabs } from "../../../components/tabs";
+import { SectionNav } from "../../../components/section-nav";
 import { PageHeader, Skeleton } from "../../../components/ui";
-import { t } from "../../../i18n";
-import { SETTINGS_TABS } from "../../search";
+import { t, type Key } from "../../../i18n";
+import { SETTINGS_PARTS, SETTINGS_TABS, type SettingsSearch } from "../../search";
 import { AutoCard, EgressCard, LanguageCard, MonitoringCard, ServerCard, UpdatesCard } from "./general";
 import { ClashRulesCard } from "./rules";
 import { AccessCard, AdminBotCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
-import { DevicesCard, SubPortCard, SubscriptionCard } from "./subscription";
+import { DevicesCard, SubscriptionCard, SubPortCard } from "./subscription";
+import { RoutingSection } from "./routing";
 
-const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, security: ShieldCheck } as const;
+type Tab = SettingsSearch["tab"];
+type RoutingPart = "dns" | "routes" | "outbounds" | "adblock";
 
-/** Settings in four sections, one at a time; the section is in the URL, so a link opens it. */
+const PART_LABELS: Record<string, Key> = {
+  dns: "settings.routingParts.dns",
+  routes: "settings.routingParts.routes",
+  outbounds: "settings.routingParts.outbounds",
+  adblock: "settings.routingParts.adblock",
+};
+
+const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, routing: Route, page: LayoutTemplate, security: ShieldCheck, system: Cpu } as const;
+
+
+
+/**
+ * Settings in sections listed beside the content (a select on phones); the section and its
+ * part are in the URL, so a link opens them. Forms keep one readable width; the editors with
+ * a live preview take the whole column.
+ */
 export function SettingsPage() {
   const settings = useSettings();
   const me = useQuery(meQuery);
-  const { tab } = useSearch({ from: "/_app/settings" });
+  const { tab, part } = useSearch({ from: "/_app/settings" });
+  const routingPart: RoutingPart = (["dns", "routes", "outbounds", "adblock"] as const).find((x) => x === part) ?? "dns";
   const navigate = useNavigate({ from: "/settings" });
+  const go = (next: Tab, nextPart?: string) => void navigate({ search: { tab: next, part: nextPart }, replace: true });
+  const wide = tab === "routing";
   return (
     <>
       <PageHeader title={t("nav.settings")} sub={t("settings.subtitle")} actions={<LangSwitch />} />
-      <Tabs
-        id="settings"
+      <SectionNav
         label={t("settings.sections")}
-        tabs={SETTINGS_TABS.map((id) => ({ id, label: t(`settings.tabs.${id}`), icon: ICONS[id] }))}
+        sections={SETTINGS_TABS.map((id) => ({
+          id,
+          label: t(`settings.tabs.${id}`),
+          icon: ICONS[id],
+          parts: id in SETTINGS_PARTS ? SETTINGS_PARTS[id as keyof typeof SETTINGS_PARTS].map((p) => ({ id: p, label: t(PART_LABELS[p]!) })) : undefined,
+        }))}
         value={tab}
-        onChange={(next) => void navigate({ search: { tab: next }, replace: true })}
+        part={tab === "routing" ? routingPart : undefined}
+        onChange={go}
+        narrow={!wide}
       >
-        <QueryBoundary query={settings} pending={<Skeleton style={{ height: 320, borderRadius: 20 }} />} wrap={(state) => <section className="card glass">{state}</section>}>
-          {(s) =>
-            tab === "general" ? (
-              <Columns
-                left={
-                  <>
-                    <ServerCard s={s} />
-                    <LanguageCard s={s} />
-                    <AutoCard s={s} />
-                    <EgressCard s={s} />
-                    <MonitoringCard s={s} />
-                  </>
-                }
-                right={
-                  <>
-                    <UpdatesCard />
-                  </>
-                }
-              />
-            ) : tab === "subscription" ? (
-              <Columns
-                left={
-                  <>
-                    <SubscriptionCard s={s} />
-                    <DevicesCard s={s} />
-                  </>
-                }
-                right={<SubPortCard s={s} />}
-              />
-            ) : tab === "rules" ? (
-              <div className="max-w-4xl">
+        {(
+          <QueryBoundary query={settings} pending={<Skeleton style={{ height: 320, borderRadius: 20 }} />} wrap={(state) => <section className="card glass">{state}</section>}>
+            {(s) =>
+              tab === "general" ? (
+                <>
+                  <ServerCard s={s} />
+                  <LanguageCard s={s} />
+                  <EgressCard s={s} />
+                  <MonitoringCard s={s} />
+                </>
+              ) : tab === "subscription" ? (
+                <>
+                  <SubscriptionCard s={s} />
+                  <DevicesCard s={s} />
+                  <SubPortCard s={s} />
+                </>
+              ) : tab === "routing" ? (
+                <>
+                  <RoutingSection part={routingPart} />
+                </>
+              ) : tab === "rules" ? (
                 <ClashRulesCard s={s} />
-              </div>
-            ) : (
-              <Columns
-                left={
-                  <>
-                    <AccessCard s={s} />
-                    <CertificateCard s={s} />
-                    <ApiCard />
-                    <AdminBotCard owner={!!me.data?.admin.owner} />
-                  </>
-                }
-                right={
-                  <>
-                    <PasswordCard />
-                    <TwoFactorCard />
-                    <SessionsCard />
-                  </>
-                }
-              />
-            )
-          }
-        </QueryBoundary>
-      </Tabs>
+              ) : tab === "system" ? (
+                <>
+                  <UpdatesCard />
+                  <AutoCard s={s} />
+                </>
+              ) : (
+                <>
+                  <AccessCard s={s} />
+                  <CertificateCard s={s} />
+                  <ApiCard />
+                  <AdminBotCard owner={!!me.data?.admin.owner} />
+                  <PasswordCard />
+                  <TwoFactorCard />
+                  <SessionsCard />
+                </>
+              )
+            }
+          </QueryBoundary>
+        )}
+      </SectionNav>
     </>
   );
 }

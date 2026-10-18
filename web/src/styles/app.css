@@ -369,7 +369,47 @@
   .page-title { font-size: 22px; line-height: 28px; }
   .kpi-value { font-size: 26px; line-height: 32px; }
   .search-field { min-width: 0; flex: 1; }
+
+  /* A page's many sections: a list beside the content on wide screens, a select on narrow ones. */
+  .section-layout { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+  .section-nav { display: flex; flex-direction: column; gap: 4px; }
+  .section-nav ul { display: flex; flex-direction: column; gap: 4px; }
+  .section-nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border-radius: var(--r-md); text-align: left; font-weight: 500; color: var(--ink-600); transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+  .section-nav button:hover { background: var(--hover); color: var(--ink-900); }
+  .section-nav button[aria-current="page"], .section-nav button[data-open="true"] { color: var(--ink-900); }
+  .section-nav button[aria-current="page"] { background: var(--glass-strong); box-shadow: var(--shadow-sm); }
+  .section-nav button[aria-current="page"] svg, .section-nav button[data-open="true"] svg { color: var(--cozy-500); }
+  .section-nav button svg { flex: none; }
+  .section-nav .sub { gap: 2px; margin: 0 0 4px 28px; padding-left: 12px; border-left: 1px solid var(--hairline); }
+  .section-nav .sub button { min-height: 32px; padding: 6px 12px; font-size: 13px; }
+  .section-nav-badge { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--ink-500); }
+  .section-body { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .section-body.narrow { max-width: 960px; }
+  /* On wide screens a section's cards go two in a row, in reading order, so a section fits
+     a screen or so. A lone card, a notice and the save bar take the whole row. */
+  @media (min-width: 1440px) {
+    .section-body.narrow { max-width: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .section-body.narrow > :only-child, .section-body.narrow > .savebar, .section-body.narrow > .banner, .section-body.narrow > [role="status"] { grid-column: 1 / -1; }
+    .section-body.narrow > .savebar { justify-self: center; }
+    /* Packed by useMasonry: rows of 4px, each card spans its height plus the 16px gap. */
+    .section-body.narrow.masonry { grid-auto-rows: 4px; row-gap: 0; grid-auto-flow: row dense; }
+  }
+  /* The list stays in place while the content scrolls beside it. */
+  @media (min-width: 1024px) {
+    .section-layout { flex-direction: row; align-items: flex-start; gap: 24px; }
+    .section-nav { position: sticky; top: 16px; width: 232px; flex: none; max-height: calc(100vh - 32px); overflow-y: auto; }
+    .section-body { flex: 1; }
+  }
+  /* A section's own parts: a small row of buttons above the content. */
+  .section-parts { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--r-md); background: rgba(148, 163, 255, 0.07); width: max-content; max-width: 100%; }
+  .section-parts button { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--ink-600); transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+  .section-parts button:hover { color: var(--ink-900); }
+  .section-parts button[aria-current="page"] { background: var(--glass-strong); color: var(--ink-900); box-shadow: var(--shadow-sm); }
+  /* An editor with its live preview beside it once both fit; the preview follows the scroll. */
+  .with-preview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  .with-preview > aside { position: sticky; top: var(--sticky-top, 16px); }
 }
+@media (max-width: 1199px) { .with-preview { grid-template-columns: minmax(0, 1fr); } .with-preview > aside { position: static; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
   .glow { animation: none; }

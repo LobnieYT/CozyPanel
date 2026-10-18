@@ -1058,10 +1058,19 @@
     "tabs": {
       "general": "Основное",
       "subscription": "Подписка",
+      "routing": "Маршрутизация",
       "rules": "Правила Clash",
-      "security": "Безопасность"
+      "security": "Безопасность",
+      "system": "Система"
     },
-    "sections": "Разделы настроек"
+    "sections": "Разделы настроек",
+    "routingParts": {
+      "section": "Маршрутизация",
+      "dns": "DNS",
+      "routes": "Маршруты",
+      "outbounds": "Исходящие",
+      "adblock": "Блокировки"
+    }
   },
   "sub": {
     "loadFailed": "Не удалось загрузить подписку",
