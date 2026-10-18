@@ -417,3 +417,11 @@
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass-strong { background: rgba(13, 18, 40, 0.97); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* The look the admin gave the subscription page (Settings → Subscription page): the brand's
+   colour as the accent, their font, the corners of the cards and whether they are see-through. */
+[data-font="system"] { --font-display-stack: var(--font-ui-stack); }
+[data-font="rounded"] { --font-display-stack: ui-rounded, "SF Pro Rounded", var(--font-ui-stack); --font-ui-stack: ui-rounded, "SF Pro Rounded", var(--font-ui-stack); }
+[data-radius="small"] { --r-lg: 12px; --r-xl: 16px; }
+[data-radius="large"] { --r-lg: 28px; --r-xl: 32px; }
+[data-cards="solid"] .glass, [data-cards="solid"] .calm-glass { background: rgba(13, 18, 40, 0.97); backdrop-filter: none; }
