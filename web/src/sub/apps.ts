@@ -1,4 +1,4 @@
-export type Platform = "ios" | "android" | "windows" | "macos";
+export type Platform = "ios" | "android" | "windows" | "macos" | "linux";
 
 type App = {
   name: string;
@@ -9,6 +9,7 @@ type App = {
 };
 export const enc = encodeURIComponent;
 const clash = (url: string, brand: string) => `clash://install-config?url=${enc(url)}&name=${enc(brand)}`;
+const slothClash = (url: string, brand: string) => `slothclash://install-config?url=${enc(url)}&name=${enc(brand)}`;
 
 export const APPS: Record<Platform, App[]> = {
   ios: [
@@ -29,7 +30,13 @@ export const APPS: Record<Platform, App[]> = {
   ],
   macos: [
     { name: "Clash Verge Rev", note: "tun", icon: "", link: clash },
+    { name: "SlothClash", note: "tun", icon: "", link: slothClash },
     { name: "Happ", note: "oneButton", icon: "sub/apps/happ.png", link: (u) => `happ://add/${u}` },
+    { name: "Hiddify", note: "openSource", icon: "sub/apps/hiddify.png", link: (u, b) => `hiddify://import/${u}#${enc(b)}` },
+  ],
+  linux: [
+    { name: "SlothClash", note: "tun", icon: "", link: slothClash },
+    { name: "Clash Verge Rev", note: "tun", icon: "", link: clash },
     { name: "Hiddify", note: "openSource", icon: "sub/apps/hiddify.png", link: (u, b) => `hiddify://import/${u}#${enc(b)}` },
   ],
 };
@@ -40,5 +47,6 @@ export function detect(): Platform {
   if (/Android/.test(ua)) return "android";
   if (/Mac OS X/.test(ua)) return "macos";
   if (/Windows/.test(ua)) return "windows";
+  if (/Linux|X11|CrOS/.test(ua)) return "linux"; // after Android: its browsers say Linux too
   return "android";
 }

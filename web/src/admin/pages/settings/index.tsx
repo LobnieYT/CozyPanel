@@ -13,11 +13,19 @@ import { ClashRulesCard } from "./rules";
 import { AccessCard, AdminBotCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
 import { DevicesCard, SubscriptionCard, SubPortCard } from "./subscription";
 import { RoutingSection } from "./routing";
+import { SubPageSettings, type SubPagePart } from "./sub-page";
 
 type Tab = SettingsSearch["tab"];
 type RoutingPart = "dns" | "routes" | "outbounds" | "adblock";
 
+const PAGE_PARTS: SubPagePart[] = ["look", "brand", "blocks", "apps", "css"];
+
 const PART_LABELS: Record<string, Key> = {
+  look: "settings.page.tab.look",
+  brand: "settings.page.tab.brand",
+  blocks: "settings.page.tab.blocks",
+  apps: "settings.page.tab.apps",
+  css: "settings.page.tab.css",
   dns: "settings.routingParts.dns",
   routes: "settings.routingParts.routes",
   outbounds: "settings.routingParts.outbounds",
@@ -38,6 +46,7 @@ export function SettingsPage() {
   const me = useQuery(meQuery);
   const { tab, part } = useSearch({ from: "/_app/settings" });
   const routingPart: RoutingPart = (["dns", "routes", "outbounds", "adblock"] as const).find((x) => x === part) ?? "dns";
+  const pagePart: SubPagePart = PAGE_PARTS.find((x) => x === part) ?? "look";
   const navigate = useNavigate({ from: "/settings" });
   const go = (next: Tab, nextPart?: string) => void navigate({ search: { tab: next, part: nextPart }, replace: true });
   const wide = tab === "routing";
@@ -53,11 +62,14 @@ export function SettingsPage() {
           parts: id in SETTINGS_PARTS ? SETTINGS_PARTS[id as keyof typeof SETTINGS_PARTS].map((p) => ({ id: p, label: t(PART_LABELS[p]!) })) : undefined,
         }))}
         value={tab}
-        part={tab === "routing" ? routingPart : undefined}
+        part={tab === "routing" ? routingPart : tab === "page" ? pagePart : undefined}
         onChange={go}
         narrow={!wide}
       >
-        {(
+        {tab === "page" ? (
+          // The editor keeps its own draft: leaving the section drops it.
+          <SubPageSettings section={pagePart} onSection={(p) => go("page", p)} />
+        ) : (
           <QueryBoundary query={settings} pending={<Skeleton style={{ height: 320, borderRadius: 20 }} />} wrap={(state) => <section className="card glass">{state}</section>}>
             {(s) =>
               tab === "general" ? (

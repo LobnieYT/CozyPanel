@@ -4,6 +4,126 @@
  */
 
 export interface paths {
+    "/api/v1/admin-bot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Админ-бот */
+        get: operations["get-admin-bot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Настроить админ-бота */
+        patch: operations["update-admin-bot"];
+        trace?: never;
+    };
+    "/api/v1/admin-bot/broadcast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Разослать привязанным админам */
+        post: operations["admin-bot-broadcast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin-bot/chats/{tg}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Отвязать чат */
+        delete: operations["admin-bot-unlink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin-bot/link-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Код привязки чата */
+        post: operations["admin-bot-link-code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin-bot/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Заявки на привязку */
+        get: operations["admin-bot-requests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin-bot/requests/{tg}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Подтвердить заявку */
+        post: operations["admin-bot-approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin-bot/requests/{tg}/refuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Отклонить заявку */
+        post: operations["admin-bot-refuse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admins": {
         parameters: {
             query?: never;
@@ -439,6 +559,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить ноду: почему не подключается */
+        post: operations["check-node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{id}/dns-match": {
         parameters: {
             query?: never;
@@ -523,24 +660,7 @@ export interface paths {
         head?: never;
         patch?: never;
         trace?: never;
-    };    "/api/v1/nodes/{id}/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Проверить ноду: почему не подключается */
-        post: operations["check-node"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
-
     "/api/v1/nodes/{id}/network": {
         parameters: {
             query?: never;
@@ -873,6 +993,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sub-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Страница подписки: вид, блоки, приложения */
+        get: operations["get-sub-page"];
+        /** Сохранить страницу подписки */
+        put: operations["update-sub-page"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tariffs": {
         parameters: {
             query?: never;
@@ -1050,6 +1188,23 @@ export interface paths {
         patch: operations["update-user"];
         trace?: never;
     };
+    "/api/v1/users/{id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Поставить аватарку */
+        post: operations["upload-avatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/bound-devices": {
         parameters: {
             query?: never;
@@ -1085,7 +1240,7 @@ export interface paths {
         patch: operations["rename-device"];
         trace?: never;
     };
-"/api/v1/users/{id}/device-bans/{ban}": {
+    "/api/v1/users/{id}/bound-devices/{device}/ban": {
         parameters: {
             query?: never;
             header?: never;
@@ -1094,15 +1249,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        /** Разблокировать устройство */
-        delete: operations["unban-device"];
+        /** Заблокировать устройство: отключается сразу и больше не привязывается */
+        post: operations["ban-device"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/v1/users/{id}/device-bans": {
+    "/api/v1/users/{id}/device-bans": {
         parameters: {
             query?: never;
             header?: never;
@@ -1119,7 +1274,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-"/api/v1/users/{id}/bound-devices/{device}/ban": {
+    "/api/v1/users/{id}/device-bans/{ban}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1128,9 +1283,9 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Заблокировать устройство: отключается сразу и больше не привязывается */
-        post: operations["ban-device"];
-        delete?: never;
+        post?: never;
+        /** Разблокировать устройство */
+        delete: operations["unban-device"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1311,6 +1466,90 @@ export interface components {
             /** @enum {string} */
             scope: "read" | "full";
         };
+        AdminBotChatView: {
+            /** Format: int64 */
+            admin_id: number;
+            admin_username: string;
+            created_at: string;
+            first_name: string;
+            is_owner: boolean;
+            /** Format: int64 */
+            tg_id: number;
+            username: string;
+        };
+        AdminBotView: {
+            bot?: components["schemas"]["TelegramBot"];
+            broadcast?: components["schemas"]["TelegramBroadcast"];
+            enabled: boolean;
+            error?: string;
+            linked: components["schemas"]["AdminBotChatView"][];
+            menu: components["schemas"]["AdminMenu"];
+            menu_defaults: components["schemas"]["AdminMenu"];
+            mini_app_url?: string;
+            route: components["schemas"]["TelegramRoute"];
+            running: boolean;
+            token_hint?: string;
+            token_set: boolean;
+        };
+        AdminBroadcastInputBody: {
+            text: string;
+        };
+        AdminBroadcastOutputBody: {
+            /** Format: int64 */
+            queued: number;
+        };
+        AdminLinkCodeInputBody: {
+            /**
+             * Format: int64
+             * @description Чей код; пусто — свой
+             */
+            admin_id?: number;
+        };
+        AdminLinkCodeOutputBody: {
+            code: string;
+            expires_at: string;
+        };
+        AdminMenu: {
+            /** @description Кнопки меню по порядку */
+            buttons: components["schemas"]["AdminMenuButton"][];
+            /**
+             * @description Язык встроенных надписей бота
+             * @enum {string}
+             */
+            lang: "ru" | "en";
+            texts: components["schemas"]["AdminMenuTexts"];
+        };
+        AdminMenuButton: {
+            /** @enum {string} */
+            action: "stats" | "find" | "nodes" | "broadcast" | "requests" | "unlink" | "help" | "url" | "page";
+            /** @description Постоянный id кнопки */
+            id: string;
+            label: string;
+            on: boolean;
+            /** @description В одном ряду с предыдущей */
+            row: boolean;
+            /** @description Для action=page: текст страницы */
+            text?: string;
+            /** @description Для action=url: https:// или tg:// */
+            url?: string;
+        };
+        AdminMenuTexts: {
+            /** @description Текст /help */
+            help: string;
+            /** @description Шапка меню */
+            menu: string;
+        };
+        AdminRequestView: {
+            first_name: string;
+            login: string;
+            requested_at: string;
+            /** Format: int64 */
+            tg_id: number;
+            username: string;
+        };
+        AdminRequestsOutputBody: {
+            requests: components["schemas"]["AdminRequestView"][];
+        };
         AdminView: {
             disabled: boolean;
             /** Format: date-time */
@@ -1388,6 +1627,13 @@ export interface components {
             target_error?: string;
             target_ok?: boolean;
         };
+        AvatarUploadInputBody: {
+            /** @description Картинка base64: jpeg или png до 2 МБ */
+            image: string;
+        };
+        AvatarUploadOutputBody: {
+            avatar: boolean;
+        };
         BoundDeviceView: {
             app: string;
             /** Format: date-time */
@@ -1415,102 +1661,6 @@ export interface components {
              * @description Байты от устройства с тех пор, как оно привязано
              */
             traffic_up: number;
-        };
-        RenameDeviceOutputBody: {
-            name: string;
-        };
-        RenameDeviceInputBody: {
-            /** @description Своё имя устройства; пусто — имя от приложения */
-            name: string;
-        };
-                NodeCheck: {
-            detail?: string;
-            fix?: string;
-            id: string;
-            status: string;
-        };
-        NodeCheckReport: {
-            /** Format: date-time */
-            checked_at: string;
-            checks: components["schemas"]["NodeCheck"][];
-        };
-DeviceBanView: {
-            /** @description Кто заблокировал; пусто — ключ API или удалённый админ */
-            admin: string;
-            /** Format: date-time */
-            banned_at: string;
-            /** @description Ждёт администратора, сколько бы ни прошло */
-            forever?: boolean;
-            hwid: string;
-            /** Format: int64 */
-            id: number;
-            /** @description Как устройство называлось, когда его заблокировали */
-            label: string;
-            /**
-             * Format: date-time
-             * @description Пауза: снова привяжется с этого момента
-             */
-            until?: string;
-        };
-        CertReport: {
-            /** Format: date-time */
-            checked_at: string;
-            checks: components["schemas"]["CertCheck"][];
-        };
-        CertCheck: {
-            detail?: string;
-            fix?: string;
-            id: string;
-            status: string;
-        };
-        ReissueRules: {
-            /**
-             * Format: int64
-             * @description За сколько дней считается лимит (скользящее окно)
-             */
-            days: number;
-            /**
-             * Format: int64
-             * @description Сколько раз подписчик может сменить ссылку за days; 0 — без ограничения
-             */
-            limit: number;
-            /** @description Подписчик не меняет ссылку сам, только админ */
-            off?: boolean;
-        };
-        LinkReissueStruct: {
-            /** Format: int64 */
-            days?: number;
-            /** Format: int64 */
-            limit?: number;
-            off?: boolean;
-        };
-        UnbindRules: {
-            /**
-             * Format: int64
-             * @description За сколько дней считается лимит (скользящее окно)
-             */
-            days: number;
-            /**
-             * Format: int64
-             * @description Сколько устройств подписчик может отвязать за days; 0 — без ограничения
-             */
-            limit: number;
-            /** @description Подписчик не отвязывает устройства сам, только админ */
-            off?: boolean;
-            /**
-             * Format: int64
-             * @description Сколько часов отвязанное подписчиком устройство не может привязаться снова; 0 — сразу, -1 — пока админ не разрешит
-             */
-            return_hours: number;
-        };
-        DeviceUnbindStruct: {
-            /** Format: int64 */
-            days?: number;
-            /** Format: int64 */
-            limit?: number;
-            off?: boolean;
-            /** Format: int64 */
-            return_hours?: number;
         };
         BroadcastInputBody: {
             /** @description Обычный текст; {brand} — название сервиса */
@@ -1577,11 +1727,22 @@ DeviceBanView: {
             /** @description Ноды, которые выходят через эту */
             sources: components["schemas"]["CascadeHop"][];
         };
+        CertCheck: {
+            detail?: string;
+            fix?: string;
+            id: string;
+            status: string;
+        };
         CertInputBody: {
             /** @description Цепочка в PEM: сначала сертификат, за ним промежуточные (fullchain.pem) */
             cert: string;
             /** @description Закрытый ключ в PEM (privkey.pem): RSA от 2048 бит, ECDSA P-256/384/521 или Ed25519 */
             key: string;
+        };
+        CertReport: {
+            /** Format: date-time */
+            checked_at: string;
+            checks: components["schemas"]["CertCheck"][];
         };
         CheckTargetInputBody: {
             /** @description host:port */
@@ -1719,6 +1880,33 @@ DeviceBanView: {
             /** Format: int64 */
             rtt_ms?: number;
             server: string;
+        };
+        DeviceBanView: {
+            /** @description Кто заблокировал; пусто — ключ API или удалённый админ */
+            admin: string;
+            /** Format: date-time */
+            banned_at: string;
+            /** @description Ждёт администратора, сколько бы ни прошло */
+            forever?: boolean;
+            hwid: string;
+            /** Format: int64 */
+            id: number;
+            /** @description Как устройство называлось, когда его заблокировали */
+            label: string;
+            /**
+             * Format: date-time
+             * @description Пауза: снова привяжется с этого момента
+             */
+            until?: string;
+        };
+        DeviceUnbindStruct: {
+            /** Format: int64 */
+            days?: number;
+            /** Format: int64 */
+            limit?: number;
+            off?: boolean;
+            /** Format: int64 */
+            return_hours?: number;
         };
         DeviceView: {
             /** Format: date-time */
@@ -1964,6 +2152,13 @@ DeviceBanView: {
             title: string;
             type: string;
         };
+        LinkReissueStruct: {
+            /** Format: int64 */
+            days?: number;
+            /** Format: int64 */
+            limit?: number;
+            off?: boolean;
+        };
         ListUsersOutputBody: {
             counts: components["schemas"]["UserCounts"];
             items: components["schemas"]["UserView"][];
@@ -2032,6 +2227,17 @@ DeviceBanView: {
             not_after: string;
             /** @description Публично доверенный для адреса: приложения принимают его без пина */
             trusted: boolean;
+        };
+        NodeCheck: {
+            detail?: string;
+            fix?: string;
+            id: string;
+            status: string;
+        };
+        NodeCheckReport: {
+            /** Format: date-time */
+            checked_at: string;
+            checks: components["schemas"]["NodeCheck"][];
         };
         NodeDNS: {
             enable: boolean;
@@ -2205,12 +2411,134 @@ DeviceBanView: {
             /** Format: int64 */
             sort: number;
         };
+        Page: {
+            apps: components["schemas"]["PageApps"];
+            /** @description Блоки страницы в их порядке; встроенные — по одному, своих (text, links) — до 12 */
+            blocks: components["schemas"]["PageBlock"][];
+            brand: components["schemas"]["PageBrand"];
+            /** @description Свой CSS страницы подписки (не админки), до 20 КБ; @import и < убираются */
+            css: string;
+            look: components["schemas"]["PageLook"];
+            og: components["schemas"]["PageOG"];
+        };
+        PageAppList: {
+            hidden: string[];
+            order: string[];
+        };
+        PageApps: {
+            android: components["schemas"]["PageAppList"];
+            ios: components["schemas"]["PageAppList"];
+            linux: components["schemas"]["PageAppList"];
+            macos: components["schemas"]["PageAppList"];
+            /**
+             * @description Вкладка, открытая сначала; auto — по устройству посетителя
+             * @enum {string}
+             */
+            platform: "auto" | "ios" | "android" | "windows" | "macos" | "linux";
+            /** @description Кнопка QR-кода в блоке ссылки */
+            qr: boolean;
+            windows: components["schemas"]["PageAppList"];
+        };
+        PageBackground: {
+            /**
+             * Format: int64
+             * @description Направление градиента в градусах
+             */
+            angle: number;
+            /**
+             * Format: int64
+             * @description Затемнение картинки, %
+             */
+            dim: number;
+            /** @description #RRGGBB */
+            from: string;
+            /**
+             * @description theme — фон темы, solid — цвет from, gradient — от from к to, image — загруженная картинка
+             * @enum {string}
+             */
+            kind: "theme" | "solid" | "gradient" | "image";
+            /** @description #RRGGBB */
+            to: string;
+        };
+        PageBlock: {
+            id: string;
+            /** @description Блок links: кнопки-ссылки */
+            links?: components["schemas"]["PageLink"][];
+            on: boolean;
+            /** @description Блок text: Markdown */
+            text?: string;
+            /** @description Свой заголовок (у кнопок — текст кнопки); пусто — обычный */
+            title: string;
+            /** @enum {string} */
+            type: "announce" | "status" | "promo" | "shop" | "traffic" | "devices" | "apps" | "guide" | "instructions" | "link" | "reissue" | "locations" | "telegram" | "support" | "text" | "links";
+        };
+        PageBrand: {
+            emoji: string;
+            /**
+             * @description letter — первая буква бренда, image — загруженный логотип, emoji, none — без значка
+             * @enum {string}
+             */
+            logo: "letter" | "image" | "emoji" | "none";
+            /** @description Строка под названием; пусто — нет */
+            subtitle: string;
+        };
+        PageLink: {
+            emoji?: string;
+            label: string;
+            /** @description https://, http:// или tg:// */
+            url: string;
+        };
+        PageLook: {
+            /**
+             * @description theme — цвет палитры, brand — цвет бренда (brand_accent)
+             * @enum {string}
+             */
+            accent: "theme" | "brand";
+            background: components["schemas"]["PageBackground"];
+            /**
+             * @description glass — полупрозрачные карточки, solid — непрозрачные
+             * @enum {string}
+             */
+            cards: "glass" | "solid";
+            /**
+             * @description default — Unbounded и Onest, onest — только Onest, system — шрифт устройства, rounded — скруглённый системный
+             * @enum {string}
+             */
+            font: "default" | "onest" | "system" | "rounded";
+            /**
+             * @description light, dark (как Midnight) или system — как у посетителя
+             * @enum {string}
+             */
+            mode: "light" | "dark" | "system";
+            /**
+             * @description Тема, как темы панели. mikan, ocean, sakura и forest следуют mode; остальные светлые или тёмные сами
+             * @enum {string}
+             */
+            palette: "mikan" | "ocean" | "sakura" | "forest" | "latte" | "snow" | "dawn" | "dune" | "graphite" | "abyss" | "ember" | "plum" | "moss" | "terminal" | "nord" | "mocha" | "tokyo" | "dracula" | "aurora" | "cosmos";
+            /** @enum {string} */
+            radius: "small" | "medium" | "large";
+        };
+        PageOG: {
+            description: string;
+            /** @description Логотип картинкой превью */
+            image: boolean;
+            /** @description Заголовок превью; пусто — бренд */
+            title: string;
+        };
         PasswordInputBody: {
             current: string;
             /** @description Не короче 12 символов */
             new: string;
             /** @description Отозвать и ключи API (по умолчанию да): другие сессии завершаются при смене пароля, ключ, выпущенный из угнанной сессии, пережил бы это */
             revoke_keys?: boolean;
+        };
+        PatchAdminBotInputBody: {
+            enabled?: boolean;
+            /** @description Кнопки и тексты меню */
+            menu?: components["schemas"]["AdminMenu"];
+            route?: components["schemas"]["RouteStruct"];
+            /** @description Токен от @BotFather; пустая строка — удалить */
+            token?: string;
         };
         PatchInboundInputBody: {
             /** @description Нельзя включить, пока у подключения свой адрес (listen) */
@@ -2332,7 +2660,7 @@ DeviceBanView: {
             config?: components["schemas"]["Config"];
             enabled?: boolean;
             /** @description Перед сохранением панель проверяет, что Telegram отвечает этим путём */
-            route?: components["schemas"]["RouteStruct"];
+            route?: components["schemas"]["RouteStruct1"];
             /** @description Токен от @BotFather; пустая строка — удалить */
             token?: string;
         };
@@ -2409,9 +2737,36 @@ DeviceBanView: {
             ip?: string;
             ok: boolean;
         };
+        PutSubPageInputBody: {
+            brand?: string;
+            /** @description #RRGGBB или пусто */
+            brand_accent?: string;
+            config: components["schemas"]["Page"];
+        };
         RecoveryOutputBody: {
             /** @description Показываются один раз */
             recovery_codes: string[];
+        };
+        ReissueRules: {
+            /**
+             * Format: int64
+             * @description За сколько дней считается лимит (скользящее окно)
+             */
+            days: number;
+            /**
+             * Format: int64
+             * @description Сколько раз подписчик может сменить ссылку за days; 0 — без ограничения
+             */
+            limit: number;
+            /** @description Подписчик не меняет ссылку сам, только админ */
+            off?: boolean;
+        };
+        RenameDeviceInputBody: {
+            /** @description Своё имя устройства; пусто — имя от приложения */
+            name: string;
+        };
+        RenameDeviceOutputBody: {
+            name: string;
         };
         ResetPathOutputBody: {
             admin_url: string;
@@ -2436,6 +2791,13 @@ DeviceBanView: {
             x25519: boolean;
         };
         RouteStruct: {
+            /** @enum {string} */
+            mode: "direct" | "node" | "proxy";
+            /** Format: int64 */
+            node_id?: number;
+            proxy?: string;
+        };
+        RouteStruct1: {
             /** @enum {string} */
             mode: "direct" | "node" | "proxy";
             /**
@@ -2587,6 +2949,15 @@ DeviceBanView: {
             not_after: string;
             /** @description Свой сертификат публично доверенный для адреса панели */
             trusted?: boolean;
+        };
+        SubPageView: {
+            /** @description Название бренда (settings.brand) */
+            brand: string;
+            /** @description Цвет бренда (settings.brand_accent); его же получают приложения с брендингом */
+            brand_accent: string;
+            config: components["schemas"]["Page"];
+            /** @description Страница по умолчанию — к ней ведёт «Сбросить» */
+            defaults: components["schemas"]["Page"];
         };
         System: {
             /** Format: double */
@@ -2792,6 +3163,25 @@ DeviceBanView: {
             t: string;
             /** Format: int64 */
             up: number;
+        };
+        UnbindRules: {
+            /**
+             * Format: int64
+             * @description За сколько дней считается лимит (скользящее окно)
+             */
+            days: number;
+            /**
+             * Format: int64
+             * @description Сколько устройств подписчик может отвязать за days; 0 — без ограничения
+             */
+            limit: number;
+            /** @description Подписчик не отвязывает устройства сам, только админ */
+            off?: boolean;
+            /**
+             * Format: int64
+             * @description Сколько часов отвязанное подписчиком устройство не может привязаться снова; 0 — сразу, -1 — пока админ не разрешит
+             */
+            return_hours: number;
         };
         UpdateAdminInputBody: {
             disabled?: boolean;
@@ -3007,6 +3397,250 @@ DeviceBanView: {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "get-admin-bot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBotView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-admin-bot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchAdminBotInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBotView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-broadcast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBroadcastInputBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBroadcastOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-unlink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tg: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-link-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminLinkCodeInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLinkCodeOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRequestsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tg: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "admin-bot-refuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tg: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "list-admins": {
         parameters: {
             query?: never;
@@ -4108,6 +4742,37 @@ export interface operations {
             };
         };
     };
+    "check-node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeCheckReport"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "test-node-dns": {
         parameters: {
             query?: never;
@@ -4270,38 +4935,7 @@ export interface operations {
                 };
             };
         };
-    };    "check-node": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeCheckReport"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
     };
-
     "get-node-network": {
         parameters: {
             query?: never;
@@ -5041,13 +5675,6 @@ export interface operations {
             };
         };
     };
-    "renew-certificate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
     "check-certificate": {
         parameters: {
             query?: never;
@@ -5077,6 +5704,13 @@ export interface operations {
             };
         };
     };
+    "renew-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
         requestBody?: never;
         responses: {
             /** @description Accepted */
@@ -5173,6 +5807,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrafficOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-sub-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubPageView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-sub-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutSubPageInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubPageView"];
                 };
             };
             /** @description Error */
@@ -5722,6 +6418,41 @@ export interface operations {
             };
         };
     };
+    "upload-avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AvatarUploadInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvatarUploadOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "user-bound-devices": {
         parameters: {
             query?: never;
@@ -5783,7 +6514,42 @@ export interface operations {
             };
         };
     };
-
+    "rename-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                device: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameDeviceInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenameDeviceOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "ban-device": {
         parameters: {
             query?: never;
@@ -5816,7 +6582,6 @@ export interface operations {
             };
         };
     };
-
     "device-bans": {
         parameters: {
             query?: never;
@@ -5848,7 +6613,6 @@ export interface operations {
             };
         };
     };
-
     "unban-device": {
         parameters: {
             query?: never;
@@ -5867,43 +6631,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-
-    "rename-device": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-                device: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RenameDeviceInputBody"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RenameDeviceOutputBody"];
-                };
             };
             /** @description Error */
             default: {
