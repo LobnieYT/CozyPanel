@@ -3,6 +3,15 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.7
+### en
+- A fresh panel works again: every section answered "could not load — no rights on this section", because the admin that `cozy admin bootstrap` creates was not marked as the owner, and only the owner reaches every section. The admin of a new panel is its owner from the start.
+- Panels set up before this one are repaired by themselves at the start: the first admin becomes the owner, the panel says so in its log, and the record is in the audit. The owner cannot be removed, changed or given away through the panel, so an owner that is missing meant exactly one thing — the panel was set up the broken way. Nothing to do by hand: a restart of the container is enough.
+
+### ru
+- Новая панель снова работает: каждый раздел отдавал «не удалось загрузить — нет прав на этот раздел», потому что админ, которого создаёт `cozy admin bootstrap`, не был помечен владельцем, а только владелец проходит в каждый раздел. Админ новой панели — её владелец с самого начала.
+- Панели, поставленные раньше, чинятся сами при старте: первый админ становится владельцем, панель пишет об этом в журнал, запись есть в аудите. Владельца нельзя удалить, изменить или отдать через панель, поэтому отсутствие владельца означало ровно одно — панель поставили с этим багом. Ничего делать руками не нужно: достаточно перезапустить контейнер.
+
 ## 1.3.6
 ### en
 - The subscription page opens again: it stopped at "could not load — server error" and saving it failed the same way. The document was written into the setting wrapped into a JSON string, so every later read could not parse it. It is written as a document now, a value left from the old way is still read, and a value that is neither shows the page as it always was instead of a 500.

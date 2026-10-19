@@ -264,7 +264,14 @@ func bootstrap(ctx context.Context, st *store.Store, set *settings.Settings, arg
 	}
 	err = st.Tx(ctx, func(q *db.Queries) error {
 		txSet := settings.New(q)
-		if _, err := q.CreateAdmin(ctx, db.CreateAdminParams{Username: name, PasswordHash: hash, CreatedAt: time.Now().Unix()}); err != nil {
+		a, err := q.CreateAdmin(ctx, db.CreateAdminParams{Username: name, PasswordHash: hash, CreatedAt: time.Now().Unix()})
+		if err != nil {
+			return err
+		}
+		// The admin of a fresh panel is its owner: the owner alone reaches every section
+		// and manages the other admins, and there is nobody else to hand that to. Without
+		// it the panel starts with an admin who may do nothing but sign in.
+		if err := q.SetAdminOwner(ctx, db.SetAdminOwnerParams{IsOwner: 1, ID: a.ID}); err != nil {
 			return err
 		}
 		values := map[string]any{

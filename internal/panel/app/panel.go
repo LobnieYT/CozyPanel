@@ -108,6 +108,13 @@ func (noChanges) PoliciesChanged() {}
 func (noChanges) SlotsChanged()    {}
 
 func NewPanel(st *store.Store, o Options) (*Panel, error) {
+	// A panel set up before 1.3.7 has an admin without the owner flag: he may sign in and
+	// nothing else — every section answers "no grant", and the admins' section too, so
+	// the panel could not be repaired from within. The first admin becomes the owner here,
+	// and the panel works.
+	if err := ensureOwner(context.Background(), st, o.Log); err != nil {
+		return nil, fmt.Errorf("owner: %w", err)
+	}
 	set := settings.New(st.Q)
 	p := &Panel{
 		Settings:  set,
