@@ -78,8 +78,18 @@ type Handler struct {
 	// trustProxy takes the client's IP from X-Forwarded-For (a reverse proxy in front).
 	trustProxy bool
 	tg         Telegram // nil: no bot
-	log        *slog.Logger
-	logged     sync.Map // what has been logged lately → when, so a standing fault is one line an hour
+	// logo serves the subscription page's own picture; nil = no picture is uploaded.
+	logo BrandLogo
+	log  *slog.Logger
+	// logged is what has been logged lately → when, so a standing fault is one line an hour.
+	logged sync.Map
+}
+
+// BrandLogo is the subscription page's logo: the bytes to serve and what they are.
+type BrandLogo interface {
+	// BrandLogo returns the picture, its content type and its hash; ok is false when none
+	// is uploaded or the file is gone.
+	BrandLogo(ctx context.Context) (raw []byte, contentType, hash string, ok bool)
 }
 
 // Telegram is the bot's part in subscriptions: the page's "Open in Telegram" link and the
@@ -94,6 +104,11 @@ func (h *Handler) SetTelegram(tg Telegram) { h.tg = tg }
 
 // SetReissuer plugs in the new-link-at-the-subscriber's-request path.
 func (h *Handler) SetReissuer(r Reissuer) { h.reissuer = r }
+
+// SetBrandLogo plugs in where the subscription page's logo lives: the file's reader. It is
+// what serves "<sub path>/brand/logo", the picture the page shows instead of the brand's
+// first letter.
+func (h *Handler) SetBrandLogo(l BrandLogo) { h.logo = l }
 
 // SetLogger sets where the handler says what it could not serve; without one it is silent.
 func (h *Handler) SetLogger(l *slog.Logger) {
@@ -114,6 +129,30 @@ func (h *Handler) warn(key, msg string, args ...any) {
 
 func NewHandler(st *store.Store, cfg func(ctx context.Context) (Config, error), page http.Handler, now func() time.Time, devices Binder, trustProxy bool) *Handler {
 	return &Handler{st: st, cfg: cfg, page: page, now: now, devices: devices, trustProxy: trustProxy, log: slog.New(slog.DiscardHandler)}
+}
+
+// serveBrandLogo answers with the logo's bytes and its type; ok is false when there is none
+// or the file is gone (a picture the admin chose and then deleted shows the letter).
+func (h *Handler) serveBrandLogo(w http.ResponseWriter, r *http.Request) {
+	if h.logo == nil {
+		server.NotFound(w)
+		return
+	}
+	raw, ct, hash, ok := h.logo.BrandLogo(r.Context())
+	if !ok {
+		server.NotFound(w)
+		return
+	}
+	etag := `"` + hash + `"`
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "public, max-age=3600, must-revalidate")
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Content-Length", strconv.Itoa(len(raw)))
+	_, _ = w.Write(raw)
 }
 
 // clientIP is the device's address as the nodes see it too: clients reach the panel
@@ -144,6 +183,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case (strings.HasPrefix(p, "assets/") || p == "logo.png" || strings.HasPrefix(p, "sub/apps/")) && h.page != nil:
 		h.page.ServeHTTP(w, r)
+		return
+	case strings.HasPrefix(p, "brand/"):
+		h.serveBrandLogo(w, r)
 		return
 	case rest != "" && rest != "info":
 		server.NotFound(w)

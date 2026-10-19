@@ -10,7 +10,7 @@ import { fieldErrors } from "../../../lib/fields";
 
 type Page = Schemas["Page"];
 
-export type SubPagePart = "look" | "brand" | "blocks" | "apps" | "css";
+export type SubPagePart = "brand" | "blocks" | "apps" | "css";
 
 const BLOCK_TYPES: Record<string, Key> = {
   announce: "settings.page.block.announce",
@@ -31,11 +31,6 @@ const BLOCK_TYPES: Record<string, Key> = {
 };
 
 const PLATFORMS = ["ios", "android", "windows", "macos", "linux"] as const;
-
-/** The choices of a Segmented: their own names, no translation: these are values, not words. */
-function opt<T extends string>(values: readonly T[]) {
-  return values.map((v) => ({ value: v, label: v }));
-}
 
 function useSubPage() {
   return useQuery({ queryKey: ["sub-page"], queryFn: ({ signal }) => unwrap(api.GET("/api/v1/sub-page", { signal })) });
@@ -81,45 +76,7 @@ function Editor({ v, section }: { v: Schemas["SubPageView"]; section: SubPagePar
   };
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      {section === "look" ? (
-        <>
-          <Card title={t("settings.page.lookPalette")}>
-            <Field label={t("settings.page.palette")}>
-              <Segmented label="" value={config.look.palette} options={opt<Page["look"]["palette"]>(["mikan", "ocean", "sakura", "forest", "graphite", "abyss", "ember", "moss", "nord", "tokyo"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, palette: v } }))} />
-            </Field>
-            <Field label={t("settings.page.mode")}>
-              <Segmented label="" value={config.look.mode} options={opt<Page["look"]["mode"]>(["light", "dark", "system"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, mode: v } }))} />
-            </Field>
-            <Field label={t("settings.page.accent")} hint={config.look.accent === "brand" && !accent ? t("settings.page.accentNeeded") : undefined}>
-              <Segmented label="" value={config.look.accent} options={opt<Page["look"]["accent"]>(["theme", "brand"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, accent: v } }))} />
-            </Field>
-            <Field label={t("settings.page.background")}>
-              <Segmented label="" value={config.look.background.kind} options={opt<Page["look"]["background"]["kind"]>(["theme", "solid", "gradient"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, background: { ...c.look.background, kind: v } } }))} />
-            </Field>
-            {config.look.background.kind !== "theme" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={t("settings.page.from")} error={errors["look.background.from"]}>
-                  <input className="input mono" value={config.look.background.from} onChange={(e) => set((c) => ({ ...c, look: { ...c.look, background: { ...c.look.background, from: e.target.value } } }))} />
-                </Field>
-                {config.look.background.kind === "gradient" ? (
-                  <Field label={t("settings.page.to")} error={errors["look.background.to"]}>
-                    <input className="input mono" value={config.look.background.to} onChange={(e) => set((c) => ({ ...c, look: { ...c.look, background: { ...c.look.background, to: e.target.value } } }))} />
-                  </Field>
-                ) : null}
-              </div>
-            ) : null}
-            <Field label={t("settings.page.font")}>
-              <Segmented label="" value={config.look.font} options={opt<Page["look"]["font"]>(["default", "system", "rounded"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, font: v } }))} />
-            </Field>
-            <Field label={t("settings.page.radius")}>
-              <Segmented label="" value={config.look.radius} options={opt<Page["look"]["radius"]>(["small", "medium", "large"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, radius: v } }))} />
-            </Field>
-            <Field label={t("settings.page.cards")}>
-              <Segmented label="" value={config.look.cards} options={opt<Page["look"]["cards"]>(["glass", "solid"])} onChange={(v) => set((c) => ({ ...c, look: { ...c.look, cards: v } }))} />
-            </Field>
-          </Card>
-        </>
-      ) : section === "brand" ? (
+      {section === "brand" ? (
         <Card title={t("settings.page.brandTitle")}>
           <Field label={t("settings.page.brandName")} error={errors.brand}>
             <input className="input" value={brand} maxLength={40} onChange={(e) => setBrand(e.target.value)} />
@@ -128,13 +85,24 @@ function Editor({ v, section }: { v: Schemas["SubPageView"]; section: SubPagePar
             <input className="input mono" value={accent} placeholder="#7C5CFF" onChange={(e) => setAccent(e.target.value)} />
           </Field>
           <Field label={t("settings.page.logo")}>
-            <Segmented label="" value={config.brand.logo} options={opt<Page["brand"]["logo"]>(["letter", "emoji", "none"])} onChange={(v) => set((c) => ({ ...c, brand: { ...c.brand, logo: v } }))} />
+            <Segmented
+              label=""
+              value={config.brand.logo}
+              options={[
+                { value: "letter", label: t("settings.page.signLetter") },
+                { value: "emoji", label: t("settings.page.signEmoji") },
+                { value: "image", label: t("settings.page.signImage") },
+                { value: "none", label: t("settings.page.signNone") },
+              ] satisfies { value: Page["brand"]["logo"]; label: string }[]}
+              onChange={(v) => set((c) => ({ ...c, brand: { ...c.brand, logo: v } }))}
+            />
           </Field>
           {config.brand.logo === "emoji" ? (
             <Field label={t("settings.page.emoji")} error={errors["brand.emoji"]}>
               <input className="input" value={config.brand.emoji} maxLength={32} onChange={(e) => set((c) => ({ ...c, brand: { ...c.brand, emoji: e.target.value } }))} />
             </Field>
           ) : null}
+          {config.brand.logo === "image" ? <LogoUpload logo={v.logo} /> : null}
           <Field label={t("settings.page.subtitle")} error={errors["brand.subtitle"]}>
             <input className="input" value={config.brand.subtitle} maxLength={80} onChange={(e) => set((c) => ({ ...c, brand: { ...c.brand, subtitle: e.target.value } }))} />
           </Field>
@@ -217,6 +185,103 @@ function Editor({ v, section }: { v: Schemas["SubPageView"]; section: SubPagePar
       </div>
     </form>
   );
+}
+
+// The logo as a picture of its own: the file goes to the panel, which keeps it under
+// data/subpage and shows it on the subscription page instead of the brand's first letter.
+const LOGO_MAX_BYTES = 512 * 1024;
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+function LogoUpload({ logo }: { logo?: Schemas["PageAsset"] }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const upload = useMutation({
+    mutationFn: (image: string) => unwrap(api.PUT("/api/v1/sub-page/logo", { body: { image } })),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["sub-page"] });
+      void qc.invalidateQueries({ queryKey: ["sub-page-logo"] });
+      toast.ok(t("settings.page.logoSaved"));
+    },
+    onError: (e) => toast.error(errorText(e)),
+  });
+  const remove = useMutation({
+    mutationFn: () => unwrap(api.DELETE("/api/v1/sub-page/logo")),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["sub-page"] });
+      void qc.invalidateQueries({ queryKey: ["sub-page-logo"] });
+      setPreview(null);
+      toast.ok(t("settings.page.logoRemoved"));
+    },
+    onError: (e) => toast.error(errorText(e)),
+  });
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    if (!LOGO_TYPES.includes(file.type)) {
+      toast.error(t("settings.page.logoBadType"));
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      toast.error(t("settings.page.logoTooBig"));
+      return;
+    }
+    setBusy(true);
+    setPreview(URL.createObjectURL(file));
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      // Кусочками: файл до 512 КБ, но в один длинный base64-аргумент не влезть не должно.
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) {
+        bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      }
+      upload.mutate(btoa(bin));
+    } catch {
+      setPreview(null);
+      toast.error(t("settings.page.logoReadFailed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const shown = useQuery({
+    queryKey: ["sub-page-logo", logo?.hash],
+    queryFn: () => unwrap(api.GET("/api/v1/sub-page/logo")),
+    enabled: !!logo && !preview,
+    retry: false,
+  });
+  const remote = shown.data ? `data:${shown.data.content_type};base64,${shown.data.image}` : null;
+  const src = preview ?? remote;
+  return (
+    <Field label={t("settings.page.logoUpload")} hint={t("settings.page.logoHint")}>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="grid h-16 w-16 flex-none place-items-center overflow-hidden rounded-2xl border border-[var(--hairline)] bg-[var(--surface-soft)]">
+          {src ? <img src={src} alt={t("settings.page.logoAlt")} className="h-full w-full object-contain" /> : <span className="text-xs text-[var(--ink-500)]">{t("settings.page.logoNone")}</span>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <label className="btn cursor-pointer">
+            {t("settings.page.logoChoose")}
+            <input
+              type="file"
+              accept={LOGO_TYPES.join(",")}
+              className="sr-only"
+              disabled={busy || upload.isPending}
+              onChange={(e) => void pick(e.target.files?.[0])}
+            />
+          </label>
+          {logo ? (
+            <Button type="button" variant="danger" loading={remove.isPending} onClick={() => remove.mutate()}>
+              {t("settings.page.logoRemove")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </Field>
+  );
+}
+
+/** The choices of a Segmented: their own names, no translation — these are values, not words. */
+function opt<T extends string>(values: readonly T[]) {
+  return values.map((v) => ({ value: v, label: v }));
 }
 
 function swap<T>(list: T[], a: number, b: number): T[] {

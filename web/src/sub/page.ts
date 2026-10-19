@@ -2,6 +2,7 @@
 // into the page's HTML as a JSON block, so the page knows its look before anything loads.
 import type { CSSProperties } from "react";
 import type { components } from "../api/schema";
+import { subRoot } from "./net";
 
 export type PageConfig = components["schemas"]["Page"];
 export type PageBlock = components["schemas"]["PageBlock"];
@@ -10,6 +11,8 @@ export type PageLook = components["schemas"]["PageLook"];
 type PagePublic = {
   config: PageConfig;
   brand: string;
+  /** Where the uploaded logo is, relative to the subscription path. */
+  logo?: string;
   /** The brand's colour when the page takes it; none keeps the palette's. */
   accent?: string;
 };
@@ -43,6 +46,16 @@ export function readPage(): PagePublic {
     // A broken block is the default page, not an empty one.
   }
   return { config: DEFAULT_PAGE, brand: "" };
+}
+
+/**
+ * The uploaded logo as the page's address: null when the admin chose the first letter, an
+ * emoji or nothing — or when the sign is chosen but no file is uploaded (a chosen picture
+ * that is gone shows the letter, the page does not break).
+ */
+export function logoSrc(page: PagePublic): string | null {
+  if (page.config.brand.logo !== "image" || !page.logo) return null;
+  return subRoot + "/" + page.logo;
 }
 
 /** "system" follows the visitor's scheme as it changes. */

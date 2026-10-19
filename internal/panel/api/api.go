@@ -57,6 +57,9 @@ type Deps struct {
 	RenewCert func()
 	// CertCheck is "Check the certificate": the outside look; nil disables the button.
 	CertCheck func(context.Context) (*certcheck.CertReport, error)
+	// RefreshSubPage puts the subscription page's own data into the running panel again:
+	// the page is served from it, so a new logo or CSS is there at once. nil in tests.
+	RefreshSubPage func()
 	// Nodes is the live side of the nodes; nil when the panel runs without them.
 	Nodes NodeRuntime
 	// PanelCert is the client certificate remote nodes pin; their join keys carry its hash.

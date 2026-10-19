@@ -106,22 +106,17 @@ export function SubPortCard({ s }: { s: Schemas["SettingsView"] }) {
   );
 }
 
-const routingModes = [
-  { id: "ru_direct", title: "settings.routingRuDirect", sub: "settings.routingRuDirectSub" },
-  { id: "all", title: "settings.routingAll", sub: "settings.routingAllSub" },
-] as const;
-
 export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
   const save = useSaveSettings();
   const { can } = useGrants();
   const writable = can("settings", true);
   const inbounds = useInbounds();
-  const { draft: form, setDraft: setForm } = useDraft({ brand: s.brand, support_url: s.support_url, pay_contact: s.pay_contact, sub_group_main: s.sub_group_main, sub_group_auto: s.sub_group_auto, sub_routing: s.sub_routing, client_fingerprint: s.client_fingerprint });
+  const { draft: form, setDraft: setForm } = useDraft({ brand: s.brand, support_url: s.support_url, pay_contact: s.pay_contact, sub_group_main: s.sub_group_main, sub_group_auto: s.sub_group_auto, client_fingerprint: s.client_fingerprint });
   const [fpOk, setFpOk] = useState(true);
   const errors = fieldErrors(save.error);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    save.mutate({ brand: form.brand, support_url: form.support_url, pay_contact: form.pay_contact, sub_group_main: form.sub_group_main.trim(), sub_group_auto: form.sub_group_auto.trim(), sub_routing: form.sub_routing, client_fingerprint: form.client_fingerprint });
+    save.mutate({ brand: form.brand, support_url: form.support_url, pay_contact: form.pay_contact, sub_group_main: form.sub_group_main.trim(), sub_group_auto: form.sub_group_auto.trim(), client_fingerprint: form.client_fingerprint });
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const proxies = (inbounds.data ?? []).filter((i) => i.enabled).map((i) => i.sub_name);
@@ -163,16 +158,6 @@ export function SubscriptionCard({ s }: { s: Schemas["SettingsView"] }) {
             ))}
           </div>
         </div>
-        <Field label={t("settings.routing")} hint={t("settings.routingHint")}>
-          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t("settings.routing")}>
-            {routingModes.map((m) => (
-              <button key={m.id} type="button" role="radio" aria-checked={form.sub_routing === m.id} className="opt" onClick={() => setForm((f) => ({ ...f, sub_routing: m.id }))}>
-                <span className="font-semibold">{t(m.title)}</span>
-                <span className="text-xs text-[var(--ink-500)]">{t(m.sub)}</span>
-              </button>
-            ))}
-          </div>
-        </Field>
         <Field label={t("settings.fingerprint")} htmlFor="s-fp" hint={t("settings.fingerprintHint")} error={errors.client_fingerprint}>
           <FingerprintSelect key={s.client_fingerprint} id="s-fp" value={form.client_fingerprint} onChange={(v) => setForm((f) => ({ ...f, client_fingerprint: v }))} invalid={!!errors.client_fingerprint} onValid={setFpOk} />
         </Field>

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowUpCircle, Bot, DatabaseBackup, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Send, Server, ShieldCheck, SlidersHorizontal, Tag, Users } from "lucide-react";
+import { ArrowUpCircle, Bot, Globe, LayoutDashboard, LogOut, MoreHorizontal, Network, Send, Server, ShieldCheck, SlidersHorizontal, Tag, Users } from "lucide-react";
 import { api, unwrap } from "../api/client";
 import { meQuery, useNode, useOverview, useUpdates } from "../api/hooks";
 import { Logo } from "../components/atmosphere";
@@ -22,7 +22,6 @@ const NAV = [
   { to: "/settings/admin-bot", key: "adminBot", icon: Send, tag: "admin-bot" },
   { to: "/settings", key: "settings", icon: SlidersHorizontal, tag: "settings" },
   { to: "/admins", key: "admins", icon: ShieldCheck, tag: "admins" },
-  { to: "/backups", key: "backups", icon: DatabaseBackup, tag: "backups" },
 ] as const;
 
 function useNav() {
@@ -31,8 +30,9 @@ function useNav() {
   return NAV.filter((n) => {
     if (!admin) return true;
     if (admin.owner) return true;
-    // Admins and backups are owner-only: they never appear in a matrix.
-    if (n.tag === "admins" || n.tag === "backups") return false;
+    // Admins are owner-only: they never appear in a matrix. Backups is out of the menu
+    // for now; its page and its owner-only rule are still there for when it comes back.
+    if (n.tag === "admins") return false;
     const g = admin.scopes?.[n.tag];
     return g === "r" || g === "w";
   });

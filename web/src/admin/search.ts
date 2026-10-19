@@ -10,7 +10,7 @@ export const SETTINGS_TABS = ["general", "subscription", "routing", "rules", "pa
 export type SettingsSearch = { tab: (typeof SETTINGS_TABS)[number]; part?: string };
 
 /** The parts the sub-page editor opens at; the rest of the sections have none. */
-export const SETTINGS_PARTS = { routing: ["dns", "routes", "outbounds", "adblock"], page: ["look", "brand", "blocks", "apps", "css"] } as const;
+export const SETTINGS_PARTS = { routing: ["dns", "routes", "outbounds", "adblock"], page: ["brand", "blocks", "apps", "css"] } as const;
 
 export const TARIFF_TABS = ["tariffs", "pools", "packages"] as const;
 export type TariffsSearch = { tab: (typeof TARIFF_TABS)[number] };

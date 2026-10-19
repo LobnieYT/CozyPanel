@@ -3,6 +3,19 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.6
+### en
+- The subscription page opens again: it stopped at "could not load — server error" and saving it failed the same way. The document was written into the setting wrapped into a JSON string, so every later read could not parse it. It is written as a document now, a value left from the old way is still read, and a value that is neither shows the page as it always was instead of a 500.
+- The subscription page's logo: upload a PNG, JPEG or WebP under Brand → Sign → Logo, and the page shows it in the header instead of the brand's first letter. SVG and anything over 512 KB are refused; the picture is kept under data/subpage and a new upload replaces the old one. The Look part of the page is gone from the settings — the page keeps what was configured, it is just not edited there.
+- "Russian sites direct" moved from Subscription to Routing, where the routes live: it is the choice of what the apps send straight out and what goes through the VPN. Backups is out of the menu for now; the page and everything behind it are still there.
+- Saving the page's settings now reaches the page right away: the panel serves it, so a new logo or CSS is live without a restart.
+
+### ru
+- Страница подписки снова открывается: она отдавала «не удалось загрузить — ошибка сервера», и сохранение падало так же. Документ записывался в настройку, обёрнутый в JSON-строку, поэтому каждый следующий раз не читался. Теперь он записывается как документ, старое значение в прежнем виде всё ещё читается, а то, что не является ни тем, ни другим, показывает страницу как обычно, а не 500.
+- Логотип страницы подписки: загрузите PNG, JPEG или WebP в «Страница подписки» → «Бренд» → «Логотип», и страница покажет его в шапке вместо первой буквы названия. SVG и всё, что больше 512 КБ, не принимаются; картинка лежит в data/subpage, новая загрузка заменяет старую. Часть «Вид» из настроек страницы убрана — что было настроено, то и осталось, просто это больше не правят там.
+- «Российское — напрямую» переехало из «Подписки» в «Маршрутизацию», где и живут маршруты: это выбор, что приложения отправляют мимо VPN, а что через него. «Бекапы» убраны из меню — страница и всё, что за ней, на месте.
+- Сохранение настроек страницы теперь сразу доходит до страницы: её отдаёт сама панель, поэтому новый логотип или CSS видны без перезапуска.
+
 ## 1.3.5
 ### en
 - The settings' section list is finally laid out as intended: its rules sat inside the phone-only `@media (max-width: 760px)` block, so on a desktop none of them applied — no icons beside the names, no spacing, no active item, no two-column cards. They are outside that block now, and the list stands beside the content exactly as the design it was ported from shows it.

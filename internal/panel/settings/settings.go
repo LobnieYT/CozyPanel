@@ -63,7 +63,10 @@ const (
 	KeySubPage = "sub_page"
 	// KeyBrandAccent is the brand's colour, taken by the page when its look asks for it.
 	KeyBrandAccent = "brand_accent"
-	KeySupportURL  = "support_url"
+	// KeySubLogo is the logo the admin uploaded for the subscription page: the file's name,
+	// type, hash and size. The bytes live under data/subpage.
+	KeySubLogo    = "sub_logo"
+	KeySupportURL = "support_url"
 	// KeyPayContact is the admin's Telegram contact for manual payment, shown by the
 	// bot instead of invoices: "@name", a t.me link, or any text.
 	KeyPayContact = "pay_contact"

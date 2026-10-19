@@ -1011,6 +1011,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sub-page/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Загруженный логотип страницы подписки (для предпросмотра) */
+        get: operations["get-sub-page-logo"];
+        /** Загрузить логотип страницы подписки */
+        put: operations["upload-sub-page-logo"];
+        post?: never;
+        /** Убрать логотип страницы подписки */
+        delete: operations["delete-sub-page-logo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tariffs": {
         parameters: {
             query?: never;
@@ -1732,6 +1751,26 @@ export interface components {
             fix?: string;
             id: string;
             status: string;
+        };
+        GetSubLogoOutputBody: {
+            content_type: string;
+            image: string;
+        };
+        PageAsset: {
+            content_type: string;
+            hash: string;
+            name: string;
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            updated_at: number;
+        };
+        PutSubLogoInputBody: {
+            /** @description Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается */
+            image: string;
+        };
+        DeleteSubLogoOutputBody: {
+            deleted: boolean;
         };
         CertInputBody: {
             /** @description Цепочка в PEM: сначала сертификат, за ним промежуточные (fullchain.pem) */
@@ -2958,6 +2997,8 @@ export interface components {
             config: components["schemas"]["Page"];
             /** @description Страница по умолчанию — к ней ведёт «Сбросить» */
             defaults: components["schemas"]["Page"];
+            /** @description Загруженный логотип страницы */
+            logo?: components["schemas"]["PageAsset"];
         };
         System: {
             /** Format: double */
@@ -5869,6 +5910,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubPageView"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-sub-page-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetSubLogoOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "upload-sub-page-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutSubLogoInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageAsset"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-sub-page-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteSubLogoOutputBody"];
                 };
             };
             /** @description Error */

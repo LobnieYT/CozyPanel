@@ -14,13 +14,15 @@ import { APPS, detect, enc, type Platform } from "./apps";
 import { Devices } from "./devices";
 import { initData, json, outside, pageURL, request, subRoot, tgEvent, tgMode } from "./net";
 import { ReissueSection } from "./reissue";
-import { applyLook, backdropStyle, readPage } from "./page";
+import { applyLook, backdropStyle, logoSrc, readPage } from "./page";
 import type { Info, TgSub } from "./types";
 
 // The look the admin built, put on the page before it paints.
 const page = readPage();
 applyLook(page);
 const backdrop = backdropStyle(page.config.look);
+// Знак, который задал админ: загруженный логотип, а без него — тот, что у панели.
+const ownLogo = logoSrc(page);
 
 function SubPage() {
   // Texts are read at render time: follow a language switch without remounting the page
@@ -393,7 +395,11 @@ function Shell({ brand, children }: { brand?: string; children: React.ReactNode 
       className="calm-glass mx-auto flex max-w-[440px] flex-col gap-3 px-4 pt-[calc(24px+env(safe-area-inset-top))] pb-[calc(40px+env(safe-area-inset-bottom))]"
     >
       <div className="flex items-center gap-2 px-1 pb-1">
-        <Logo size={28} />
+        {ownLogo ? (
+          <img src={ownLogo} alt="" width={28} height={28} className="h-7 w-7 object-contain" />
+        ) : (
+          <Logo size={28} />
+        )}
         <span className="font-display text-[15px] font-semibold tracking-tight">{brand ?? ""}</span>
         <LangSwitch className="ml-auto" />
       </div>

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,6 +124,9 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 		IPLimit: p.ipLimit, UserLimit: p.userLimit, TOTP: auth.NewTOTPGuard(),
 		TrustProxy: o.TrustProxy, Log: o.Log, Now: o.Now, Pool: pool,
 		DataDir: o.DataDir,
+		// The subscription page is served from here: a new logo or CSS goes into its
+		// <head> at once, without a restart.
+		RefreshSubPage: func() { p.applySubPage(context.Background()) },
 	}
 	if o.Connect != nil {
 		p.Nodes = nodesync.NewManager(st, set, pool, o.Connect, o.Log, o.Now)
@@ -284,6 +288,7 @@ func NewPanel(st *store.Store, o Options) (*Panel, error) {
 	subCfg := func(ctx context.Context) (subs.Config, error) { return cache.get(ctx, buildSubCfg) }
 	deps.SubConfig = subCfg
 	subHandler := subs.NewHandler(st, subCfg, subPageHandler, o.Now, deps.Devices, o.TrustProxy)
+	subHandler.SetBrandLogo(subPageLogo{q: st.Q, dir: filepath.Join(o.DataDir, "subpage")})
 	subHandler.SetLogger(o.Log)
 	subHandler.SetTelegram(p.Telegram)
 	subHandler.SetReissuer(deps.Users)
@@ -373,6 +378,30 @@ func (p *Panel) Apply(ctx context.Context) (settings.Paths, error) {
 		p.applySubPage(ctx)
 	}
 	return paths, nil
+}
+
+// subPageLogo serves the subscription page's logo to subscribers: the page's own data
+// names it, and the picture itself comes from here.
+type subPageLogo struct {
+	q   *db.Queries
+	dir string
+}
+
+// BrandLogo returns the bytes, the type and the hash; a picture the admin deleted shows
+// the brand's first letter, so a missing file is not an error.
+func (l subPageLogo) BrandLogo(ctx context.Context) ([]byte, string, string, bool) {
+	asset, ok, err := subpage.NewService(l.q).Logo(ctx)
+	if err != nil || !ok {
+		return nil, "", "", false
+	}
+	if asset.Name == "" || asset.Name != filepath.Base(asset.Name) || strings.HasPrefix(asset.Name, ".") {
+		return nil, "", "", false
+	}
+	raw, err := os.ReadFile(filepath.Join(l.dir, asset.Name))
+	if err != nil {
+		return nil, "", "", false
+	}
+	return raw, asset.Type, asset.Hash, true
 }
 
 // applySubPage puts the subscription page's own data and the admin's CSS into its <head>,

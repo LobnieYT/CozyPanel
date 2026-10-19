@@ -18,10 +18,9 @@ import { SubPageSettings, type SubPagePart } from "./sub-page";
 type Tab = SettingsSearch["tab"];
 type RoutingPart = "dns" | "routes" | "outbounds" | "adblock";
 
-const PAGE_PARTS: SubPagePart[] = ["look", "brand", "blocks", "apps", "css"];
+const PAGE_PARTS: SubPagePart[] = ["brand", "blocks", "apps", "css"];
 
 const PART_LABELS: Record<string, Key> = {
-  look: "settings.page.look",
   brand: "settings.page.brand",
   blocks: "settings.page.blocks",
   apps: "settings.page.apps",
@@ -46,7 +45,7 @@ export function SettingsPage() {
   const me = useQuery(meQuery);
   const { tab, part } = useSearch({ from: "/_app/settings" });
   const routingPart: RoutingPart = (["dns", "routes", "outbounds", "adblock"] as const).find((x) => x === part) ?? "dns";
-  const pagePart: SubPagePart = PAGE_PARTS.find((x) => x === part) ?? "look";
+  const pagePart: SubPagePart = PAGE_PARTS.find((x) => x === part) ?? "brand";
   const navigate = useNavigate({ from: "/settings" });
   const go = (next: Tab, nextPart?: string) => void navigate({ search: { tab: next, part: nextPart }, replace: true });
   const wide = tab === "routing";
@@ -87,7 +86,7 @@ export function SettingsPage() {
                 </>
               ) : tab === "routing" ? (
                 <>
-                  <RoutingSection part={routingPart} />
+                  <RoutingSection part={routingPart} s={s} />
                 </>
               ) : tab === "rules" ? (
                 <ClashRulesCard s={s} />

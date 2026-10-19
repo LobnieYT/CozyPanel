@@ -858,6 +858,79 @@
         ],
         "type": "object"
       },
+      "GetSubLogoOutputBody":       {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "image",
+          "content_type"
+        ],
+        "type": "object"
+      },
+      "PageAsset":       {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "content_type",
+          "hash",
+          "size",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "PutSubLogoInputBody":       {
+        "additionalProperties": false,
+        "properties": {
+          "image": {
+            "description": "Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается",
+            "maxLength": 800000,
+            "minLength": 50,
+            "type": "string"
+          }
+        },
+        "required": [
+          "image"
+        ],
+        "type": "object"
+      },
+      "DeleteSubLogoOutputBody":       {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
       "CertInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -4351,7 +4424,7 @@
         ],
         "type": "object"
       },
-      "SubPageView": {
+      "SubPageView":       {
         "additionalProperties": false,
         "properties": {
           "brand": {
@@ -4368,6 +4441,10 @@
           "defaults": {
             "$ref": "#/components/schemas/Page",
             "description": "Страница по умолчанию — к ней ведёт «Сбросить»"
+          },
+          "logo": {
+            "$ref": "#/components/schemas/PageAsset",
+            "description": "Загруженный логотип страницы"
           }
         },
         "required": [
@@ -8748,6 +8825,108 @@
           }
         },
         "summary": "Сохранить страницу подписки",
+        "tags": [
+          "sub-page"
+        ],
+        "x-session-only": true
+      }
+    },
+"/api/v1/sub-page/logo":     {
+      "delete": {
+        "operationId": "delete-sub-page-logo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSubLogoOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Убрать логотип страницы подписки",
+        "tags": [
+          "sub-page"
+        ],
+        "x-session-only": true
+      },
+      "get": {
+        "operationId": "get-sub-page-logo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubLogoOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Загруженный логотип страницы подписки (для предпросмотра)",
+        "tags": [
+          "sub-page"
+        ],
+        "x-session-only": true
+      },
+      "put": {
+        "operationId": "upload-sub-page-logo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutSubLogoInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAsset"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Загрузить логотип страницы подписки",
         "tags": [
           "sub-page"
         ],
