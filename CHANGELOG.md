@@ -3,6 +3,17 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.3.8
+### en
+- The certificate is issued for a domain written with capitals. The ACME server brings the name of an order to the lower case (it is allowed to, RFC 8555 §7.4), and the client library compared the names letter by letter and refused the order for a name it had only re-cased. The panel sends the canonical name now, and the domain in the settings is kept in that one spelling — the certificate, the nodes' SNI and the subscriptions' links all name the same host.
+- A domain with capitals or a trailing dot is saved as the name it is, and is no longer refused for the writing.
+- An order that comes back from the server with nothing and without an error no longer takes the panel down: it is said to have failed.
+
+### ru
+- Сертификат выдаётся для домена, написанного с заглавными буквами. ACME-сервер приводит имя заказа к нижнему регистру (это разрешено, RFC 8555 §7.4), а клиентская библиотека сравнивала имена посимвольно и отказывала в заказе из-за имени, которое сервер только переписал в другом регистре. Теперь панель отправляет каноническое имя, и в настройках домен хранится в этом одном написании — сертификат, SNI нод и ссылки подписок называют один и тот же хост.
+- Домен с заглавными или с точкой на конце сохраняется как есть и больше не отвергается за само написание.
+- Заказ, вернувшийся с сервера впустую и без ошибки, больше не роняет панель: сказано, что заказ не удался.
+
 ## 1.3.7
 ### en
 - A fresh panel works again: every section answered "could not load — no rights on this section", because the admin that `cozy admin bootstrap` creates was not marked as the owner, and only the owner reaches every section. The admin of a new panel is its owner from the start.

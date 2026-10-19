@@ -278,7 +278,9 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 	if b.PublicHost != nil && !hostname.Valid(*b.PublicHost) {
 		details = append(details, &huma.ErrorDetail{Location: "body.public_host", Message: "public_host_invalid"})
 	}
-	if b.Domain != nil && *b.Domain != "" && !hostname.Valid(*b.Domain) {
+	// The domain is checked as it is kept: a name with capitals or a trailing dot is the
+	// same name, and the panel keeps it in one spelling.
+	if b.Domain != nil && strings.TrimSpace(*b.Domain) != "" && !hostname.Valid(settings.CanonicalDomain(*b.Domain)) {
 		details = append(details, &huma.ErrorDetail{Location: "body.domain", Message: "domain_invalid"})
 	}
 	if b.SupportURL != nil && *b.SupportURL != "" && !strings.HasPrefix(*b.SupportURL, "https://") && !strings.HasPrefix(*b.SupportURL, "tg://") {
@@ -341,11 +343,13 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 		if err != nil {
 			return nil, err
 		}
-		dom := cur
+		dom := settings.CanonicalDomain(cur)
 		if b.Domain != nil {
-			dom = strings.TrimSpace(*b.Domain)
+			dom = settings.CanonicalDomain(*b.Domain)
 		}
-		if dom != "" && (dom != cur || b.PublicHost != nil) {
+		// The name is compared as it is written down, so a domain that only differs in
+		// case does not send the panel to the public DNS for nothing.
+		if dom != "" && (dom != settings.CanonicalDomain(cur) || b.PublicHost != nil) {
 			host := ""
 			if b.PublicHost != nil {
 				host = strings.TrimSpace(*b.PublicHost)
@@ -394,7 +398,14 @@ func (h *handlers) updateSettings(ctx context.Context, in *patchSettingsInput) (
 			if v == nil {
 				continue
 			}
-			if err := settings.Set(ctx, set, key, strings.TrimSpace(*v)); err != nil {
+			value := strings.TrimSpace(*v)
+			if key == settings.KeyDomain {
+				// A DNS name does not care about the case, and the ACME server brings it to
+				// the lower one: kept as written, the order would be refused for a name the
+				// server only re-cased. One name, one spelling, everywhere.
+				value = settings.CanonicalDomain(value)
+			}
+			if err := settings.Set(ctx, set, key, value); err != nil {
 				return err
 			}
 		}

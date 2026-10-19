@@ -186,12 +186,17 @@ func (m *Manager) ClearCustom() error {
 	return nil
 }
 
+// identifier is the name the certificate is for: the domain, or the address when there is
+// no domain. It is the canonical one — as the ACME server knows the name (see
+// settings.CanonicalDomain), so the server never "changes" it and the order does not
+// fail.
 func (m *Manager) identifier(ctx context.Context) (string, error) {
 	d, err := m.set.String(ctx, settings.KeyDomain)
 	if err != nil || d != "" {
-		return d, err
+		return settings.CanonicalDomain(d), err
 	}
-	return m.set.String(ctx, settings.KeyPublicHost)
+	host, err := m.set.String(ctx, settings.KeyPublicHost)
+	return settings.CanonicalDomain(host), err
 }
 
 // ensure makes the panel serve the right certificate and, when it needs a new one from
@@ -368,6 +373,12 @@ func (m *Manager) obtain(ctx context.Context, id string) (*tls.Certificate, erro
 	res, err := client.Certificate.Obtain(req)
 	if err != nil {
 		return nil, err
+	}
+	// The library may come back with nothing and without an error (the order failed and
+	// there was no authorization to name the failure by): the panel says it failed rather
+	// than falls over.
+	if res == nil {
+		return nil, errors.New("the certificate order returned nothing")
 	}
 	if err := fsutil.WriteFileAtomic(filepath.Join(m.dir, "cert.pem"), res.Certificate, 0o600); err != nil {
 		return nil, err
