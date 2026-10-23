@@ -89,15 +89,16 @@ type NewInbound struct {
 // InboundPatch changes an inbound; a nil field stays as it is.
 type InboundPatch struct {
 	// What clients get: a change here bumps updated_at, so their profiles refresh.
-	Port        *string
-	Enabled     *bool
-	Config      *string // the whole template
-	Dest        *string // the REALITY target, host:port
-	ServerName  *string // the name clients send with Dest; "" takes the host of Dest
-	Fingerprint *string
-	Obfs        *string
-	Client      *ClientEndpoint // replaces all three
-	DisplayName *string
+	Port              *string
+	Enabled           *bool
+	Config            *string // the whole template
+	Dest              *string // the REALITY target, host:port
+	ServerName        *string // the name clients send with Dest; "" takes the host of Dest
+	Fingerprint       *string
+	Obfs              *string
+	Client            *ClientEndpoint // replaces all three
+	DisplayName       *string
+	MaxTimeDifference *int64 // REALITY max-time-difference in microseconds
 	// What only the node uses.
 	Listen     *string
 	AutoPort   *bool
@@ -376,6 +377,14 @@ func editTemplate(config string, p InboundPatch) (string, error) {
 	if c := p.Client; c != nil {
 		edits = append(edits, templateEdit{"client", func(t proto.Template) error {
 			return proto.SetClientEndpoint(t, strings.TrimSpace(c.Server), c.Port, strings.TrimSpace(c.SNI))
+		}})
+	}
+	if p.MaxTimeDifference != nil {
+		edits = append(edits, templateEdit{"max-time-difference", func(t proto.Template) error {
+			if rc, ok := t["reality-config"].(map[string]any); ok {
+				rc["max-time-difference"] = *p.MaxTimeDifference
+			}
+			return nil
 		}})
 	}
 	for _, e := range edits {

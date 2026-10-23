@@ -15,6 +15,7 @@ import { Devices } from "./devices";
 import { initData, json, outside, pageURL, request, subRoot, tgEvent, tgMode } from "./net";
 import { ReissueSection } from "./reissue";
 import { applyLook, backdropStyle, logoSrc, readPage } from "./page";
+import { AlertTriangle } from "lucide-react";
 import type { Info, TgSub } from "./types";
 
 // The look the admin built, put on the page before it paints.
@@ -37,6 +38,7 @@ function SubPage() {
   const [copied, setCopied] = useState(false);
   const [subURL, setSubURL] = useState(tgMode ? "" : pageURL);
   const [tg, setTg] = useState<{ state: "loading" | "none" | "failed" | "ok"; subs: TgSub[] }>({ state: tgMode ? "loading" : "ok", subs: [] });
+  const [clockSkew, setClockSkew] = useState<number | null>(null);
   const current = info && info.url === subURL ? info.data : null;
   const failed = !current && failedURL === subURL;
 
@@ -45,6 +47,12 @@ function SubPage() {
     setInfo({ url, data: d });
     setFailedURL(null);
     document.title = d.brand;
+    // Clock skew detection: compare server_time (Unix seconds) with local time
+    if (d.server_time) {
+      const skew = Math.abs(Date.now() / 1000 - d.server_time);
+      if (skew > 30) setClockSkew(skew);
+      else setClockSkew(null);
+    }
   }, []);
 
   // The Mini App signs in with the launch data Telegram puts after the #.
@@ -176,6 +184,22 @@ function SubPage() {
 
   return (
     <Shell brand={current.brand}>
+      {clockSkew !== null ? (
+        <section className="glass rounded-3xl p-4 border border-[var(--berry-300)] bg-[rgba(222,44,80,0.08)]" role="alert">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="shrink-0 text-[var(--berry-500)]" aria-hidden />
+            <div className="flex-1">
+              <h2 className="font-semibold text-[var(--berry-700)]">{t("sub.clockSkewTitle")}</h2>
+              <p className="mt-1 text-[13px] text-[var(--berry-600)]">
+                {t("sub.clockSkewText", { skew: Math.round(clockSkew) })}
+              </p>
+              <p className="mt-2 text-[12px] text-[var(--ink-500)]">
+                {t("sub.clockSkewHint")}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
       {tg.subs.length > 1 ? (
         <div className="flex gap-1 overflow-x-auto rounded-[14px] bg-[var(--hover)] p-1" role="group" aria-label={t("sub.link")}>
           {tg.subs.map((s) => (

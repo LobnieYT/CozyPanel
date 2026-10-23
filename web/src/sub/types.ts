@@ -33,6 +33,8 @@ export type Info = {
   speed_limit?: number;
   telegram?: string;
   pools?: { name: string; limit?: number; used: number; extra?: number }[];
+  locations?: string[];
+  server_time?: number;
 };
 
 export type Device = { id: number; name: string; os: string; os_version: string; model: string; app: string; shared: boolean; created_at: string; last_seen: string; used?: number };

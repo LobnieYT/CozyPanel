@@ -858,79 +858,6 @@
         ],
         "type": "object"
       },
-      "GetSubLogoOutputBody":       {
-        "additionalProperties": false,
-        "properties": {
-          "content_type": {
-            "type": "string"
-          },
-          "image": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "image",
-          "content_type"
-        ],
-        "type": "object"
-      },
-      "PageAsset":       {
-        "additionalProperties": false,
-        "properties": {
-          "content_type": {
-            "type": "string"
-          },
-          "hash": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "size": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "name",
-          "content_type",
-          "hash",
-          "size",
-          "updated_at"
-        ],
-        "type": "object"
-      },
-      "PutSubLogoInputBody":       {
-        "additionalProperties": false,
-        "properties": {
-          "image": {
-            "description": "Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается",
-            "maxLength": 800000,
-            "minLength": 50,
-            "type": "string"
-          }
-        },
-        "required": [
-          "image"
-        ],
-        "type": "object"
-      },
-      "DeleteSubLogoOutputBody":       {
-        "additionalProperties": false,
-        "properties": {
-          "deleted": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "deleted"
-        ],
-        "type": "object"
-      },
       "CertInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1390,6 +1317,18 @@
         ],
         "type": "object"
       },
+      "DeleteSubLogoOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
       "DeviceBanView": {
         "additionalProperties": false,
         "properties": {
@@ -1727,6 +1666,22 @@
         ],
         "type": "object"
       },
+      "GetSubLogoOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "image",
+          "content_type"
+        ],
+        "type": "object"
+      },
       "GrantInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1965,6 +1920,11 @@
           "listen": {
             "description": "Адрес, на котором нода слушает: пусто — все адреса, 127.0.0.1 — только сам сервер (за nginx или HAProxy)",
             "type": "string"
+          },
+          "max_time_difference": {
+            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч",
+            "format": "int64",
+            "type": "integer"
           },
           "name": {
             "type": "string"
@@ -3000,6 +2960,36 @@
         ],
         "type": "object"
       },
+      "PageAsset": {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "content_type",
+          "hash",
+          "size",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "PageBackground": {
         "additionalProperties": false,
         "properties": {
@@ -3361,6 +3351,12 @@
             "description": "Адрес, на котором нода слушает: пусто — все адреса, иначе один IP (127.0.0.1 — за nginx или HAProxy на том же сервере). Свой адрес выключает перенос порта",
             "maxLength": 64,
             "type": "string"
+          },
+          "max_time_difference": {
+            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
           },
           "obfs": {
             "description": "Обфускация Hysteria2. Gecko понимают только приложения на ядре mihomo 1.19.26+: остальные это подключение не получат",
@@ -3841,6 +3837,21 @@
         "required": [
           "ok",
           "checked_at"
+        ],
+        "type": "object"
+      },
+      "PutSubLogoInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "image": {
+            "description": "Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается",
+            "maxLength": 800000,
+            "minLength": 50,
+            "type": "string"
+          }
+        },
+        "required": [
+          "image"
         ],
         "type": "object"
       },
@@ -4424,7 +4435,7 @@
         ],
         "type": "object"
       },
-      "SubPageView":       {
+      "SubPageView": {
         "additionalProperties": false,
         "properties": {
           "brand": {
@@ -8831,7 +8842,7 @@
         "x-session-only": true
       }
     },
-"/api/v1/sub-page/logo":     {
+    "/api/v1/sub-page/logo": {
       "delete": {
         "operationId": "delete-sub-page-logo",
         "responses": {

@@ -27,6 +27,7 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
   const [sni, setSni] = useState(""); // the site name clients send when dest is an IP
   const [fp, setFp] = useState(""); // the inbound's own fingerprint, "" for the settings' one
   const [obfs, setObfs] = useState(""); // Hysteria2: salamander or gecko
+  const [maxTimeDiff, setMaxTimeDiff] = useState(""); // REALITY max-time-difference in seconds
   const [outbound, setOutbound] = useState<Inbound["outbound"]>("direct");
   const [exitNode, setExitNode] = useState<number>(0);
   const [poolId, setPoolId] = useState<number>(0);
@@ -52,6 +53,7 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
     setSni(inbound.server_names?.[0] ?? "");
     setFp(inbound.fingerprint ?? "");
     setObfs(inbound.obfs ?? "");
+    setMaxTimeDiff(inbound.max_time_difference ? String(inbound.max_time_difference / 1_000_000) : "");
     setOutbound(inbound.outbound);
     setExitNode(inbound.exit_node_id ?? 0);
     setPoolId(inbound.pool_id ?? 0);
@@ -132,6 +134,10 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
     }
     if (!configChanged && inbound?.fingerprint !== undefined && fp !== inbound.fingerprint) body.fingerprint = fp;
     if (!configChanged && inbound?.obfs !== undefined && obfs !== inbound.obfs && (obfs === "salamander" || obfs === "gecko")) body.obfs = obfs;
+    if (!configChanged && inbound?.max_time_difference !== undefined) {
+      const val = maxTimeDiff.trim() === "" ? 0 : Math.round(Number(maxTimeDiff) * 1_000_000);
+      if (!Number.isNaN(val) && val !== inbound.max_time_difference) body.max_time_difference = val;
+    }
     if (listenMode === "custom" && !listen) {
       reject({ listen: t("inbounds.listenRequired") });
       return;
@@ -286,6 +292,23 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
                     }}
                     defaultLabel={t("inbounds.fingerprintDefault", { fp: fingerprintLabel(settings.data?.client_fingerprint ?? "chrome") })}
                     invalid={!!errors.fingerprint}
+                    disabled={configChanged}
+                  />
+                </Field>
+              ) : null}
+              {inbound?.max_time_difference !== undefined ? (
+                <Field label={t("inbounds.maxTimeDiff")} htmlFor="ed-max-time-diff" error={errors.max_time_difference} hint={t("inbounds.maxTimeDiffHint")}>
+                  <input
+                    id="ed-max-time-diff"
+                    className="input max-w-[200px]"
+                    inputMode="numeric"
+                    value={maxTimeDiff}
+                    onChange={(e) => {
+                      setMaxTimeDiff(e.target.value);
+                      setErrors(({ max_time_difference: _, ...rest }) => rest);
+                    }}
+                    placeholder={t("inbounds.maxTimeDiffPlaceholder")}
+                    aria-invalid={!!errors.max_time_difference}
                     disabled={configChanged}
                   />
                 </Field>

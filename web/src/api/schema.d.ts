@@ -1752,26 +1752,6 @@ export interface components {
             id: string;
             status: string;
         };
-        GetSubLogoOutputBody: {
-            content_type: string;
-            image: string;
-        };
-        PageAsset: {
-            content_type: string;
-            hash: string;
-            name: string;
-            /** Format: int64 */
-            size: number;
-            /** Format: int64 */
-            updated_at: number;
-        };
-        PutSubLogoInputBody: {
-            /** @description Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается */
-            image: string;
-        };
-        DeleteSubLogoOutputBody: {
-            deleted: boolean;
-        };
         CertInputBody: {
             /** @description Цепочка в PEM: сначала сертификат, за ним промежуточные (fullchain.pem) */
             cert: string;
@@ -1920,6 +1900,9 @@ export interface components {
             rtt_ms?: number;
             server: string;
         };
+        DeleteSubLogoOutputBody: {
+            deleted: boolean;
+        };
         DeviceBanView: {
             /** @description Кто заблокировал; пусто — ключ API или удалённый админ */
             admin: string;
@@ -2054,6 +2037,10 @@ export interface components {
         GeoStatus: {
             files: components["schemas"]["GeoFile"][];
         };
+        GetSubLogoOutputBody: {
+            content_type: string;
+            image: string;
+        };
         GrantInputBody: {
             /**
              * Format: int64
@@ -2147,6 +2134,11 @@ export interface components {
             id: number;
             /** @description Адрес, на котором нода слушает: пусто — все адреса, 127.0.0.1 — только сам сервер (за nginx или HAProxy) */
             listen: string;
+            /**
+             * Format: int64
+             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч
+             */
+            max_time_difference?: number;
             name: string;
             network: string;
             /** Format: int64 */
@@ -2478,6 +2470,15 @@ export interface components {
             qr: boolean;
             windows: components["schemas"]["PageAppList"];
         };
+        PageAsset: {
+            content_type: string;
+            hash: string;
+            name: string;
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            updated_at: number;
+        };
         PageBackground: {
             /**
              * Format: int64
@@ -2600,6 +2601,11 @@ export interface components {
             fingerprint?: string;
             /** @description Адрес, на котором нода слушает: пусто — все адреса, иначе один IP (127.0.0.1 — за nginx или HAProxy на том же сервере). Свой адрес выключает перенос порта */
             listen?: string;
+            /**
+             * Format: int64
+             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч
+             */
+            max_time_difference?: number;
             /**
              * @description Обфускация Hysteria2. Gecko понимают только приложения на ядре mihomo 1.19.26+: остальные это подключение не получат
              * @enum {string}
@@ -2775,6 +2781,10 @@ export interface components {
             /** @description Адрес, который видят сайты */
             ip?: string;
             ok: boolean;
+        };
+        PutSubLogoInputBody: {
+            /** @description Картинка base64: PNG, JPEG или WebP до 512 КБ. SVG не принимается */
+            image: string;
         };
         PutSubPageInputBody: {
             brand?: string;

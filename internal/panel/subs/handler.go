@@ -519,6 +519,8 @@ type Info struct {
 	SpeedLimit int `json:"speed_limit,omitempty" doc:"Мбит/с в каждую сторону; 0 — без ограничения"`
 	// Pools: the user's traffic pools with a limit or with traffic used.
 	Pools []PoolInfo `json:"pools,omitempty"`
+	// ServerTime is the server's Unix timestamp (seconds) for client clock skew detection.
+	ServerTime int64 `json:"server_time"`
 }
 
 // DeviceItem is a bound device as the subscription page lists it.
@@ -543,7 +545,7 @@ func (h *Handler) info(ctx context.Context, w http.ResponseWriter, u db.User, pr
 		return
 	}
 	out := Info{Name: u.Name, Brand: cfg.Brand, SupportURL: cfg.SupportURL, State: domain.State(u, grants.Main(u.ID), now), UsedUp: u.UsedUp, UsedDown: u.UsedDown,
-		Binding: cfg.Binding, Bound: []DeviceItem{}, DeviceMode: u.DeviceMode}
+		Binding: cfg.Binding, Bound: []DeviceItem{}, DeviceMode: u.DeviceMode, ServerTime: now.Unix()}
 	if u.TrafficLimit.Valid {
 		out.Extra = grants.Main(u.ID)
 	}
