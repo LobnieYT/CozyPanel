@@ -99,6 +99,8 @@ type InboundPatch struct {
 	Client            *ClientEndpoint // replaces all three
 	DisplayName       *string
 	MaxTimeDifference *int64 // REALITY max-time-difference in microseconds
+	KeepAliveIdle     *int64 // TCP keepalive idle time in seconds
+	KeepAliveInterval *int64 // TCP keepalive interval in seconds
 	// What only the node uses.
 	Listen     *string
 	AutoPort   *bool
@@ -383,6 +385,22 @@ func editTemplate(config string, p InboundPatch) (string, error) {
 		edits = append(edits, templateEdit{"max-time-difference", func(t proto.Template) error {
 			if rc, ok := t["reality-config"].(map[string]any); ok {
 				rc["max-time-difference"] = *p.MaxTimeDifference
+			}
+			return nil
+		}})
+	}
+	if p.KeepAliveIdle != nil {
+		edits = append(edits, templateEdit{"keepalive-idle", func(t proto.Template) error {
+			if rc, ok := t["reality-config"].(map[string]any); ok {
+				rc["keepalive-idle"] = *p.KeepAliveIdle
+			}
+			return nil
+		}})
+	}
+	if p.KeepAliveInterval != nil {
+		edits = append(edits, templateEdit{"keepalive-interval", func(t proto.Template) error {
+			if rc, ok := t["reality-config"].(map[string]any); ok {
+				rc["keepalive-interval"] = *p.KeepAliveInterval
 			}
 			return nil
 		}})

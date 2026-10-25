@@ -32,7 +32,7 @@ func TestExtraTypes(t *testing.T) {
 				t.Errorf("trusttunnel runs HTTP/2 over TCP only: %v", l["network"])
 			}
 			m := c.Mihomo
-			if m["type"] != "trusttunnel" || m["username"] != "s000001" || m["password"] != "S3cr3t+/=" || m["sni"] != "vpn.example.com" || m["client-fingerprint"] != "chrome" || m["udp"] != true || m["tls"] != nil {
+			if m["type"] != "trusttunnel" || m["username"] != "s000001" || m["password"] != "S3cr3t+/=" || m["sni"] != "vpn.example.com" || m["client-fingerprint"] != "ios" || m["udp"] != true || m["tls"] != nil {
 				t.Errorf("trusttunnel client: %v", m)
 			}
 			if c.URI != "" {

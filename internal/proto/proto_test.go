@@ -124,8 +124,8 @@ func TestRealityReplayWindow(t *testing.T) {
 		}
 		return fmt.Sprintf("%.0f", toFloat(l["reality-config"].(map[string]any)["max-time-difference"]))
 	}
-	if got := window(src); got != "7200000000" {
-		t.Fatalf("default window: %s (mihomo reads microseconds: 2 h = 7200000000)", got)
+	if got := window(src); got != "86400000000" {
+		t.Fatalf("default window: %s (mihomo reads microseconds: 24 h = 86400000000)", got)
 	}
 	if got := window(src + "  max-time-difference: 60000000\n"); got != "60000000" {
 		t.Fatalf("the template's own window: %s", got)

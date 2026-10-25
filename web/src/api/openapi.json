@@ -1917,12 +1917,22 @@
             "format": "int64",
             "type": "integer"
           },
+          "keepalive_idle": {
+            "description": "TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт",
+            "format": "int64",
+            "type": "integer"
+          },
+          "keepalive_interval": {
+            "description": "TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт",
+            "format": "int64",
+            "type": "integer"
+          },
           "listen": {
             "description": "Адрес, на котором нода слушает: пусто — все адреса, 127.0.0.1 — только сам сервер (за nginx или HAProxy)",
             "type": "string"
           },
           "max_time_difference": {
-            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч",
+            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч",
             "format": "int64",
             "type": "integer"
           },
@@ -3347,13 +3357,25 @@
             "maxLength": 32,
             "type": "string"
           },
+          "keepalive_idle": {
+            "description": "TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "keepalive_interval": {
+            "description": "TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "listen": {
             "description": "Адрес, на котором нода слушает: пусто — все адреса, иначе один IP (127.0.0.1 — за nginx или HAProxy на том же сервере). Свой адрес выключает перенос порта",
             "maxLength": 64,
             "type": "string"
           },
           "max_time_difference": {
-            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч",
+            "description": "REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч",
             "format": "int64",
             "minimum": 0,
             "type": "integer"

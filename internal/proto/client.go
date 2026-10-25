@@ -32,7 +32,8 @@ type ClientInput struct {
 var Fingerprints = []string{"chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized"}
 
 // DefaultFingerprint is what clients get when neither the inbound nor the panel picks one.
-const DefaultFingerprint = "chrome"
+// "ios" is a good default that works well across platforms and avoids clock-skew issues on iOS.
+const DefaultFingerprint = "ios"
 
 // KnownFingerprint says whether s is one of Fingerprints.
 func KnownFingerprint(s string) bool { return slices.Contains(Fingerprints, s) }

@@ -849,8 +849,14 @@
     "obfsGeckoHint": "Gecko получат только приложения на ядре mihomo 1.19.26+, которые сообщают его версию (Koala Clash 1.4+ и другие). Остальным это подключение не придёт — держите рядом обычный Hysteria2.",
     "portHopHint": "Можно диапазон, например 20000-30000: клиенты будут прыгать по портам (порт-хоппинг), это мешает блокировать один порт. Диапазон откройте в файрволе сервера по UDP.",
     "maxTimeDiff": "REALITY max time difference (seconds)",
-    "maxTimeDiffHint": "Максимальная разница часов клиента и сервера для REALITY. Дефолт 7200 (2 часа). Для iOS с частым дрифтом ставьте 86400 (24 часа). Пусто — дефолт.",
-    "maxTimeDiffPlaceholder": "7200"
+    "maxTimeDiffHint": "Максимальная разница часов клиента и сервера для REALITY. Дефолт 86400 (24 часа). Для iOS с частым дрифтом ставьте 86400 (24 часа). Пусто — дефолт.",
+    "maxTimeDiffPlaceholder": "86400",
+    "keepAliveIdle": "TCP keepalive idle (seconds)",
+    "keepAliveIdleHint": "Время простоя перед отправкой keepalive. 0 или пусто — глобальный дефолт (10 сек).",
+    "keepAliveIdlePlaceholder": "10",
+    "keepAliveInterval": "TCP keepalive interval (seconds)",
+    "keepAliveIntervalHint": "Интервал между keepalive пакетами. 0 или пусто — глобальный дефолт (10 сек).",
+    "keepAliveIntervalPlaceholder": "10"
   },
   "settings": {
     "subtitle": "Адрес сервера, оформление подписки и безопасность входа",
@@ -1233,7 +1239,8 @@
       "modern": "Быстрый и современный",
       "bestWindows": "Лучший для Windows: весь трафик и маршруты",
       "tun": "Маршруты и режим TUN",
-      "oneButton": "Одна кнопка"
+      "oneButton": "Одна кнопка",
+      "quic": "QUIC — авто-переподключение при смене сети"
     },
     "howTo": "Как подключиться",
     "steps": {

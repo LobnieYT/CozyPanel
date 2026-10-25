@@ -28,6 +28,8 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
   const [fp, setFp] = useState(""); // the inbound's own fingerprint, "" for the settings' one
   const [obfs, setObfs] = useState(""); // Hysteria2: salamander or gecko
   const [maxTimeDiff, setMaxTimeDiff] = useState(""); // REALITY max-time-difference in seconds
+  const [keepAliveIdle, setKeepAliveIdle] = useState(""); // TCP keepalive idle in seconds
+  const [keepAliveInterval, setKeepAliveInterval] = useState(""); // TCP keepalive interval in seconds
   const [outbound, setOutbound] = useState<Inbound["outbound"]>("direct");
   const [exitNode, setExitNode] = useState<number>(0);
   const [poolId, setPoolId] = useState<number>(0);
@@ -54,6 +56,8 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
     setFp(inbound.fingerprint ?? "");
     setObfs(inbound.obfs ?? "");
     setMaxTimeDiff(inbound.max_time_difference ? String(inbound.max_time_difference / 1_000_000) : "");
+    setKeepAliveIdle(inbound.keepalive_idle ? String(inbound.keepalive_idle) : "");
+    setKeepAliveInterval(inbound.keepalive_interval ? String(inbound.keepalive_interval) : "");
     setOutbound(inbound.outbound);
     setExitNode(inbound.exit_node_id ?? 0);
     setPoolId(inbound.pool_id ?? 0);
@@ -137,6 +141,14 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
     if (!configChanged && inbound?.max_time_difference !== undefined) {
       const val = maxTimeDiff.trim() === "" ? 0 : Math.round(Number(maxTimeDiff) * 1_000_000);
       if (!Number.isNaN(val) && val !== inbound.max_time_difference) body.max_time_difference = val;
+    }
+    if (!configChanged && inbound?.keepalive_idle !== undefined) {
+      const val = keepAliveIdle.trim() === "" ? 0 : Math.round(Number(keepAliveIdle));
+      if (!Number.isNaN(val) && val !== inbound.keepalive_idle) body.keepalive_idle = val;
+    }
+    if (!configChanged && inbound?.keepalive_interval !== undefined) {
+      const val = keepAliveInterval.trim() === "" ? 0 : Math.round(Number(keepAliveInterval));
+      if (!Number.isNaN(val) && val !== inbound.keepalive_interval) body.keepalive_interval = val;
     }
     if (listenMode === "custom" && !listen) {
       reject({ listen: t("inbounds.listenRequired") });
@@ -309,6 +321,40 @@ export function EditDrawer({ inbound, onClose }: { inbound: Inbound | null; onCl
                     }}
                     placeholder={t("inbounds.maxTimeDiffPlaceholder")}
                     aria-invalid={!!errors.max_time_difference}
+                    disabled={configChanged}
+                  />
+                </Field>
+              ) : null}
+              {inbound?.keepalive_idle !== undefined ? (
+                <Field label={t("inbounds.keepAliveIdle")} htmlFor="ed-keepalive-idle" error={errors.keepalive_idle} hint={t("inbounds.keepAliveIdleHint")}>
+                  <input
+                    id="ed-keepalive-idle"
+                    className="input max-w-[200px]"
+                    inputMode="numeric"
+                    value={keepAliveIdle}
+                    onChange={(e) => {
+                      setKeepAliveIdle(e.target.value);
+                      setErrors(({ keepalive_idle: _, ...rest }) => rest);
+                    }}
+                    placeholder={t("inbounds.keepAliveIdlePlaceholder")}
+                    aria-invalid={!!errors.keepalive_idle}
+                    disabled={configChanged}
+                  />
+                </Field>
+              ) : null}
+              {inbound?.keepalive_interval !== undefined ? (
+                <Field label={t("inbounds.keepAliveInterval")} htmlFor="ed-keepalive-interval" error={errors.keepalive_interval} hint={t("inbounds.keepAliveIntervalHint")}>
+                  <input
+                    id="ed-keepalive-interval"
+                    className="input max-w-[200px]"
+                    inputMode="numeric"
+                    value={keepAliveInterval}
+                    onChange={(e) => {
+                      setKeepAliveInterval(e.target.value);
+                      setErrors(({ keepalive_interval: _, ...rest }) => rest);
+                    }}
+                    placeholder={t("inbounds.keepAliveIntervalPlaceholder")}
+                    aria-invalid={!!errors.keepalive_interval}
                     disabled={configChanged}
                   />
                 </Field>

@@ -51,8 +51,11 @@ type InboundView struct {
 	PoolID      *int64         `json:"pool_id,omitempty" doc:"Пул трафика, в который считается подключение; нет — основной трафик"`
 	Client      ClientEndpoint `json:"client" doc:"Куда подключаются клиенты, если не к ноде напрямую (cozy.client в шаблоне)"`
 	ClientSNI   bool           `json:"client_sni" doc:"Можно ли задать клиентам свой SNI: у REALITY имя задаёт сайт маскировки"`
-	// REALITY max-time-difference in microseconds; 0 or absent = default 2h
-	MaxTimeDifference *int64 `json:"max_time_difference,omitempty" doc:"REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч"`
+	// REALITY max-time-difference in microseconds; 0 or absent = default 24h
+	MaxTimeDifference *int64 `json:"max_time_difference,omitempty" doc:"REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч"`
+	// TCP keepalive settings; 0 or absent = global default
+	KeepAliveIdle     *int64 `json:"keepalive_idle,omitempty" doc:"TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт"`
+	KeepAliveInterval *int64 `json:"keepalive_interval,omitempty" doc:"TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт"`
 }
 
 // ClientEndpoint is where clients connect when a TCP proxy or a CDN stands in front of
@@ -115,7 +118,9 @@ type patchInboundInput struct {
 		Outbound          *string         `json:"outbound,omitempty" enum:"direct,warp,node" doc:"Выход в интернет: напрямую, через WARP ноды или через другую ноду"`
 		ExitNodeID        *int64          `json:"exit_node_id,omitempty" minimum:"1" doc:"Для outbound=node: через какую ноду"`
 		PoolID            *int64          `json:"pool_id,omitempty" minimum:"0" doc:"Пул трафика; 0 — основной трафик"`
-		MaxTimeDifference *int64          `json:"max_time_difference,omitempty" minimum:"0" doc:"REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч"`
+		MaxTimeDifference *int64          `json:"max_time_difference,omitempty" minimum:"0" doc:"REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч"`
+		KeepAliveIdle     *int64          `json:"keepalive_idle,omitempty" minimum:"0" doc:"TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт"`
+		KeepAliveInterval *int64          `json:"keepalive_interval,omitempty" minimum:"0" doc:"TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт"`
 	}
 }
 
@@ -209,11 +214,19 @@ func (h *handlers) viewInbound(in db.Inbound, last map[int64]db.InboundEvent) In
 			obfs := proto.Obfs(t)
 			v.Obfs = &obfs
 		}
-		// REALITY max-time-difference
+		// REALITY max-time-difference and keepalive
 		if rc, ok := t["reality-config"].(map[string]any); ok {
 			if mtd, ok := rc["max-time-difference"].(float64); ok {
 				val := int64(mtd)
 				v.MaxTimeDifference = &val
+			}
+			if ki, ok := rc["keepalive-idle"].(float64); ok {
+				val := int64(ki)
+				v.KeepAliveIdle = &val
+			}
+			if ki, ok := rc["keepalive-interval"].(float64); ok {
+				val := int64(ki)
+				v.KeepAliveInterval = &val
 			}
 		}
 		if in.Preset == presets.Custom {
@@ -291,7 +304,7 @@ func (h *handlers) updateInbound(ctx context.Context, in *patchInboundInput) (*i
 		}
 	}
 	p := domain.InboundPatch{Port: b.Port, Enabled: b.Enabled, Config: b.Config, Dest: b.Dest, ServerName: b.ServerName, Fingerprint: b.Fingerprint, Obfs: b.Obfs,
-		DisplayName: b.DisplayName, Listen: b.Listen, AutoPort: b.AutoPort, AutoSNI: b.AutoSNI, Outbound: b.Outbound, ExitNodeID: b.ExitNodeID, PoolID: b.PoolID, MaxTimeDifference: b.MaxTimeDifference}
+		DisplayName: b.DisplayName, Listen: b.Listen, AutoPort: b.AutoPort, AutoSNI: b.AutoSNI, Outbound: b.Outbound, ExitNodeID: b.ExitNodeID, PoolID: b.PoolID, MaxTimeDifference: b.MaxTimeDifference, KeepAliveIdle: b.KeepAliveIdle, KeepAliveInterval: b.KeepAliveInterval}
 	if c := b.Client; c != nil {
 		// The address clients connect to: like the panel's public host, not for a key.
 		if err := requireSession(ctx, "client"); err != nil {

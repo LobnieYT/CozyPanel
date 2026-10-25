@@ -849,8 +849,14 @@
     "obfsGeckoHint": "Only apps on mihomo core 1.19.26+ that say so (Koala Clash 1.4+ and others) get Gecko. The rest do not get this protocol, so keep a plain Hysteria2 next to it.",
     "portHopHint": "A range such as 20000-30000 works too: clients hop between the ports, which makes blocking one port useless. Open the range over UDP in the server firewall.",
     "maxTimeDiff": "REALITY max time difference (seconds)",
-    "maxTimeDiffHint": "Max clock difference between client and server for REALITY. Default 7200 (2 hours). For iOS with frequent drift set 86400 (24 hours). Empty = default.",
-    "maxTimeDiffPlaceholder": "7200"
+    "maxTimeDiffHint": "Max clock difference between client and server for REALITY. Default 86400 (24 hours). For iOS with frequent drift set 86400 (24 hours). Empty = default.",
+    "maxTimeDiffPlaceholder": "86400",
+    "keepAliveIdle": "TCP keepalive idle (seconds)",
+    "keepAliveIdleHint": "Idle time before sending keepalive. 0 or empty = global default (10 sec).",
+    "keepAliveIdlePlaceholder": "10",
+    "keepAliveInterval": "TCP keepalive interval (seconds)",
+    "keepAliveIntervalHint": "Interval between keepalive packets. 0 or empty = global default (10 sec).",
+    "keepAliveIntervalPlaceholder": "10"
   },
   "settings": {
     "subtitle": "Server address, subscription look and sign-in security",
@@ -1233,7 +1239,8 @@
       "modern": "Fast and modern",
       "bestWindows": "Best for Windows: all traffic and routing",
       "tun": "Routing and TUN mode",
-      "oneButton": "One button"
+      "oneButton": "One button",
+      "quic": "QUIC — auto-reconnect on network change"
     },
     "howTo": "How to connect",
     "steps": {

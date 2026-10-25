@@ -20,10 +20,10 @@ type Cert struct {
 }
 
 // RealityMaxTimeDiff bounds how far a REALITY client's clock may be from the server's,
-// in microseconds as mihomo reads it (2 h, like Hiddify). Without it a recorded
+// in microseconds as mihomo reads it (24 h). Without it a recorded
 // ClientHello replays forever: the reply then shows the REALITY certificate instead of
 // the target's, and the server is exposed. A template may set its own value.
-const RealityMaxTimeDiff = int64(2 * 60 * 60 * 1_000_000)
+const RealityMaxTimeDiff = int64(24 * 60 * 60 * 1_000_000)
 
 // Listener renders the mihomo listener: the template minus cozy's section, plus name,
 // port, listen address, users and, where the protocol needs it, the node certificate.

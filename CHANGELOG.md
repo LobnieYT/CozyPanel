@@ -3,6 +3,21 @@
 Each release has a section in English and in Russian; the release workflow puts them in
 the signed manifest, and the panel shows the one in its language.
 
+## 1.4.1
+### en
+- VLESS/REALITY clock skew tolerance increased from 2h to 24h: the default `max-time-difference` is now 24h, fixing random disconnects on iOS where clock drift exceeds 2h.
+- Default TLS fingerprint changed from "chrome" to "ios": better compatibility with iOS Safari and avoids clock-skew related handshake failures.
+- QUIC protocols (Hysteria2, TUIC) now recommended for iOS on the subscription page with "QUIC" badges: these protocols survive network changes and clock skew natively.
+- iOS app list updated: Happ, INCY, v2RayTun (native Network Extension) prioritized over generic Clash apps.
+- Per-listener TCP keepalive configuration: optional `keepalive_idle` and `keepalive_interval` (seconds) for REALITY inbounds, overriding the global 10s default.
+
+### ru
+- Допуск VLESS/REALITY к clock skew увеличен с 2ч до 24ч: дефолт `max-time-difference` теперь 24ч, чинит случайные отключения на iOS, где дрифт часов превышает 2ч.
+- Дефолтный TLS fingerprint изменён с "chrome" на "ios": лучшая совместимость с iOS Safari и предотвращение сбоев рукопожатия из-за clock skew.
+- QUIC-протоколы (Hysteria2, TUIC) теперь рекомендуются для iOS на странице подписки с бейджами "QUIC": эти протоколы нативно выживают при смене сети и clock skew.
+- Список iOS-приложений обновлён: Happ, INCY, v2RayTun (нативный Network Extension) приоритетнее Generic Clash.
+- Per-listener TCP keepalive: опциональные `keepalive_idle` и `keepalive_interval` (секунды) для REALITY-вбаундов, перекрывающие глобальный дефолт 10с.
+
 ## 1.3.8
 ### en
 - The certificate is issued for a domain written with capitals. The ACME server brings the name of an order to the lower case (it is allowed to, RFC 8555 §7.4), and the client library compared the names letter by letter and refused the order for a name it had only re-cased. The panel sends the canonical name now, and the domain in the settings is kept in that one spelling — the certificate, the nodes' SNI and the subscriptions' links all name the same host.

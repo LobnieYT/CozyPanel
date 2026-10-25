@@ -53,7 +53,7 @@ func TestFingerprintSettingsAndInbound(t *testing.T) {
 		Fingerprint string `json:"client_fingerprint"`
 	}
 	resp, body := h.do(http.MethodGet, api+"/settings", nil, nil)
-	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &s) != nil || s.Fingerprint != "chrome" {
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &s) != nil || s.Fingerprint != "ios" {
 		t.Fatalf("default: %d %s", resp.StatusCode, body)
 	}
 	for _, bad := range []string{"Chrome 120", "", "Chrome", "firefox\n", "a,DIRECT"} {

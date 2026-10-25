@@ -316,6 +316,11 @@ function SubPage() {
                 <div className="text-xs text-[var(--ink-500)]">
                   {i === 0 ? <span className="font-medium text-[var(--cozy-200)]">{t("sub.recommended")} · </span> : null}
                   {t(`sub.notes.${a.note}`)}
+                  {platform === "ios" && (a.note === "quic") && (
+                    <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium text-[var(--cozy-300)] bg-[rgba(148,163,255,0.15)] rounded">
+                      QUIC
+                    </span>
+                  )}
                 </div>
               </div>
               <a

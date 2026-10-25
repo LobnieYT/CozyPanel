@@ -2,7 +2,7 @@ export type Platform = "ios" | "android" | "windows" | "macos" | "linux";
 
 type App = {
   name: string;
-  note: "easiest" | "free" | "stable" | "openSource" | "modern" | "bestWindows" | "tun" | "oneButton";
+  note: "easiest" | "free" | "stable" | "openSource" | "modern" | "bestWindows" | "tun" | "oneButton" | "quic";
   /** Bundled icon under sub/apps (web/public), shown instead of the first letter. */
   icon: string;
   link: (url: string, brand: string) => string;
@@ -14,8 +14,10 @@ const slothClash = (url: string, brand: string) => `slothclash://install-config?
 export const APPS: Record<Platform, App[]> = {
   ios: [
     { name: "Happ", note: "easiest", icon: "sub/apps/happ.png", link: (u) => `happ://add/${u}` },
-    { name: "Streisand", note: "free", icon: "sub/apps/streisand.png", link: (u, b) => `streisand://import/${u}#${enc(b)}` },
+    { name: "INCY", note: "modern", icon: "sub/apps/incy.jpg", link: (u) => `incy://add/${u}` },
     { name: "v2RayTun", note: "stable", icon: "sub/apps/v2raytun.webp", link: (u) => `v2raytun://import/${u}` },
+    { name: "Hysteria2", note: "quic", icon: "sub/apps/hiddify.png", link: (u) => `hiddify://import/${u}` },
+    { name: "TUIC", note: "quic", icon: "sub/apps/hiddify.png", link: (u) => `hiddify://import/${u}` },
   ],
   android: [
     { name: "Happ", note: "easiest", icon: "sub/apps/happ.png", link: (u) => `happ://add/${u}` },

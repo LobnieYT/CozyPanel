@@ -2132,11 +2132,21 @@ export interface components {
             fingerprint?: string;
             /** Format: int64 */
             id: number;
+            /**
+             * Format: int64
+             * @description TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт
+             */
+            keepalive_idle?: number;
+            /**
+             * Format: int64
+             * @description TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт
+             */
+            keepalive_interval?: number;
             /** @description Адрес, на котором нода слушает: пусто — все адреса, 127.0.0.1 — только сам сервер (за nginx или HAProxy) */
             listen: string;
             /**
              * Format: int64
-             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч
+             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч
              */
             max_time_difference?: number;
             name: string;
@@ -2599,11 +2609,21 @@ export interface components {
             exit_node_id?: number;
             /** @description Отпечаток TLS у клиентов: из списка (chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized) или своё — латиница, цифры, _; пусто — общий из настроек */
             fingerprint?: string;
+            /**
+             * Format: int64
+             * @description TCP keepalive idle time in seconds; 0 или пусто — глобальный дефолт
+             */
+            keepalive_idle?: number;
+            /**
+             * Format: int64
+             * @description TCP keepalive interval in seconds; 0 или пусто — глобальный дефолт
+             */
+            keepalive_interval?: number;
             /** @description Адрес, на котором нода слушает: пусто — все адреса, иначе один IP (127.0.0.1 — за nginx или HAProxy на том же сервере). Свой адрес выключает перенос порта */
             listen?: string;
             /**
              * Format: int64
-             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 2ч
+             * @description REALITY max-time-difference в микросекундах; 0 или пусто — дефолт 24ч
              */
             max_time_difference?: number;
             /**

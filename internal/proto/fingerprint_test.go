@@ -6,18 +6,18 @@ import (
 	"testing"
 )
 
-// The inbound's own fingerprint wins over the panel's default, which wins over chrome; an
+// The inbound's own fingerprint wins over the panel's default, which wins over ios; an
 // own value must have the shape of a profile name, or it never reaches apps.
 func TestFingerprintPrecedence(t *testing.T) {
 	priv, _ := realityKey(t)
 	base := "type: vless\nreality-config:\n  dest: www.microsoft.com:443\n  private-key: " + priv + "\n  short-id: [a1b2]\n  server-names: [www.microsoft.com]\n"
 	cases := []struct{ own, panel, want string }{
-		{"", "", "chrome"},
+		{"", "", "ios"},
 		{"", "firefox", "firefox"},
 		{"safari", "firefox", "safari"},
 		{"chrome120", "ios", "chrome120"}, // an own value of the right shape is used
 		{"Chrome 1,2", "ios", "ios"},      // a malformed one never reaches apps: the default
-		{"", "bad value!", "chrome"},      // a malformed default: chrome
+		{"", "bad value!", "ios"},         // a malformed default: ios
 		{"randomized", "", "randomized"},
 	}
 	for _, c := range cases {
