@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/metacubex/mihomo/component/keepalive"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener"
@@ -122,6 +123,11 @@ func Start(o Options) (*Engine, error) {
 	}
 	// Certificates must live under mihomo's home, otherwise its safe-path check rejects them.
 	C.SetHomeDir(home)
+
+	// TCP keepalive for all listeners: prevents NAT timeouts on mobile networks.
+	// Idle=10s, Interval=10s — aggressive enough for mobile CGNAT, low overhead.
+	keepalive.SetKeepAliveIdle(10 * time.Second)
+	keepalive.SetKeepAliveInterval(10 * time.Second)
 
 	e := &Engine{
 		dataDir: dataDir, home: home, log: log, version: version, started: time.Now(), allowPrivate: o.AllowPrivate,
