@@ -72,18 +72,46 @@ func (h *handlers) getAIAssistantConfig(ctx context.Context, _ *struct{}) (*aiAs
 }
 
 func (h *handlers) updateAIAssistantConfig(ctx context.Context, in *aiAssistantConfigInput) (*aiAssistantConfigOutput, error) {
-	if in.Body.MaxPerChat < 1 {
-		in.Body.MaxPerChat = 50
-	}
-	if in.Body.MaxPerDay < 1 {
-		in.Body.MaxPerDay = 200
-	}
-	if in.Body.ProviderType == "" {
-		in.Body.ProviderType = domain.ProviderOpenAI
+	store := domain.NewAIAssistantConfigStore(h.d.Store)
+
+	existing, err := store.GetConfig(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	store := domain.NewAIAssistantConfigStore(h.d.Store)
-	if err := store.UpdateConfig(ctx, &in.Body); err != nil {
+	if in.Body.BotToken != "" {
+		existing.BotToken = in.Body.BotToken
+	}
+	if in.Body.BotUsername != "" {
+		existing.BotUsername = in.Body.BotUsername
+	}
+	if in.Body.APIKey != "" {
+		existing.APIKey = in.Body.APIKey
+	}
+	if in.Body.BaseURL != "" {
+		existing.BaseURL = in.Body.BaseURL
+	}
+	if in.Body.ModelName != "" {
+		existing.ModelName = in.Body.ModelName
+	}
+	if in.Body.ProviderType != "" {
+		existing.ProviderType = in.Body.ProviderType
+	}
+	if in.Body.OllamaHost != "" {
+		existing.OllamaHost = in.Body.OllamaHost
+	}
+	if in.Body.SystemPrompt != "" {
+		existing.SystemPrompt = in.Body.SystemPrompt
+	}
+	if in.Body.MaxPerChat > 0 {
+		existing.MaxPerChat = in.Body.MaxPerChat
+	}
+	if in.Body.MaxPerDay > 0 {
+		existing.MaxPerDay = in.Body.MaxPerDay
+	}
+	existing.Enabled = in.Body.Enabled
+
+	if err := store.UpdateConfig(ctx, existing); err != nil {
 		return nil, err
 	}
 	view, err := store.GetConfigView(ctx)
