@@ -26,20 +26,20 @@ const (
 )
 
 type AIAssistantConfig struct {
-	ID           int64
-	Enabled      bool
-	BotToken     string
-	BotUsername  string
-	APIKey       string
-	BaseURL      string
-	ModelName    string
-	ProviderType ProviderType
-	OllamaHost   string
-	SystemPrompt string
-	MaxPerChat   int
-	MaxPerDay    int
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           int64     `json:"-"`
+	Enabled      bool      `json:"enabled,omitempty"`
+	BotToken     string    `json:"bot_token,omitempty"`
+	BotUsername  string    `json:"bot_username,omitempty"`
+	APIKey       string    `json:"api_key,omitempty"`
+	BaseURL      string    `json:"base_url,omitempty"`
+	ModelName    string    `json:"model_name,omitempty"`
+	ProviderType ProviderType `json:"provider_type,omitempty"`
+	OllamaHost   string    `json:"ollama_host,omitempty"`
+	SystemPrompt string    `json:"system_prompt,omitempty"`
+	MaxPerChat   int       `json:"max_per_chat,omitempty"`
+	MaxPerDay    int       `json:"max_per_day,omitempty"`
+	CreatedAt    time.Time `json:"-"`
+	UpdatedAt    time.Time `json:"-"`
 }
 
 type AIAssistantUsage struct {

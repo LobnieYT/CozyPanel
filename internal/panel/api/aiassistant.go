@@ -18,6 +18,22 @@ type aiAssistantConfigInput struct {
 	Body domain.AIAssistantConfig
 }
 
+type aiAssistantConfigPatchInput struct {
+	Body struct {
+		BotToken     *string  `json:"bot_token,omitempty"`
+		BotUsername  *string  `json:"bot_username,omitempty"`
+		APIKey       *string  `json:"api_key,omitempty"`
+		BaseURL      *string  `json:"base_url,omitempty"`
+		ModelName    *string  `json:"model_name,omitempty"`
+		ProviderType *string  `json:"provider_type,omitempty"`
+		OllamaHost   *string  `json:"ollama_host,omitempty"`
+		SystemPrompt *string  `json:"system_prompt,omitempty"`
+		MaxPerChat   *int     `json:"max_per_chat,omitempty"`
+		MaxPerDay    *int     `json:"max_per_day,omitempty"`
+		Enabled      *bool    `json:"enabled,omitempty"`
+	}
+}
+
 type aiAssistantTestInput struct {
 	Body struct {
 		ProviderType string `json:"provider_type" enum:"openai,ollama" doc:"Провайдер: openai или ollama"`
@@ -71,7 +87,7 @@ func (h *handlers) getAIAssistantConfig(ctx context.Context, _ *struct{}) (*aiAs
 	return &aiAssistantConfigOutput{Body: *view}, nil
 }
 
-func (h *handlers) updateAIAssistantConfig(ctx context.Context, in *aiAssistantConfigInput) (*aiAssistantConfigOutput, error) {
+func (h *handlers) updateAIAssistantConfig(ctx context.Context, in *aiAssistantConfigPatchInput) (*aiAssistantConfigOutput, error) {
 	store := domain.NewAIAssistantConfigStore(h.d.Store)
 
 	existing, err := store.GetConfig(ctx)
@@ -79,37 +95,39 @@ func (h *handlers) updateAIAssistantConfig(ctx context.Context, in *aiAssistantC
 		return nil, err
 	}
 
-	if in.Body.BotToken != "" {
-		existing.BotToken = in.Body.BotToken
+	if in.Body.BotToken != nil {
+		existing.BotToken = *in.Body.BotToken
 	}
-	if in.Body.BotUsername != "" {
-		existing.BotUsername = in.Body.BotUsername
+	if in.Body.BotUsername != nil {
+		existing.BotUsername = *in.Body.BotUsername
 	}
-	if in.Body.APIKey != "" {
-		existing.APIKey = in.Body.APIKey
+	if in.Body.APIKey != nil {
+		existing.APIKey = *in.Body.APIKey
 	}
-	if in.Body.BaseURL != "" {
-		existing.BaseURL = in.Body.BaseURL
+	if in.Body.BaseURL != nil {
+		existing.BaseURL = *in.Body.BaseURL
 	}
-	if in.Body.ModelName != "" {
-		existing.ModelName = in.Body.ModelName
+	if in.Body.ModelName != nil {
+		existing.ModelName = *in.Body.ModelName
 	}
-	if in.Body.ProviderType != "" {
-		existing.ProviderType = in.Body.ProviderType
+	if in.Body.ProviderType != nil {
+		existing.ProviderType = domain.ProviderType(*in.Body.ProviderType)
 	}
-	if in.Body.OllamaHost != "" {
-		existing.OllamaHost = in.Body.OllamaHost
+	if in.Body.OllamaHost != nil {
+		existing.OllamaHost = *in.Body.OllamaHost
 	}
-	if in.Body.SystemPrompt != "" {
-		existing.SystemPrompt = in.Body.SystemPrompt
+	if in.Body.SystemPrompt != nil {
+		existing.SystemPrompt = *in.Body.SystemPrompt
 	}
-	if in.Body.MaxPerChat > 0 {
-		existing.MaxPerChat = in.Body.MaxPerChat
+	if in.Body.MaxPerChat != nil {
+		existing.MaxPerChat = *in.Body.MaxPerChat
 	}
-	if in.Body.MaxPerDay > 0 {
-		existing.MaxPerDay = in.Body.MaxPerDay
+	if in.Body.MaxPerDay != nil {
+		existing.MaxPerDay = *in.Body.MaxPerDay
 	}
-	existing.Enabled = in.Body.Enabled
+	if in.Body.Enabled != nil {
+		existing.Enabled = *in.Body.Enabled
+	}
 
 	if err := store.UpdateConfig(ctx, existing); err != nil {
 		return nil, err
