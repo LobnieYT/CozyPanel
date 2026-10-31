@@ -11,7 +11,7 @@
     "language": "Interface language",
     "linkCopied": "Link copied",
     "loadFailed": "Could not load",
-    "loading": "Loading",
+    "loading": "Loading...",
     "open": "Open",
     "qrLabel": "Subscription QR code",
     "retry": "Try again",
@@ -1191,7 +1191,19 @@
       "title": "Subscription page",
       "to": "Colour to",
       "up": "Move up"
-    }
+    },
+    "ai-tab-docs": "Docs",
+    "ai-bot-token-saved": "Token saved",
+    "ai-docs-title": "Documentation",
+    "ai-docs-body": "Configure the AI Assistant provider, rules, and Telegram bot below. Changes are saved to the server and applied immediately.",
+    "ai-docs-prompt-title": "System prompt",
+    "ai-docs-prompt-body": "The system prompt is prepended to every request sent to the AI model. It defines the assistant’s role and behavior. The immutable core prompt is always prepended first and cannot be changed.",
+    "ai-docs-provider-title": "Provider",
+    "ai-docs-provider-body": "Choose OpenAI or Ollama. OpenAI requires an API key; Ollama runs locally and does not need one.",
+    "ai-docs-limits-title": "Limits",
+    "ai-docs-limits-body": "Max per chat limits messages in a single conversation. Max per day limits requests per user per day. Limits reset daily at midnight UTC.",
+    "ai-docs-bot-title": "Telegram bot",
+    "ai-docs-bot-body": "Enter the bot token from @BotFather to enable the AI Assistant in Telegram. The bot responds to /start and /usage commands and answers user messages."
   },
   "sub": {
     "loadFailed": "Could not load the subscription",
