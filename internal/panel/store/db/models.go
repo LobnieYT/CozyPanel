@@ -29,6 +29,38 @@ type AdminNotice struct {
 	SentAt int64
 }
 
+type AiAssistantConfig struct {
+	ID           int64
+	Enabled      bool
+	BotToken     sql.NullString
+	BotUsername  sql.NullString
+	ApiKey       sql.NullString
+	BaseUrl      sql.NullString
+	ModelName    sql.NullString
+	ProviderType string
+	OllamaHost   sql.NullString
+	SystemPrompt sql.NullString
+	MaxPerChat   int64
+	MaxPerDay    int64
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
+type AiAssistantConversation struct {
+	ChatID       int64
+	UserID       int64
+	MessageCount int64
+	Messages     string
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
+type AiAssistantUsage struct {
+	UserID int64
+	Date   int64
+	Count  int64
+}
+
 type ApiKey struct {
 	ID         int64
 	AdminID    int64

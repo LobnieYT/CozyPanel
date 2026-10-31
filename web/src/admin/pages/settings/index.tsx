@@ -13,6 +13,7 @@ import { ClashRulesCard } from "./rules";
 import { AccessCard, AdminBotCard, ApiCard, CertificateCard, PasswordCard, SessionsCard, TwoFactorCard } from "./security";
 import { DevicesCard, SubscriptionCard, SubPortCard } from "./subscription";
 import { RoutingSection } from "./routing";
+import { AISettings } from "./ai-assistant";
 import { SubPageSettings, type SubPagePart } from "./sub-page";
 
 type Tab = SettingsSearch["tab"];
@@ -31,9 +32,7 @@ const PART_LABELS: Record<string, Key> = {
   adblock: "settings.routingParts.adblock",
 };
 
-const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, routing: Route, page: LayoutTemplate, security: ShieldCheck, system: Cpu } as const;
-
-
+const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, routing: Route, page: LayoutTemplate, security: ShieldCheck, system: Cpu, ai: Globe } as const;
 
 /**
  * Settings in sections listed beside the content (a select on phones); the section and its
@@ -95,6 +94,8 @@ export function SettingsPage() {
                   <UpdatesCard />
                   <AutoCard s={s} />
                 </>
+              ) : tab === "ai-assistant" ? (
+                <AISettings s={s} />
               ) : (
                 <>
                   <AccessCard s={s} />
