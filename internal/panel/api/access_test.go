@@ -192,7 +192,7 @@ func TestAccessMatrixHTTP(t *testing.T) {
 	}
 	// Every operation tag is either identity (auth), owner-only (admins) or a
 	// section of the matrix: an unknown tag must never silently pass or fail.
-	known := map[string]bool{"auth": true, "admins": true}
+	known := map[string]bool{"auth": true, "admins": true, "ai-assistant": true}
 	for _, s := range Sections() {
 		known[s] = true
 	}
