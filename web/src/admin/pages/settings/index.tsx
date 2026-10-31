@@ -32,7 +32,7 @@ const PART_LABELS: Record<string, Key> = {
   adblock: "settings.routingParts.adblock",
 };
 
-const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, routing: Route, page: LayoutTemplate, security: ShieldCheck, system: Cpu, ai: Globe } as const;
+const ICONS = { general: Globe, subscription: Link2, rules: ListFilter, routing: Route, page: LayoutTemplate, security: ShieldCheck, system: Cpu, ai: Globe, "ai-assistant": Globe } as const;
 
 /**
  * Settings in sections listed beside the content (a select on phones); the section and its
@@ -95,7 +95,7 @@ export function SettingsPage() {
                   <AutoCard s={s} />
                 </>
               ) : tab === "ai-assistant" ? (
-                <AISettings s={s} />
+                <AISettings />
               ) : (
                 <>
                   <AccessCard s={s} />
