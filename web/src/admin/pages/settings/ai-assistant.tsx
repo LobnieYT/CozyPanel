@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { basePath, csrf } from "../../../api/client";
 import { useGrants } from "../../../api/hooks";
 import { Button, Field } from "../../../components/ui";
 import { useToast } from "../../../components/toast";
@@ -33,21 +34,27 @@ export function AISettings() {
     bot_token: "",
   });
 
-  const base = window.location.pathname.replace(/\/$/, "");
-
   const apiPut = async (body: unknown) => {
-    const res = await fetch(`${base}/api/v1/ai-assistant/config`, {
+    const res = await fetch(basePath + "/api/v1/ai-assistant/config", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrf() ? { "X-CSRF-Token": csrf() } : {}),
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(await res.text());
   };
 
   const apiPost = async (body: unknown) => {
-    const res = await fetch(`${base}/api/v1/ai-assistant/test`, {
+    const res = await fetch(basePath + "/api/v1/ai-assistant/test", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrf() ? { "X-CSRF-Token": csrf() } : {}),
+      },
       body: JSON.stringify(body),
     });
     return res;
